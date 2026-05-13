@@ -1,0 +1,44 @@
+.file-upload {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.upload-button, .download-example {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: white;
+  color: #667eea;
+  border: 2px dashed #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-button:hover {
+  background: #f0f7ff;
+  border-color: #764ba2;
+  color: #764ba2;
+}
+
+.download-example {
+  color: #28a745;
+  border-color: #28a745;
+  border-style: solid;
+}
+
+.download-example:hover {
+  background: #e6f9ed;
+  border-color: #1e7e34;
+  color: #1e7e34;
+}
+
+.upload-hint {
+  margin-top: 0.5rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}

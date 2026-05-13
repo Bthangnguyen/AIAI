@@ -1,0 +1,48 @@
+services:
+  app:
+    container_name: travel-gateway
+    build: .
+    env_file:
+      - travel.env
+    command: bash -c "
+      gunicorn app.main:app
+      -w 4 -k uvicorn.workers.UvicornWorker
+      --bind 0.0.0.0:8080
+      --timeout 120
+      --graceful-timeout 30
+      "
+    volumes:
+      - ./app:/home/code/app
+      - ./tests:/home/code/tests
+      - ./alembic:/home/code/alembic
+      - ./ingestion:/home/code/ingestion
+    ports:
+      - "8001:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: travel-db
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    # CRITICAL: 4 workers × pool_max 100 = 400 connections needed.
+    # PostgreSQL default max_connections = 100 → instant FATAL error.
+    command: ["postgres", "-c", "max_connections=500", "-c", "shared_buffers=1GB", "-c", "shared_preload_libraries=pg_cron", "-c", "cron.database_name=travel"]
+    volumes:
+      - travel_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=travel
+      - POSTGRES_PASSWORD=travel_secret
+      - POSTGRES_DB=travel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d travel -U travel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  travel_data: {}

@@ -1,0 +1,133 @@
+====================================================================================================
+🧪 SEMANTIC VECTOR SEARCH — 'Kịch bản dở hơi' Test Suite
+   Model: all-MiniLM-L6-v2 (384-dim, padded → 1536)
+   DB: travel.poi (61 POIs), pgvector cosine distance (<=>)
+====================================================================================================
+
+🔍 Query 1: 'đá gà, chèo thuyền'
+   Expectation: 'Arena Trường Đấu Voi' + 'Sông Hương Boat Tour' should rank high
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 1779.91it/s]
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Trường Quốc Học Huế                 historical     0.4646  ['education', 'history', 'landmark']
+2   Phố đi bộ Nguyễn Đình Chiểu         entertainment  0.4698  ['nightlife', 'walking', 'food']
+3   Nhà hàng Cung Đình Tịnh Gia Viên    restaurant     0.4766  ['fine_dining', 'culture', 'royal']
+4   Đập đá Vĩ Dạ                        landmark       0.4883  ['landmark', 'poetry', 'nostalgia']
+5   Lăng Tự Đức                         historical     0.4903  ['culture', 'heritage', 'tomb']
+6   Trung tâm Nghệ thuật Điềm Phùng Thị museum         0.4923  ['art', 'museum', 'sculpture']
+7   Biển Thuận An                       beach          0.5008  ['beach', 'nature', 'swimming']
+8   Chợ Đông Ba                         market         0.5019  ['market', 'street_food', 'shopping']
+9   Bảo tàng Hồ Chí Minh Huế            museum         0.5151  ['museum', 'history', 'culture']
+10  Bảo tàng Cổ vật Cung đình Huế       museum         0.5188  ['museum', 'culture', 'artifact']
+11  Đại Nội Huế                         historical     0.5189  ['culture', 'heritage', 'UNESCO']
+12  Lăng Khải Định                      historical     0.5191  ['culture', 'heritage', 'art_deco']
+13  Lăng Gia Long                       historical     0.5245  ['culture', 'heritage', 'tomb']
+14  An Định Palace                      historical     0.5277  ['heritage', 'architecture', 'royal']
+15  Bánh Bèo Bà Đỏ                      restaurant     0.5358  ['street_food', 'local', 'snack']
+
+🔍 Query 2: 'chèo thuyền trên sông' (boat/river specific)
+   Expectation: Boat Tour, Đầm Chuồn, Phá Tam Giang should appear
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Nhà hàng Cung Đình Tịnh Gia Viên    restaurant     0.6316  ['fine_dining', 'culture', 'royal']
+2   Trung tâm Nghệ thuật Điềm Phùng Thị museum         0.6367  ['art', 'museum', 'sculpture']
+3   Công viên nước Thanh Tân            entertainment  0.6400  ['water_park', 'family', 'fun']
+4   Chè Hẻm                             restaurant     0.6585  ['dessert', 'local', 'sweet']
+5   Trường Quốc Học Huế                 historical     0.6618  ['education', 'history', 'landmark']
+6   Công viên Thương Bạc                park           0.6636  ['park', 'relax', 'riverside'] ⭐
+7   Đập đá Vĩ Dạ                        landmark       0.6672  ['landmark', 'poetry', 'nostalgia']
+8   Cáp treo Bạch Mã                    nature         0.6676  ['cable_car', 'panorama', 'mountain']
+9   Hồ Thủy Tiên Water Park             abandoned      0.6893  ['urban_exploration', 'photography', 'abandoned']
+10  Thiền viện Trúc Lâm Bạch Mã         temple         0.6993  ['temple', 'zen', 'mountain']
+11  Cầu Trường Tiền                     landmark       0.7009  ['landmark', 'photo', 'riverside'] ⭐
+12  Biển Thuận An                       beach          0.7113  ['beach', 'nature', 'swimming']
+13  Sông Hương Boat Tour                tour           0.7123  ['river', 'scenic', 'boat'] ⭐
+14  Phố đi bộ Nguyễn Đình Chiểu         entertainment  0.7152  ['nightlife', 'walking', 'food']
+15  Lăng Tự Đức                         historical     0.7152  ['culture', 'heritage', 'tomb']
+
+🔍 Query 3: 'xem đá gà đấu vật' (animal fighting)
+   Expectation: 'Arena Trường Đấu Voi' should rank higher
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Bảo tàng Cổ vật Cung đình Huế       museum         0.5071  ['museum', 'culture', 'artifact']
+2   Đập đá Vĩ Dạ                        landmark       0.5356  ['landmark', 'poetry', 'nostalgia']
+3   Phố đi bộ Nguyễn Đình Chiểu         entertainment  0.5444  ['nightlife', 'walking', 'food']
+4   Lăng Tự Đức                         historical     0.5656  ['culture', 'heritage', 'tomb']
+5   Trung tâm Nghệ thuật Điềm Phùng Thị museum         0.5862  ['art', 'museum', 'sculpture']
+6   Nhà hàng Cung Đình Tịnh Gia Viên    restaurant     0.5926  ['fine_dining', 'culture', 'royal']
+7   Chợ Đông Ba                         market         0.5988  ['market', 'street_food', 'shopping']
+8   Lăng Khải Định                      historical     0.5998  ['culture', 'heritage', 'art_deco']
+9   An Định Palace                      historical     0.6006  ['heritage', 'architecture', 'royal']
+10  Trường Quốc Học Huế                 historical     0.6122  ['education', 'history', 'landmark']
+11  Điện Hòn Chén                       temple         0.6230  ['temple', 'spiritual', 'river'] ⭐
+12  Bánh Bèo Bà Đỏ                      restaurant     0.6245  ['street_food', 'local', 'snack']
+13  Arena Trường Đấu Voi                historical     0.6246  ['landmark', 'history', 'unique'] ⭐
+14  Lăng Gia Long                       historical     0.6339  ['culture', 'heritage', 'tomb']
+15  Đầm Chuồn                           nature         0.6377  ['lagoon', 'nature', 'fishing']
+
+🔍 Query 4: 'cockfighting arena rowing boat' (English)
+   Expectation: Same semantic meaning, test cross-lingual
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Arena Trường Đấu Voi                historical     0.7008  ['landmark', 'history', 'unique'] ⭐
+2   Đầm Chuồn                           nature         0.7336  ['lagoon', 'nature', 'fishing']
+3   Phá Tam Giang                       nature         0.7654  ['lagoon', 'nature', 'boat'] ⭐
+4   Suối Voi (Elephant Spring)          nature         0.7783  ['waterfall', 'nature', 'swimming'] ⭐
+5   Sông Hương Boat Tour                tour           0.7996  ['river', 'scenic', 'boat'] ⭐
+6   Nhà hàng Cung Đình Tịnh Gia Viên    restaurant     0.8470  ['fine_dining', 'culture', 'royal']
+7   Hồ Tịnh Tâm                         nature         0.8504  ['nature', 'garden', 'relax']
+8   An Định Palace                      historical     0.8678  ['heritage', 'architecture', 'royal']
+9   Công viên nước Thanh Tân            entertainment  0.8837  ['water_park', 'family', 'fun']
+10  Alba Spa Hue                        spa            0.8857  ['spa', 'massage', 'luxury']
+11  Thanh Toàn Bridge                   historical     0.8871  ['heritage', 'architecture', 'village']
+12  Hồ Thủy Tiên Water Park             abandoned      0.8873  ['urban_exploration', 'photography', 'abandoned']
+13  Bạch Mã National Park               nature         0.8889  ['hiking', 'nature', 'wildlife']
+14  Highlands Coffee Trường Tiền        cafe           0.8908  ['cafe', 'modern', 'bridge_view']
+15  Vespa Adventures Hue                tour           0.8935  ['vespa', 'adventure', 'food_tour']
+
+🔍 Query 5: 'mua bitcoin đào coin ăn phở' (total nonsense)
+   Expectation: Results should have HIGH distance (>0.5), nothing relevant
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Chợ Đông Ba                         market         0.5483  ['market', 'street_food', 'shopping']
+2   Phố đi bộ Nguyễn Đình Chiểu         entertainment  0.5639  ['nightlife', 'walking', 'food']
+3   Bánh Bèo Bà Đỏ                      restaurant     0.5730  ['street_food', 'local', 'snack']
+4   Cơm Hến Bà Hoa                      restaurant     0.5891  ['street_food', 'local', 'traditional']
+5   Trung tâm Nghệ thuật Điềm Phùng Thị museum         0.6139  ['art', 'museum', 'sculpture']
+6   Phá Tam Giang                       nature         0.6236  ['lagoon', 'nature', 'boat'] ⭐
+7   Nhà hàng Cung Đình Tịnh Gia Viên    restaurant     0.6308  ['fine_dining', 'culture', 'royal']
+8   Đầm Chuồn                           nature         0.6499  ['lagoon', 'nature', 'fishing']
+9   Bảo tàng Cổ vật Cung đình Huế       museum         0.6687  ['museum', 'culture', 'artifact']
+10  Đại Nội Huế                         historical     0.6694  ['culture', 'heritage', 'UNESCO']
+11  Suối Voi (Elephant Spring)          nature         0.6709  ['waterfall', 'nature', 'swimming'] ⭐
+12  Điện Hòn Chén                       temple         0.6715  ['temple', 'spiritual', 'river'] ⭐
+13  Bảo tàng Hồ Chí Minh Huế            museum         0.6751  ['museum', 'history', 'culture']
+14  Nem Lụi Bà Hạnh                     restaurant     0.6760  ['street_food', 'grilled', 'skewer']
+15  Chùa Thiên Mụ                       temple         0.6805  ['temple', 'spiritual', 'panorama']
+
+🔍 Query 6: 'temple pagoda spiritual zen' (exact tag match)
+   Expectation: Chùa Thiên Mụ, Chùa Từ Hiếu, Chùa Huyền Không should rank top
+
+#   POI Name                            Category       Dist     Tags
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1   Chùa Từ Hiếu                        temple         0.3420  ['temple', 'spiritual', 'zen']
+2   Chùa Huyền Không Sơn Thượng         temple         0.3575  ['temple', 'zen', 'peaceful']
+3   Thiền viện Trúc Lâm Bạch Mã         temple         0.4038  ['temple', 'zen', 'mountain']
+4   Chùa Thiên Mụ                       temple         0.4154  ['temple', 'spiritual', 'panorama']
+5   Chùa Báo Quốc                       temple         0.4258  ['temple', 'spiritual', 'historic']
+6   Điện Hòn Chén                       temple         0.4620  ['temple', 'spiritual', 'river'] ⭐
+7   Lăng Khải Định                      historical     0.5676  ['culture', 'heritage', 'art_deco']
+8   Lăng Tự Đức                         historical     0.6209  ['culture', 'heritage', 'tomb']
+9   Đại Nội Huế                         historical     0.6286  ['culture', 'heritage', 'UNESCO']
+10  Bảo tàng Cổ vật Cung đình Huế       museum         0.6380  ['museum', 'culture', 'artifact']
+11  Hồ Tịnh Tâm                         nature         0.6386  ['nature', 'garden', 'relax']
+12  Đập đá Vĩ Dạ                        landmark       0.6405  ['landmark', 'poetry', 'nostalgia']
+13  Làng Hương Thủy Xuân                cultural       0.6450  ['craft', 'incense', 'village']
+14  Thiên An Hill                       nature         0.6542  ['hiking', 'nature', 'monastery']
+15  Phủ Tùng Thiện Vương                historical     0.6556  ['heritage', 'architecture', 'poetry']

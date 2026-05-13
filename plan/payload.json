@@ -1,0 +1,175 @@
+# AI Travel Optimizer — State Handoff (12/05/2026)
+
+## 1. Kiến trúc hệ thống
+
+```
+Mobile (React Native/Expo) → Gateway (FastAPI, port 8001) → Layer 4 OR-Tools Solver (port 8000) → OSRM Huế (port 5000)
+                                    ↕
+                              PostgreSQL (port 5432) + OpenAI LLM (Layer 2)
+```
+
+### Workspace paths
+- **Mobile:** `d:\Workspaces\AI travel optimizer\Routing Engine\mobile layer\AITravelOptimizer`
+- **Gateway (L2+L3):** `d:\Workspaces\AI travel optimizer\Routing Engine\layer2_3_gateway`
+- **Layer 4 (Solver):** `d:\Workspaces\AI travel optimizer\Routing Engine\fleet-route-optimizer-cvrptw`
+- **OSRM Data:** `d:\Workspaces\AI travel optimizer\Routing Engine\Hue_OSRM_Data` (25 files, sẵn sàng)
+
+---
+
+## 2. Công việc đã hoàn thành
+
+### Phase A — Bug Fixes (4 bugs)
+- ✅ MapTimelineScreen: đọc `route.params.itinerary` thay vì hardcode mock
+- ✅ HotelPicker component: preset chips + Mapbox Geocoding thay hotel hardcoded
+- ✅ Mapbox token: xóa hardcoded, đọc từ `.env` (`EXPO_PUBLIC_MAPBOX_TOKEN`)
+
+### Phase B — Testing Foundation
+- ✅ 4 tầng test: Unit (15 suites) → Integration (1) → Contract+Security (2) → E2E Manual checklist
+- ✅ **101 tests / 19 suites — ALL PASS**
+
+### Phase D — Re-route Feature (E2E)
+- ✅ **D-a:** Gateway `POST /v1/trip/re_route` endpoint + `MobileReRouteRequest` schema + `Layer4Client.re_route()`
+- ✅ **D-b:** Mobile `TripService.reRoute()` typed + `ReRoutePayload`/`ReRouteResponse` types
+- ✅ **D-c:** UI — `ReRouteButton` (FAB pulse) + `ReRouteConfirmSheet` (BottomSheet) + MapTimelineScreen integration
+- ✅ Feature flag `ENABLE_REROUTE: true`
+
+### Phase 1 E2E Test (Mock Backend) — PASSED
+- ✅ 44 test cases chạy trên physical Android device
+- ✅ 2 bugs phát hiện và ĐÃ FIX:
+  - **Bug fix 1:** ReRouteConfirmSheet bị chắn navigation bar → thêm `useSafeAreaInsets().bottom` + nâng snap points lên `55%/80%` + đổi `ScrollView` → `BottomSheetScrollView`
+  - **Bug fix 2:** Timeline BottomSheetFlatList không scroll → thêm `nestedScrollEnabled`
+
+---
+
+## 3. Trạng thái config HIỆN TẠI
+
+### Mobile `.env`
+```
+EXPO_PUBLIC_API_URL=http://10.157.66.66:8001    ← LAN IP cho physical device
+EXPO_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibnV5ZW50aGFuZzYyIi...
+```
+
+### Feature flags (`app/config/features.ts`)
+```ts
+USE_MOCK_BACKEND: false,      // ← ĐÃ CHUYỂN cho Phase 2
+ENABLE_PUSH_NOTIFICATIONS: true,
+ENABLE_SHARE: false,
+ENABLE_REROUTE: true,
+```
+
+### Gateway `travel.env`
+- `LAYER4_BASE_URL=http://host.docker.internal:8000` ← đúng
+- `OPENAI_API_KEY=sk-proj-Y8rq...` ← **EXPIRED** — nhưng LLM extractor có fallback (trả `tags=["general"]`), pipeline vẫn chạy
+
+### Docker compose đã sửa
+- `fleet-route-optimizer-cvrptw/docker/docker-compose.yml`: OSRM image tag đổi từ `v5.24.0` → `latest` (tag cũ bị xóa khỏi ghcr.io)
+
+---
+
+## 4. Trạng thái Docker (tính đến lúc handoff)
+
+| Container | Status | Port |
+|-----------|--------|------|
+| `cvrptw-solver-backend` (Layer 4) | ✅ Running | 8000 |
+| `routing_osrm_hue` (OSRM) | ✅ Running | 5000 |
+| `cvrptw-solver-frontend` (WebUI) | ✅ Running | 3000 |
+| `travel-gateway` (Gateway) | ❌ **CHƯA START** | 8001 |
+| `travel-db` (PostgreSQL) | ❌ **CHƯA START** | 5432 |
+
+### Lệnh start Gateway (chỉ cần chạy):
+```powershell
+cd "d:\Workspaces\AI travel optimizer\Routing Engine\layer2_3_gateway"
+docker-compose up -d
+# Đợi PostgreSQL healthy (~10s) rồi Gateway tự start
+```
+
+### Health checks:
+```powershell
+curl http://localhost:5000/route/v1/driving/107.59,16.46;107.58,16.47   # OSRM
+curl http://localhost:8000/health                                         # Layer 4
+curl http://localhost:8001/v1/trip/health                                 # Gateway
+```
+
+---
+
+## 5. VIỆC CẦN LÀM TIẾP
+
+### ▶ Bước tiếp: Phase 2 E2E Test — Real Backend
+**Config đã sẵn sàng** (`USE_MOCK_BACKEND: false`). Chỉ cần:
+1. Start Gateway: `docker-compose up -d` trong `layer2_3_gateway/`
+2. Health check 3 services
+3. Build APK mới (hoặc dùng bản build gần nhất nếu chưa thay code)
+4. Test trên physical device theo checklist:
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 2.1 | Health check | "✓ Server connected" trong LoadingScreen |
+| 2.2 | L2 done | "✓ Intent analyzed" (có thể fallback vì OpenAI key expired) |
+| 2.3 | L3 done | "✓ Found N places" |
+| 2.4 | L4 result | "✓ Route optimized — N POIs" |
+| 2.5 | Real POI names | Đại Nội, Chùa Thiên Mụ, etc. |
+| 2.6 | Tọa độ Huế | lat ~16.4-16.5, lon ~107.5-107.6 |
+| 2.7 | Route polyline | Đường phố thực (OSRM) |
+| 2.8 | Summary bar | Data khớp itinerary |
+| 2.9 | Hotel name | Khớp hotel đã chọn |
+| 2.10 | Bug #1 regression | KHÔNG hiển thị mock data |
+| 2.11 | Multiple days | Day 1, Day 2 headers |
+
+### ▶ Sau Phase 2: Phase 3 E2E Test — Error + Re-route
+| # | Test Case | How to trigger |
+|---|-----------|---------------|
+| 3.1 | Gateway down | Stop gateway container |
+| 3.2 | Empty prompt | Xóa text, tap Next |
+| 3.3 | Timeout | Stop L4 while processing |
+| 3.4 | Re-route confirm | Tap 🔄 → confirm → GPS → solver |
+| 3.5 | Re-route exclude | Uncheck POI → confirm |
+| 3.6 | Re-route cancel | Swipe down sheet |
+| 3.7 | No GPS | Deny location permission |
+| 3.8 | Re-route L4 down | Stop L4 → tap Re-route |
+
+### ▶ Sau E2E: Build APK production
+```powershell
+$env:EAS_NO_VCS=1; npx eas-cli build --profile preview --platform android --non-interactive
+```
+> Cần `npx eas-cli login` trước (account: nuyenthang62@gmail.com, đã login).
+
+---
+
+## 6. Lưu ý quan trọng
+
+- **OpenAI key expired:** L2 LLM sẽ fallback → `tags=["general"]` → pipeline vẫn hoạt động nhưng không thông minh. Cần key mới cho production.
+- **ADB không trên PATH:** Không ảnh hưởng nếu dùng Expo Go / EAS build. Nếu cần `expo run:android` thì set `ANDROID_HOME`.
+- **EAS Build:** Dùng `$env:EAS_NO_VCS=1` vì git không trên PATH.
+- **LAN IP:** `10.157.66.66` — cần kiểm tra lại nếu đổi mạng WiFi.
+- **Artifact files:**
+  - `implementation_plan.md` — E2E test plan chi tiết
+  - `final_report.md` — Báo cáo tổng kết Phase A/B/D
+  - `task.md` — Checklist Phase 1 (đã pass)
+  - `walkthrough.md` — Chi tiết thay đổi code
+
+---
+
+## 7. Key files đã tạo/sửa trong session này
+
+### Files tạo mới (Mobile)
+- `app/utils/itineraryHelpers.ts` — pure functions cho re-route
+- `app/components/ReRouteButton.tsx` — FAB pulse animation
+- `app/components/ReRouteConfirmSheet.tsx` — BottomSheet confirm
+- `test/utils/itineraryHelpers.test.ts` — 14 tests
+
+### Files tạo mới (Gateway)
+- `app/schemas/re_route.py` — MobileReRouteRequest + ReRouteResponse
+
+### Files sửa (Mobile)
+- `app/screens/MapTimelineScreen.tsx` — mutable itinerary + re-route handler + FAB + sheet + nestedScrollEnabled
+- `app/services/api/tripService.ts` — typed reRoute() thay stub
+- `app/navigators/navigationTypes.ts` — +ReRoutePayload, ReRouteResponse
+- `app/config/features.ts` — ENABLE_REROUTE: true, USE_MOCK_BACKEND: false
+- `.env` — API URL = LAN IP
+
+### Files sửa (Gateway)
+- `app/services/layer4_client.py` — +re_route() method
+- `app/api/trip_planner.py` — +POST /v1/trip/re_route endpoint
+
+### Files sửa (Layer 4 Docker)
+- `docker/docker-compose.yml` — OSRM image: latest

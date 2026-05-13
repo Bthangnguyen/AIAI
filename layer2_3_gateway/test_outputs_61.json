@@ -1,0 +1,108 @@
+{
+  "Mức độ 1: Happy Path": {
+    "status": "partial",
+    "llm_contract": {
+      "budget_max": 500000.0,
+      "radius_km": 10.0,
+      "num_days": 1,
+      "time_window": null,
+      "tags": [
+        "culture",
+        "history"
+      ],
+      "locked_pois": [],
+      "weather_preference": null,
+      "hotel_lat": 16.4637,
+      "hotel_lon": 107.5905,
+      "hotel_name": "Saigon Morin"
+    },
+    "pois_found": 50,
+    "locked_pois": 0,
+    "layer4_result": null,
+    "message": "Route optimization unavailable"
+  },
+  "Mức độ 2: Hard Constraints": {
+    "status": "partial",
+    "llm_contract": {
+      "budget_max": null,
+      "radius_km": 10.0,
+      "num_days": 1,
+      "time_window": null,
+      "tags": [],
+      "locked_pois": [
+        "Đại Nội Huế",
+        "Chùa Thiên Mụ"
+      ],
+      "weather_preference": null,
+      "hotel_lat": 16.4637,
+      "hotel_lon": 107.5905,
+      "hotel_name": "Saigon Morin"
+    },
+    "pois_found": 50,
+    "locked_pois": 2,
+    "layer4_result": null,
+    "message": "Route optimization unavailable"
+  },
+  "Mức độ 3: Fallback Tiers": {
+    "status": "partial",
+    "llm_contract": {
+      "budget_max": null,
+      "radius_km": 5.0,
+      "num_days": 1,
+      "time_window": null,
+      "tags": [
+        "beach"
+      ],
+      "locked_pois": [],
+      "weather_preference": null,
+      "hotel_lat": 16.4637,
+      "hotel_lon": 107.5905,
+      "hotel_name": "Vincom Hue"
+    },
+    "pois_found": 42,
+    "locked_pois": 0,
+    "layer4_result": null,
+    "message": "Route optimization unavailable"
+  },
+  "Mức độ 4: Multi Day": {
+    "status": "partial",
+    "llm_contract": {
+      "budget_max": null,
+      "radius_km": 20.0,
+      "num_days": 3,
+      "time_window": null,
+      "tags": [],
+      "locked_pois": [],
+      "weather_preference": null,
+      "hotel_lat": 16.4637,
+      "hotel_lon": 107.5905,
+      "hotel_name": "Saigon Morin"
+    },
+    "pois_found": 50,
+    "locked_pois": 0,
+    "layer4_result": null,
+    "message": "Route optimization unavailable"
+  },
+  "Mức độ 5: System Resilience": {
+    "status": "partial",
+    "llm_contract": {
+      "budget_max": null,
+      "radius_km": 10.0,
+      "num_days": 1,
+      "time_window": null,
+      "tags": [
+        "general"
+      ],
+      "locked_pois": [],
+      "weather_preference": null,
+      "hotel_lat": 16.4637,
+      "hotel_lon": 107.5905,
+      "hotel_name": "Saigon Morin"
+    },
+    "pois_found": 50,
+    "locked_pois": 0,
+    "layer4_result": null,
+    "message": "Route optimization unavailable"
+  },
+  "Mức độ 6: Time Window": "Error 429"
+}

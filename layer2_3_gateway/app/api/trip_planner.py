@@ -43,6 +43,7 @@ async def _run_pipeline(
     request: TripPlanRequest,
 ) -> tuple[LLMDataContract, List[POIResponse]]:
     """L2 → Embed → L3 pipeline with TOTAL DB I/O isolation."""
+    logger.info(f"🚀 _run_pipeline STARTED for prompt: {request.user_prompt}")
     # ──── PHASE A: NETWORK I/O (NO DB SESSION) ────
     contract = await llm_service.extract_intent(
         user_prompt=request.user_prompt,
@@ -101,6 +102,7 @@ async def plan_trip(request: Request, body: TripPlanRequest):
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 async def plan_trip_stream(request: Request, body: TripPlanRequest):
     """SSE streaming: pushes route chunks to Mobile App in real-time."""
+    logger.info(f"📡 SSE REQUEST RECEIVED: plan_trip_stream from {request.client.host}")
     contract, pois = await _run_pipeline(body)
 
     async def event_generator():

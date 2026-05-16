@@ -44,6 +44,12 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ]
 
+const PROMPT_SUGGESTIONS = [
+  "Đi Huế 3 ngày, thích văn hóa",
+  "2 ngày budget thấp, ưu tiên ẩm thực",
+  "Du lịch gia đình, có trẻ em"
+]
+
 export const ItineraryFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>()
   const today = new Date()
@@ -106,6 +112,10 @@ export const ItineraryFormScreen: React.FC = () => {
       : 1
 
   const handleNext = () => {
+    if (!selectedStart || !selectedEnd) {
+      Alert.alert("Missing Dates", "Please select a start and end date for your trip.")
+      return
+    }
     if (!query.trim()) {
       Alert.alert("Please describe your trip", "What kind of trip are you planning?")
       return
@@ -224,8 +234,18 @@ export const ItineraryFormScreen: React.FC = () => {
             placeholder="e.g. 3 days in Huế, cultural sites and local food..."
             placeholderTextColor={colors.palette.figmaGrayMedium}
             multiline
+            maxLength={200}
             numberOfLines={3}
           />
+          <Text style={styles.charCount}>{query.length}/200</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionChips}>
+            {PROMPT_SUGGESTIONS.map((suggestion, idx) => (
+              <TouchableOpacity key={idx} style={styles.chip} onPress={() => setQuery(suggestion)}>
+                <Text style={styles.chipText}>{suggestion}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* ─── Email toggle ── */}
@@ -342,23 +362,50 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   inputBlock: {
-    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
   inputLabel: {
     fontFamily: typography.primary.semiBold,
-    fontSize: 15,
-    color: colors.palette.figmaBlack,
-    marginBottom: spacing.xs,
+    fontSize: 14,
+    color: colors.palette.figmaPrimaryBlack,
+    marginBottom: spacing.sm,
   },
   textArea: {
     backgroundColor: colors.palette.figmaOffWhite,
-    borderRadius: 15,
+    borderRadius: 16,
     padding: spacing.md,
     fontFamily: typography.primary.normal,
     fontSize: 14,
-    color: colors.palette.figmaGrayDark,
-    minHeight: 80,
+    color: colors.palette.figmaPrimaryBlack,
     textAlignVertical: "top",
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: colors.palette.figmaGrayLight,
+  },
+  charCount: {
+    fontFamily: typography.primary.normal,
+    fontSize: 12,
+    color: colors.palette.figmaGrayMedium,
+    textAlign: "right",
+    marginTop: 4,
+  },
+  suggestionChips: {
+    paddingVertical: spacing.sm,
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: colors.palette.figmaOffWhite,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.palette.figmaGrayLight,
+  },
+  chipText: {
+    fontFamily: typography.primary.normal,
+    fontSize: 12,
+    color: colors.palette.figmaPrimaryBlack,
   },
   toggleRow: {
     flexDirection: "row",

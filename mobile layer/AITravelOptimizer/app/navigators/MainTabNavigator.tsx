@@ -67,6 +67,7 @@ export const MainTabNavigator: React.FC = () => {
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.palette.figmaPrimaryBlack,
         tabBarInactiveTintColor: colors.palette.figmaGrayMedium,
+        tabBarItemStyle: { paddingVertical: 4 },
       }}
     >
       <Tab.Screen
@@ -121,7 +122,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 8,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    overflow: "visible",
   },
 })

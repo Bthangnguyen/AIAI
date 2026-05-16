@@ -8,7 +8,7 @@ from .domain import POI, Hotel, DayPlan, Location, TravelConstraints
 
 class SolverConfig(BaseModel):
     """Solver configuration parameters."""
-    time_limit: int = Field(60, description="Time limit in seconds", ge=1, le=3600)
+    time_limit: int = Field(120, description="Time limit in seconds", ge=1, le=3600)
     solver: str = Field("ortools", description="Solver type: 'ortools'")
     distance_weight: float = Field(1.0, description="Weight for distance minimization")
 

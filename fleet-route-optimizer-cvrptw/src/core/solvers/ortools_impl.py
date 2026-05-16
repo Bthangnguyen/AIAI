@@ -54,6 +54,13 @@ class ORToolsSolverImpl:
         """Prepare and compute derived data."""
         # Set defaults
         self.problem_data.setdefault('depot', 0)
+        # Build depot indices set for time matrix computation
+        starts = self.problem_data.get('starts')
+        ends = self.problem_data.get('ends')
+        if starts is not None and ends is not None:
+            self._depot_indices_prep = set(starts + ends)
+        else:
+            self._depot_indices_prep = {self.problem_data['depot']}
         self.problem_data.setdefault('service_time', 0)
         self.problem_data.setdefault('vehicle_speed', 1.0)
         
@@ -109,7 +116,7 @@ class ORToolsSolverImpl:
         """
         distance_matrix = self.problem_data['distance_matrix']
         demands = self.problem_data['demands']
-        depot = self.problem_data['depot']
+        depot_set = self._depot_indices_prep
         n = len(distance_matrix)
         
         time_matrix = [[0] * n for _ in range(n)]
@@ -128,7 +135,7 @@ class ORToolsSolverImpl:
                     # The capacity constraint is STRICTER because it ignores travel_time.
                     # This is acceptable: if visit-time alone exceeds the budget, no route is valid.
                     # If travel_time pushes total over budget, the time dimension catches it.
-                    service_time_scaled = int(demands[j] * 100) if j != depot else 0
+                    service_time_scaled = int(demands[j] * 100) if j not in depot_set else 0
                     time_matrix[i][j] = travel_time + service_time_scaled
             return time_matrix
             
@@ -141,7 +148,7 @@ class ORToolsSolverImpl:
                 travel_time_scaled = int(travel_time_hours * 60 * 100)
                 
                 # In Travel Domain, demands[j] = visit_duration_min
-                service_time_scaled = int(demands[j] * 100) if j != depot else 0
+                service_time_scaled = int(demands[j] * 100) if j not in depot_set else 0
                 
                 time_matrix[i][j] = travel_time_scaled + service_time_scaled
         
@@ -181,7 +188,7 @@ class ORToolsSolverImpl:
     
     def solve(
         self,
-        time_limit_seconds: int = 30,
+        time_limit_seconds: int = 120,
         log_search: bool = False,
         vehicle_penalty_weight: float = 100000.0,
         distance_weight: float = 1.0,
@@ -190,168 +197,206 @@ class ORToolsSolverImpl:
         """
         Solve CVRPTW problem using OR-Tools.
         
+        Supports both single-depot and multi-depot modes.
+        Multi-depot mode is activated when 'starts' and 'ends' arrays
+        are present in problem_data.
+        
         Args:
             time_limit_seconds: Maximum time for solver
             log_search: Whether to log search progress
-            vehicle_penalty_weight: Weight for minimizing number of vehicles
+            vehicle_penalty_weight: Weight for minimizing number of vehicles (single-depot only)
             distance_weight: Weight for distance minimization
-            **kwargs: Additional parameters (ignored)
-            
-        Returns:
-            Solution dictionary or None if no solution found
+            **kwargs: diversity_penalty, rhythm_penalty, drop_penalty, first_solution_strategy
         """
-        logger.info(
-            f"Preparing OR-Tools model: locations={len(self.problem_data['distance_matrix'])}, "
-            f"vehicles={self.problem_data['num_vehicles']}, depot={self.problem_data.get('depot', 0)}"
-        )
+        N = len(self.problem_data['distance_matrix'])
+        num_vehicles = self.problem_data['num_vehicles']
         
-        # Create routing index manager
-        manager = pywrapcp.RoutingIndexManager(
-            len(self.problem_data['distance_matrix']),
-            self.problem_data['num_vehicles'],
-            self.problem_data['depot']
-        )
+        # === Multi-depot vs Single-depot ===
+        starts = self.problem_data.get('starts')
+        ends = self.problem_data.get('ends')
+        is_multi_depot = starts is not None and ends is not None
         
-        # Create routing model
+        if is_multi_depot:
+            manager = pywrapcp.RoutingIndexManager(N, num_vehicles, starts, ends)
+            depot_indices = set(starts + ends)
+            logger.info(
+                f"Preparing OR-Tools MULTI-DEPOT model: nodes={N}, "
+                f"vehicles={num_vehicles}, starts={starts}, ends={ends}"
+            )
+        else:
+            depot = self.problem_data.get('depot', 0)
+            manager = pywrapcp.RoutingIndexManager(N, num_vehicles, depot)
+            depot_indices = {depot}
+            logger.info(
+                f"Preparing OR-Tools model: nodes={N}, "
+                f"vehicles={num_vehicles}, depot={depot}"
+            )
+        
+        # Store for extraction
+        self._depot_indices = depot_indices
+        self._is_multi_depot = is_multi_depot
+        
         routing = pywrapcp.RoutingModel(manager)
         
-        # Register distance callback
-        distance_callback = self._create_distance_callback(manager)
+        # === Distance callback with diversity/rhythm penalties ===
+        diversity_penalty = kwargs.get('diversity_penalty', 50000)
+        rhythm_penalty = kwargs.get('rhythm_penalty', 30000)
+        categories = self.problem_data.get('categories', [])
+        intensities = self.problem_data.get('intensities', [])
+        distance_matrix = self.problem_data['distance_matrix']
+        
+        def distance_callback(from_index, to_index):
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            base_cost = int(distance_matrix[from_node][to_node] * 100)
+            
+            # Apply penalties only between non-depot nodes
+            if from_node not in depot_indices and to_node not in depot_indices:
+                if (categories
+                    and from_node < len(categories) and to_node < len(categories)
+                    and categories[from_node] and categories[to_node]
+                    and categories[from_node] == categories[to_node]):
+                    base_cost += diversity_penalty
+                
+                if (intensities
+                    and from_node < len(intensities) and to_node < len(intensities)
+                    and intensities[from_node] == "heavy"
+                    and intensities[to_node] == "heavy"):
+                    base_cost += rhythm_penalty
+            
+            return base_cost
+        
         transit_callback_index = routing.RegisterTransitCallback(distance_callback)
         
-        # Apply distance weight to arc costs
         if distance_weight != 1.0:
             def weighted_distance_callback(from_index, to_index):
                 return int(distance_callback(from_index, to_index) * distance_weight)
-            weighted_transit_callback_index = routing.RegisterTransitCallback(weighted_distance_callback)
-            routing.SetArcCostEvaluatorOfAllVehicles(weighted_transit_callback_index)
+            weighted_idx = routing.RegisterTransitCallback(weighted_distance_callback)
+            routing.SetArcCostEvaluatorOfAllVehicles(weighted_idx)
         else:
             routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
         
-        # Add capacity constraint
+        # === Capacity constraint ===
         demand_callback = self._create_demand_callback(manager)
         demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-        
         routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,  # null capacity slack
+            demand_callback_index, 0,
             self.problem_data['vehicle_capacities'],
-            True,  # start cumul to zero
-            'Capacity'
+            True, 'Capacity'
         )
         
-        # Add time window constraint
+        # === Time dimension ===
         time_callback = self._create_time_callback(manager)
         time_callback_index = routing.RegisterTransitCallback(time_callback)
         
-        # Get maximum time window end (scaled)
-        max_time = int(max(tw[1] for tw in self.problem_data['time_windows']) * 100)
+        vehicle_time_windows = self.problem_data.get('vehicle_time_windows')
+        if vehicle_time_windows:
+            max_time = int(max(tw[1] for tw in vehicle_time_windows) * 100)
+        else:
+            max_time = int(max(tw[1] for tw in self.problem_data['time_windows']) * 100)
         
         routing.AddDimension(
             time_callback_index,
-            max_time,  # allow waiting time
-            max_time,  # maximum time per vehicle
-            False,  # don't force start cumul to zero
-            'Time'
+            max_time,   # allow waiting
+            max_time,   # max time per vehicle
+            False, 'Time'
         )
         
-        # Add time window constraints for each location
         time_dimension = routing.GetDimensionOrDie('Time')
-        for location_idx, time_window in enumerate(self.problem_data['time_windows']):
-            if location_idx == self.problem_data['depot']:
+        
+        # POI time windows
+        for loc_idx, tw in enumerate(self.problem_data['time_windows']):
+            if loc_idx in depot_indices:
                 continue
-            index = manager.NodeToIndex(location_idx)
-            time_dimension.CumulVar(index).SetRange(
-                int(time_window[0] * 100),
-                int(time_window[1] * 100)
-            )
+            index = manager.NodeToIndex(loc_idx)
+            time_dimension.CumulVar(index).SetRange(int(tw[0] * 100), int(tw[1] * 100))
         
-        # Add time window constraints for depot
-        depot_idx = self.problem_data['depot']
-        for vehicle_id in range(self.problem_data['num_vehicles']):
-            index = routing.Start(vehicle_id)
-            time_dimension.CumulVar(index).SetRange(
-                int(self.problem_data['time_windows'][depot_idx][0] * 100),
-                int(self.problem_data['time_windows'][depot_idx][1] * 100)
-            )
+        # Per-vehicle start/end time windows
+        if vehicle_time_windows:
+            for vid in range(num_vehicles):
+                vtw = vehicle_time_windows[vid]
+                time_dimension.CumulVar(routing.Start(vid)).SetRange(
+                    int(vtw[0] * 100), int(vtw[1] * 100)
+                )
+                time_dimension.CumulVar(routing.End(vid)).SetRange(
+                    int(vtw[0] * 100), int(vtw[1] * 100)
+                )
+        else:
+            # Single depot time window for all vehicles
+            depot_tw = self.problem_data['time_windows'][self.problem_data.get('depot', 0)]
+            for vid in range(num_vehicles):
+                time_dimension.CumulVar(routing.Start(vid)).SetRange(
+                    int(depot_tw[0] * 100), int(depot_tw[1] * 100)
+                )
         
-        # Set up objective: minimize number of vehicles and total distance
-        routing.SetFixedCostOfAllVehicles(int(vehicle_penalty_weight))
+        # === Vehicle penalty (single-depot only) ===
+        if not is_multi_depot:
+            routing.SetFixedCostOfAllVehicles(int(vehicle_penalty_weight))
         
         logger.info(
-            f"Objective weights: vehicle_penalty={vehicle_penalty_weight}, "
-            f"distance_weight={distance_weight}"
+            f"Penalties: diversity={diversity_penalty}, rhythm={rhythm_penalty}, "
+            f"multi_depot={is_multi_depot}"
         )
         
-        # Allow dropping nodes with very high penalty
-        # Allow custom penalty for testing or specific routing behaviors
-        penalty = kwargs.get('drop_penalty', 10000000000)
-        is_locked_list = self.problem_data.get('is_locked_list')
+        # === Disjunction & Meal constraints ===
+        drop_penalty = kwargs.get('drop_penalty', 10_000_000_000)
+        is_locked_list = self.problem_data.get('is_locked_list', [])
+        meal_assignments = self.problem_data.get('meal_assignments', {})
         
-        for node in range(1, len(self.problem_data['distance_matrix'])):
-            is_locked = False
-            if is_locked_list and node < len(is_locked_list):
-                is_locked = is_locked_list[node]
-                
-            if not is_locked:
-                routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
+        for node in range(N):
+            if node in depot_indices:
+                continue
+            
+            index = manager.NodeToIndex(node)
+            
+            if node in meal_assignments:
+                # Meal POI: lock to specific vehicle (day), must visit
+                vehicle_id = meal_assignments[node]
+                routing.solver().Add(routing.VehicleVar(index) == vehicle_id)
+                logger.info(f"Node {node} is meal -> locked to vehicle {vehicle_id}")
+            elif is_locked_list and node < len(is_locked_list) and is_locked_list[node]:
+                # Locked POI: must visit (no disjunction)
+                logger.info(f"Node {node} is locked -> must visit")
             else:
-                logger.info(f"Node {node} is locked. Will not be allowed to drop.")
+                # Regular POI: can be dropped with high penalty
+                routing.AddDisjunction([index], drop_penalty)
         
-        # Set search parameters
+        # === Search parameters ===
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        
-        # Allow configurable first solution strategy
         strategy_name = kwargs.get('first_solution_strategy', 'PATH_CHEAPEST_ARC')
-        strategy = getattr(routing_enums_pb2.FirstSolutionStrategy, strategy_name)
-        search_parameters.first_solution_strategy = strategy
-        
+        search_parameters.first_solution_strategy = getattr(
+            routing_enums_pb2.FirstSolutionStrategy, strategy_name
+        )
         search_parameters.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
         )
         search_parameters.time_limit.seconds = time_limit_seconds
         search_parameters.log_search = log_search
         
-        # Create monitoring thread for progress reporting
+        # === Monitor thread ===
         solving = [True]
         start_time = time.time()
-        num_customers = len(self.problem_data['demands']) - 1
-        num_vehicles = self.problem_data['num_vehicles']
         
         def monitor_progress():
-            """Monitor thread to report progress every 5 seconds."""
             last_report = start_time
             while solving[0]:
                 time.sleep(1)
-                current_time = time.time()
-                if current_time - last_report >= 5.0:
-                    last_report = current_time
-                    elapsed = current_time - start_time
-                    logger.info(
-                        f"[{elapsed:.0f}s] OR-Tools optimizing: "
-                        f"{num_customers} customers, {num_vehicles} vehicles available "
-                        f"(intermediate stats not available with OR-Tools)"
-                    )
+                now = time.time()
+                if now - last_report >= 5.0:
+                    last_report = now
+                    logger.info(f"[{now - start_time:.0f}s] OR-Tools optimizing...")
         
-        # Start monitoring thread
         monitor_thread = threading.Thread(target=monitor_progress, daemon=True)
         monitor_thread.start()
         
-        # Solve the problem
-        logger.info(
-            f"Starting OR-Tools solver (time limit: {time_limit_seconds}s, "
-            f"locations: {len(self.problem_data['locations'])}, "
-            f"vehicles: {self.problem_data['num_vehicles']})..."
-        )
+        logger.info(f"Starting OR-Tools solver (time_limit={time_limit_seconds}s, nodes={N}, vehicles={num_vehicles})...")
         solution = routing.SolveWithParameters(search_parameters)
         
-        # Stop monitoring
         solving[0] = False
         monitor_thread.join(timeout=1.0)
         
         if solution:
-            obj_value = solution.ObjectiveValue()
-            logger.info(f"✓ Solution found - Objective: {obj_value:,.0f}")
+            logger.info(f"✓ Solution found - Objective: {solution.ObjectiveValue():,.0f}")
             return self._extract_solution(manager, routing, solution)
         else:
             logger.warning("No solution found")
@@ -371,7 +416,7 @@ class ORToolsSolverImpl:
             index = routing.Start(vehicle_id)
             route = []
             route_distance = 0
-            is_first_arc = True
+            is_first_arc = not self._is_multi_depot
             segment_distances = []
             
             # First pass: collect all stops to calculate total load
@@ -409,7 +454,7 @@ class ORToolsSolverImpl:
                 time_window_end = time_window[1]
                 
                 # Delivery model: load decreases after delivery
-                if node_index == self.problem_data['depot']:
+                if node_index in self._depot_indices:
                     load_before = 0
                     load_after = total_route_load
                 else:
@@ -500,7 +545,7 @@ class ORToolsSolverImpl:
                 service_time_minutes = 0
                 num_customers = 0
                 for stop in route:
-                    if stop['location'] != self.problem_data['depot']:
+                    if stop['location'] not in self._depot_indices:
                         num_customers += 1
                         units_delivered = stop['load_before'] - stop['load_after']
                         service_time_minutes += 10 + (2 * units_delivered)
@@ -568,7 +613,7 @@ class ORToolsSolverImpl:
             
             time_diff = to_stop['time'] - from_stop['time']
             
-            if to_stop['location'] != self.problem_data['depot']:
+            if to_stop['location'] not in self._depot_indices:
                 # Going to customer
                 units_delivered = to_stop['load_before'] - to_stop['load_after']
                 service_time_minutes = 10 + (2 * units_delivered)
@@ -656,18 +701,18 @@ class ORToolsSolverImpl:
         
         # Count customers served and dropped
         served_customers = set()
-        depot = self.problem_data['depot']
         for route in routes:
             for stop in route['route']:
-                if stop['location'] != depot:
+                if stop['location'] not in self._depot_indices:
                     served_customers.add(stop['location'])
         
         customers_served = len(served_customers)
-        customers_total = len(self.problem_data['demands']) - 1
+        num_depots = len(self._depot_indices)
+        customers_total = len(self.problem_data['demands']) - num_depots
         
         dropped_customers = []
         for i in range(len(self.problem_data['demands'])):
-            if i != depot and i not in served_customers:
+            if i not in self._depot_indices and i not in served_customers:
                 dropped_customers.append({'index': i})
         
         # Log summary

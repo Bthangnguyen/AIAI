@@ -1,5 +1,5 @@
 import { FC, useCallback, useEffect, useRef, useState } from "react"
-import { View, ViewStyle, TextStyle, FlatList, Dimensions, Pressable } from "react-native"
+import { View, ViewStyle, TextStyle, FlatList, Dimensions, Pressable, ScrollView } from "react-native"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -149,7 +149,7 @@ export const LoadingScreen: FC<LoadingScreenProps> = ({ route, navigation }) => 
   // ─── Main Render ──────────────────────────
   return (
     <Screen style={$root} preset="fixed">
-      <View style={$container}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={$container}>
         {/* Header */}
         <View style={$header}>
           <Animated.View style={[$spinnerWrap, spinnerStyle]}>
@@ -191,9 +191,10 @@ export const LoadingScreen: FC<LoadingScreenProps> = ({ route, navigation }) => 
             contentContainerStyle={$logList}
             showsVerticalScrollIndicator={false}
             inverted={false}
+            scrollEnabled={false}
           />
         </View>
-      </View>
+      </ScrollView>
     </Screen>
   )
 }
@@ -206,9 +207,10 @@ const $root: ViewStyle = {
 }
 
 const $container: ViewStyle = {
-  flex: 1,
+  flexGrow: 1,
   paddingHorizontal: spacing.lg,
   paddingTop: 60,
+  paddingBottom: 40,
 }
 
 const $header: ViewStyle = {
@@ -371,12 +373,16 @@ const $errorActions: ViewStyle = {
 }
 
 const $errorBtn: ViewStyle = {
+  flex: 1,
+  minHeight: 48,
   paddingVertical: 12,
   paddingHorizontal: 24,
   borderRadius: 16,
   backgroundColor: colors.palette.figmaOffWhite,
   borderWidth: 1,
   borderColor: colors.palette.figmaGrayLight,
+  justifyContent: "center",
+  alignItems: "center",
 }
 
 const $retryBtn: ViewStyle = {

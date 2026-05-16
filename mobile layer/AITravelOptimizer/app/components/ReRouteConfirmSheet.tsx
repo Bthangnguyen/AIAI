@@ -9,8 +9,8 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
 } from "react-native"
+import { TouchableOpacity } from "react-native-gesture-handler"
 import BottomSheet, { BottomSheetView, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { colors } from "@/theme/colors"

@@ -157,14 +157,16 @@ class Layer4Client:
                 "priority_score": 0.8,
             })
 
-        # Build hotel from day's hotel info
+        # Build hotel from day's hotel info (support both v1 and v2 field names)
+        hotel_name = target_day.get("end_hotel_name") or target_day.get("start_hotel_name") or target_day.get("hotel_name", "Hotel")
+        hotel_location = target_day.get("end_hotel_location") or target_day.get("start_hotel_location") or target_day.get("hotel_location", {
+            "latitude": current_lat,
+            "longitude": current_lon,
+        })
         hotel = {
             "id": f"hotel_day_{day_index}",
-            "name": target_day.get("hotel_name", "Hotel"),
-            "location": target_day.get("hotel_location", {
-                "latitude": current_lat,
-                "longitude": current_lon,
-            }),
+            "name": hotel_name,
+            "location": hotel_location,
         }
 
         # Build day plan

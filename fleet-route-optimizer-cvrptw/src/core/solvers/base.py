@@ -49,7 +49,9 @@ class BaseSolver(ABC):
             log_search: Whether to log search progress
             vehicle_penalty_weight: Weight for minimizing number of vehicles
             distance_weight: Weight for distance in objective function
-            **kwargs: Additional solver-specific parameters
+            **kwargs: Additional solver-specific parameters:
+                - diversity_penalty (int): Arc cost penalty for consecutive same-category POIs (default 50000)
+                - rhythm_penalty (int): Arc cost penalty for consecutive heavy-intensity POIs (default 30000)
             
         Returns:
             Dictionary containing solution details or None if no solution found

@@ -46,7 +46,7 @@ async def plan_travel_endpoint(
         result = await asyncio.to_thread(
             travel_service.plan,
             request=request,
-            time_limit_per_day=time_limit,
+            time_limit=time_limit,
             solver_type=solver,
         )
         return result

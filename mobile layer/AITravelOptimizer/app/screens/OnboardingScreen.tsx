@@ -16,6 +16,7 @@ import {
   Image,
   StatusBar,
   SafeAreaView,
+  ScrollView,
 } from "react-native"
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 
@@ -80,11 +81,11 @@ export const OnboardingScreen = ({ navigation }: OnboardingScreenProps) => {
     if (activeIndex < SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true })
     } else {
-      navigation.replace("Login")
+      navigation.navigate("Login")
     }
   }
 
-  const handleSkip = () => navigation.replace("Login")
+  const handleSkip = () => navigation.navigate("Login")
 
   const renderItem = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
@@ -94,7 +95,11 @@ export const OnboardingScreen = ({ navigation }: OnboardingScreenProps) => {
       <View style={styles.imageOverlay} />
 
       {/* Content card */}
-      <View style={styles.contentCard}>
+      <ScrollView
+        contentContainerStyle={styles.contentCard}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* Sponsor badge */}
         <View style={styles.sponsorBadge}>
           <Text style={styles.sponsorText}>✈ AI Travel Optimizer</Text>
@@ -108,7 +113,7 @@ export const OnboardingScreen = ({ navigation }: OnboardingScreenProps) => {
 
         {/* Accent line */}
         <View style={[styles.accentLine, { backgroundColor: item.accentColor }]} />
-      </View>
+      </ScrollView>
     </View>
   )
 
@@ -206,7 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.25)",
   },
   contentCard: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.palette.figmaWhite,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,

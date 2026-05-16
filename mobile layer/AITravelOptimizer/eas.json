@@ -26,7 +26,11 @@
       "extends": "production",
       "distribution": "internal",
       "ios": { "simulator": true },
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://most-margarine-coastland.ngrok-free.dev",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoibnV5ZW50aGFuZzYyIiwiYSI6ImNtbzAwcWQyODAzOXMycW83amx6YmE3NzkifQ.oxR43D0hJTxmNfPRkcKPBg"
+      }
     },
     "preview:device": {
       "extends": "preview",

@@ -5,7 +5,8 @@
  * Pulses subtly to draw attention.
  */
 import React from "react"
-import { TouchableOpacity, Text, StyleSheet } from "react-native"
+import { Text, StyleSheet } from "react-native"
+import { TouchableOpacity } from "react-native-gesture-handler"
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

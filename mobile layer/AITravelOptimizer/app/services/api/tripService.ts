@@ -12,7 +12,7 @@ export const TripService = {
     try {
       const res = await fetch(`${API_BASE_URL}/v1/trip/health`, {
         method: "GET",
-        headers: { Accept: "application/json" },
+        headers: { Accept: "application/json", "ngrok-skip-browser-warning": "1" },
       })
       if (!res.ok) return { ready: false, message: `Server error: ${res.status}` }
       const data = await res.json()
@@ -35,7 +35,7 @@ export const TripService = {
     const url = `${API_BASE_URL}/v1/trip/plan_trip_stream`
     const eventSource = new EventSource(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
       body: JSON.stringify({
         user_prompt: prompt,
         hotel_lat: hotelLat,
@@ -80,6 +80,7 @@ export const TripService = {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "ngrok-skip-browser-warning": "1",
         },
         body: JSON.stringify(payload),
       })

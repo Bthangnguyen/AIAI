@@ -1,6 +1,6 @@
 """Domain models for CVRPTW problem representation and Travel Routing."""
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Literal, Optional, Tuple
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,15 @@ class POI(BaseModel):
     tags: Optional[List[str]] = Field(None, description="Tags: outdoor, indoor, family, etc.")
     description: Optional[str] = Field(None, description="Short description")
     is_locked: bool = Field(False, description="Must visit by all means (no disjunction penalty)")
+    meal_type: Optional[Literal["breakfast", "lunch", "dinner"]] = Field(
+        None, description="Meal type if this POI is a restaurant/eatery (None for regular POI)"
+    )
+    assigned_day: Optional[int] = Field(
+        None, description="Day index this meal is assigned to (required if meal_type is set)"
+    )
+    intensity: Literal["heavy", "medium", "light"] = Field(
+        "medium", description="Activity intensity for rhythm penalty (heavy/medium/light)"
+    )
 
 
 class Hotel(BaseModel):
@@ -74,6 +83,12 @@ class DayPlan(BaseModel):
     day_index: int = Field(..., description="0-based day index in the trip")
     date: str = Field(..., description="Date string YYYY-MM-DD")
     hotel_id: Optional[str] = Field(None, description="Hotel ID for this day's start/end point")
+    start_hotel_id: Optional[str] = Field(
+        None, description="Override start hotel ID (e.g. for hotel transfers, defaults to hotel_id)"
+    )
+    end_hotel_id: Optional[str] = Field(
+        None, description="Override end hotel ID (e.g. day N ends at hotel N+1 for transfers)"
+    )
     start_time_min: int = Field(480, description="Day start time (default 08:00)")
     end_time_min: int = Field(1260, description="Day end time (default 21:00)")
     max_daily_minutes: int = Field(600, description="Max active minutes per day (default 10h)")
@@ -118,8 +133,10 @@ class TravelItineraryDay(BaseModel):
     """One day's optimized itinerary."""
     day_index: int = Field(..., description="0-based day index")
     date: str = Field(..., description="Date YYYY-MM-DD")
-    hotel_name: str = Field(..., description="Hotel name for this day")
-    hotel_location: Location = Field(..., description="Hotel coordinates (start/end)")
+    start_hotel_name: str = Field(..., description="Start hotel name")
+    start_hotel_location: Location = Field(..., description="Start hotel coordinates")
+    end_hotel_name: str = Field("", description="End hotel name (may differ from start if transferring)")
+    end_hotel_location: Optional[Location] = Field(None, description="End hotel coordinates")
     stops: List[TravelItineraryStop] = Field(..., description="Ordered POI stops")
     total_travel_min: int = Field(..., description="Total travel time in minutes")
     total_visit_min: int = Field(..., description="Total visit time in minutes")

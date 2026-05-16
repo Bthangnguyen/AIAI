@@ -9,6 +9,7 @@ import { ItineraryCard } from "@/components/ItineraryCard"
 import { ReRouteButton } from "@/components/ReRouteButton"
 import { ReRouteConfirmSheet } from "@/components/ReRouteConfirmSheet"
 import { Text } from "@/components/Text"
+import { WebMap } from "@/components/WebMap"
 import { FeatureFlags } from "@/config/features"
 import { MOCK_ITINERARY } from "@/constants/mockItinerary"
 import type { AppStackScreenProps, TravelItineraryStop } from "@/navigators/navigationTypes"
@@ -428,10 +429,21 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         )}
       </MapboxGL.MapView>
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.palette.figmaOffWhite, justifyContent: "center", alignItems: "center" }]}>
-          <Text text="🗺️ Mapbox is not supported on Web." style={{ fontSize: 18, color: colors.palette.figmaGrayDark, marginBottom: 8 }} />
-          <Text text="Please test on iOS/Android Simulator, or swipe up the bottom sheet to view the itinerary list." style={{ textAlign: "center", paddingHorizontal: 40, color: colors.palette.figmaGrayMedium }} />
-        </View>
+        <WebMap
+          dayStops={dayStops}
+          hotelLocations={itinerary.days.map((d) => {
+            const loc = d.start_hotel_location || d.hotel_location
+            return {
+              dayIndex: d.day_index,
+              location: loc ? { latitude: loc.latitude, longitude: loc.longitude } : { latitude: 0, longitude: 0 },
+            }
+          }).filter((h) => h.location.latitude !== 0)}
+          routeGeoJSON={routeGeoJSON}
+          selectedDayIndex={selectedDayIndex}
+          selectedStopId={selectedStopId}
+          cameraBounds={cameraBounds}
+          onMarkerPress={handleMarkerPress}
+        />
       )}
 
       {/* Summary bar */}

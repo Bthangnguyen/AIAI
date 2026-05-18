@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # LLM Configuration
     LLM_PROVIDER: str = "openai"
     OPENAI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
 
     @computed_field

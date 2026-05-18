@@ -1,0 +1,68 @@
+﻿@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --font-sans: "Be Vietnam Pro", "Inter", "Segoe UI", sans-serif;
+  --bg: #fff7ed;
+  --panel: #ffffff;
+  --card: #ffffff;
+  --card-2: #ffedd5;
+  --border: #fed7aa;
+  --border-strong: #fb923c;
+  --text: #1f1308;
+  --muted: #8a5a32;
+  --muted-2: #b77945;
+  --accent: #ffffff;
+  --travel: #f97316;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --blue: #2563eb;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(249, 115, 22, 0.16), transparent 28rem), var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+.custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 999px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.leaflet-container { background: #fff7ed; color: var(--text); font-family: var(--font-sans); }
+.leaflet-control-attribution { background: rgba(255, 247, 237, 0.88) !important; color: #7c2d12 !important; border-radius: 10px 0 0 0; }
+.leaflet-control-attribution a { color: #ea580c !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #ffffff; color: var(--text); border: 1px solid #fed7aa; }
+.leaflet-popup-content { margin: 12px; }
+.trip-marker {
+  align-items: center;
+  background: #ffffff;
+  border: 2px solid #f97316;
+  border-radius: 999px;
+  color: #9a3412;
+  display: flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 30px;
+  justify-content: center;
+  line-height: 1;
+  width: 30px;
+  box-shadow: 0 10px 28px rgba(154, 86, 32, 0.22);
+  transition: transform 160ms ease, background 160ms ease;
+}
+.trip-marker.selected, .trip-marker.hovered { background: #f97316; border-color: #ffffff; color: #ffffff; transform: scale(1.18); }
+.trip-marker.day-1 { box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.18), 0 10px 28px rgba(154,86,32,.22); }
+.trip-marker.day-2 { box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.18), 0 10px 28px rgba(154,86,32,.22); }
+.trip-marker.day-3 { box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.18), 0 10px 28px rgba(154,86,32,.22); }
+.dynamic-hero-text { animation: dynamicTextIn 420ms ease both; }
+@keyframes dynamicTextIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}

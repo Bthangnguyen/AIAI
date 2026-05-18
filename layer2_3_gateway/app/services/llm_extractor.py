@@ -43,7 +43,13 @@ class LLMExtractorService:
     def client(self):
         if self._client is None:
             # AsyncOpenAI: non-blocking HTTP calls to OpenAI API
-            base_client = AsyncOpenAI(api_key=global_settings.OPENAI_API_KEY)
+            if global_settings.LLM_PROVIDER == "openrouter":
+                base_client = AsyncOpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=global_settings.OPENROUTER_API_KEY
+                )
+            else:
+                base_client = AsyncOpenAI(api_key=global_settings.OPENAI_API_KEY)
             self._client = instructor.from_openai(base_client)
         return self._client
 

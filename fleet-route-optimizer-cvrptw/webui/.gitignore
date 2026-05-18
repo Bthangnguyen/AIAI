@@ -8,6 +8,8 @@
 
 # Production
 /build
+/.next
+*.tsbuildinfo
 
 # Misc
 .DS_Store

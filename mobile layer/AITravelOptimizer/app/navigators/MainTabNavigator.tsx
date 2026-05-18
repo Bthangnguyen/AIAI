@@ -9,7 +9,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { View, Text, StyleSheet, Platform } from "react-native"
 
 import { MainTabParamList } from "@/navigators/navigationTypes"
-import { ExploreScreen } from "@/screens/ExploreScreen"
+import { HomeScreen } from "@/screens/HomeScreen"
 import { TripHistoryScreen } from "@/screens/TripHistoryScreen"
 import { ProfileScreen } from "@/screens/ProfileScreen"
 import { TripSummaryPlaceholder } from "@/screens/TripSummaryPlaceholder"
@@ -72,7 +72,7 @@ export const MainTabNavigator: React.FC = () => {
     >
       <Tab.Screen
         name="Explore"
-        component={ExploreScreen}
+        component={HomeScreen as any}
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="🏠" label="Home" focused={focused} />

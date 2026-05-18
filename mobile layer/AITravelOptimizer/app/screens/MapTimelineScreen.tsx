@@ -10,6 +10,7 @@ import { ReRouteButton } from "@/components/ReRouteButton"
 import { ReRouteConfirmSheet } from "@/components/ReRouteConfirmSheet"
 import { Text } from "@/components/Text"
 import { WebMap } from "@/components/WebMap"
+import { AddPlaceModal } from "@/components/AddPlaceModal"
 import { FeatureFlags } from "@/config/features"
 import { MOCK_ITINERARY } from "@/constants/mockItinerary"
 import type { AppStackScreenProps, TravelItineraryStop } from "@/navigators/navigationTypes"
@@ -72,6 +73,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [selectedDayIndex, setSelectedDayIndex] = useState(0)
   const [currentDayIndex, setCurrentDayIndex] = useState(0)
   const [visitedPOIIds] = useState<string[]>([])
+  const [showAddModal, setShowAddModal] = useState(false)
   const [showSnackbar, setShowSnackbar] = useState(false)
   const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
 
@@ -108,6 +110,12 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     setDeletedItem(null)
   }, [deletedItem, selectedDayIndex])
 
+  const handleAddPlaces = useCallback((placeIds: string[]) => {
+    // Mock addition
+    console.log("Adding places", placeIds)
+    setShowSnackbar(true)
+    setTimeout(() => setShowSnackbar(false), 2000)
+  }, [])
 
   // ─── Re-route handler ──────────────────────────────
   const handleReRoutePress = useCallback(() => {
@@ -582,7 +590,12 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         />
-        <View style={{ flexDirection: "row", padding: 16, justifyContent: "space-between", backgroundColor: "#fff" }}>
+        <View style={{ padding: 16 }}>
+          <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
+            <Text text="+ Thêm địa điểm (AI Chat)" />
+          </Pressable>
+        </View>
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, justifyContent: "space-between", backgroundColor: "#fff" }}>
           <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="Lưu Nháp" /></Pressable>
           <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }}><Text text="Chốt Lịch Trình" style={{ color: "#fff" }} /></Pressable>
         </View>
@@ -595,6 +608,9 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           <Pressable onPress={handleUndo}><Text text="Hoàn tác" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
         </View>
       )}
+
+      {/* Add Place Modal */}
+      <AddPlaceModal visible={showAddModal} onClose={() => setShowAddModal(false)} onAddPlaces={handleAddPlaces} />
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>

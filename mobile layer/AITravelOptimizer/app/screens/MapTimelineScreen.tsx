@@ -74,6 +74,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [currentDayIndex, setCurrentDayIndex] = useState(0)
   const [visitedPOIIds] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
   const [showSnackbar, setShowSnackbar] = useState(false)
   const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
 
@@ -116,6 +117,22 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     setShowSnackbar(true)
     setTimeout(() => setShowSnackbar(false), 2000)
   }, [])
+
+  const handleSkipStop = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Lỗi', 'Cần quyền truy cập vị trí để điều hướng')
+        return
+      }
+      let loc = await Location.getCurrentPositionAsync({})
+      console.log('Bỏ qua điểm hiện tại, đang Re-route từ vị trí:', loc.coords)
+      Alert.alert('Thành công', 'Đang tính toán lại lộ trình từ vị trí hiện tại...')
+      // Call Backend API to Reroute with keep_depot_fixed=True
+    } catch(e) {
+      console.warn("Could not get location", e)
+    }
+  }
 
   // ─── Re-route handler ──────────────────────────────
   const handleReRoutePress = useCallback(() => {
@@ -591,13 +608,23 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           nestedScrollEnabled
         />
         <View style={{ padding: 16 }}>
-          <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
-            <Text text="+ Thêm địa điểm (AI Chat)" />
-          </Pressable>
+          {!isLocked && (
+            <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
+              <Text text="+ Thêm địa điểm (AI Chat)" />
+            </Pressable>
+          )}
         </View>
         <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, justifyContent: "space-between", backgroundColor: "#fff" }}>
-          <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="Lưu Nháp" /></Pressable>
-          <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }}><Text text="Chốt Lịch Trình" style={{ color: "#fff" }} /></Pressable>
+          {isLocked ? (
+            <Pressable style={{ padding: 12, backgroundColor: "red", borderRadius: 8, flex: 1, alignItems: 'center' }} onPress={handleSkipStop}>
+              <Text text="Bỏ qua điểm này" style={{ color: "#fff", fontWeight: "bold" }} />
+            </Pressable>
+          ) : (
+            <>
+              <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="Lưu Nháp" /></Pressable>
+              <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }} onPress={() => setIsLocked(true)}><Text text="Chốt Lịch Trình" style={{ color: "#fff" }} /></Pressable>
+            </>
+          )}
         </View>
       </BottomSheet>
 

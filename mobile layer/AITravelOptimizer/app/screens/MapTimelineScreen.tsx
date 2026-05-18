@@ -72,6 +72,42 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [selectedDayIndex, setSelectedDayIndex] = useState(0)
   const [currentDayIndex, setCurrentDayIndex] = useState(0)
   const [visitedPOIIds] = useState<string[]>([])
+  const [showSnackbar, setShowSnackbar] = useState(false)
+  const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
+
+  const handleDelete = useCallback((stop: TravelItineraryStop) => {
+    setDeletedItem(stop)
+    setShowSnackbar(true)
+    // Remove from UI immediately (mocking it)
+    setItinerary(prev => ({
+      ...prev,
+      days: prev.days.map(d => 
+        d.day_index === selectedDayIndex 
+        ? { ...d, stops: d.stops.filter(s => s.poi_id !== stop.poi_id) } 
+        : d
+      )
+    }))
+    setTimeout(() => setShowSnackbar(false), 3000)
+  }, [selectedDayIndex])
+
+  const handleUndo = useCallback(() => {
+    if (!deletedItem) return
+    setShowSnackbar(false)
+    setItinerary(prev => {
+      const day = prev.days.find(d => d.day_index === selectedDayIndex)
+      if (!day) return prev
+      return {
+        ...prev,
+        days: prev.days.map(d => 
+          d.day_index === selectedDayIndex 
+          ? { ...d, stops: [...d.stops, deletedItem].sort((a, b) => a.arrival_time_min - b.arrival_time_min) } 
+          : d
+        )
+      }
+    })
+    setDeletedItem(null)
+  }, [deletedItem, selectedDayIndex])
+
 
   // ─── Re-route handler ──────────────────────────────
   const handleReRoutePress = useCallback(() => {
@@ -340,14 +376,19 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               entering={FadeInUp.delay((item.stopIndex || 0) * 80).duration(400)}
               style={[$stopCard, isSelected && $stopCardActive]}
             >
-              <ItineraryCard
-                emoji={emoji}
-                title={stop.poi_name}
-                timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
-                visitDurationMin={stop.visit_duration_min}
-                entranceFee={stop.entrance_fee}
-                travelTimeMin={stop.travel_time_from_prev_min}
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ItineraryCard
+                  emoji={emoji}
+                  title={stop.poi_name}
+                  timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
+                  visitDurationMin={stop.visit_duration_min}
+                  entranceFee={stop.entrance_fee}
+                  travelTimeMin={stop.travel_time_from_prev_min}
+                />
+                <Pressable onPress={() => handleDelete(stop)} style={{ padding: 10 }}>
+                  <Text text="Xóa" style={{ color: 'red' }} />
+                </Pressable>
+              </View>
             </Animated.View>
           </View>
         </Pressable>
@@ -541,7 +582,19 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         />
+        <View style={{ flexDirection: "row", padding: 16, justifyContent: "space-between", backgroundColor: "#fff" }}>
+          <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="Lưu Nháp" /></Pressable>
+          <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }}><Text text="Chốt Lịch Trình" style={{ color: "#fff" }} /></Pressable>
+        </View>
       </BottomSheet>
+
+      {/* Undo Snackbar */}
+      {showSnackbar && (
+        <View style={{ position: "absolute", bottom: 100, left: 20, right: 20, backgroundColor: "#333", padding: 15, borderRadius: 8, flexDirection: "row", justifyContent: "space-between", zIndex: 999 }}>
+          <Text text="Đã xóa địa điểm" style={{ color: "white" }} />
+          <Pressable onPress={handleUndo}><Text text="Hoàn tác" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
+        </View>
+      )}
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>

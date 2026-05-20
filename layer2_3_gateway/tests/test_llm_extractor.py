@@ -24,3 +24,18 @@ def test_service_init():
     """Service can be instantiated without API key."""
     service = LLMExtractorService()
     assert service._client is None
+
+
+@pytest.mark.anyio
+async def test_process_chat_turn_extraction():
+    service = LLMExtractorService()
+    current = LLMDataContract(destination=None, num_days=1, budget_max=None, tags=[])
+    res = await service.process_chat_turn(
+        message="Tôi muốn đi Huế 3 ngày ngân sách 1 triệu",
+        history=[],
+        current_contract=current
+    )
+    assert res["status"] in ("clarifying", "ready")
+    assert res["updated_contract"].destination == "Huế"
+    assert res["updated_contract"].num_days == 3
+

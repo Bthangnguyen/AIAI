@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { AITripChatPanel, type AIMessage } from "@/components/AITripChatPanel"
@@ -25,6 +25,7 @@ interface BuilderWorkspaceProps {
   showCost: boolean
   showCategories: boolean
   fitSignal: number
+  streamDetails?: Record<number, string>
   onModeChange: (mode: BuilderMode) => void
   onViewModeChange: (mode: PreviewMode) => void
   onBack: () => void
@@ -71,7 +72,7 @@ export function BuilderWorkspace(props: BuilderWorkspaceProps) {
 
       <main className="min-h-0 flex-1 overflow-hidden md:grid md:grid-cols-[420px_minmax(0,1fr)_320px]">
         <div className={`${mobileTab === "chat" ? "block" : "hidden"} h-full min-h-0 border-r border-orange-200 md:block`}>
-          <AITripChatPanel messages={props.messages} draft={props.draft} intent={props.intent} isRunning={props.isRunning} activeStep={props.activeStep} followUp={props.followUp} mode={props.mode} onModeChange={props.onModeChange} onSend={props.onSendMessage} onViewItinerary={() => { props.onViewModeChange("timeline"); setMobileTab("preview") }} onAddPlace={() => openAddPlace()} onSaveDraft={props.onSaveDraft} />
+          <AITripChatPanel messages={props.messages} draft={props.draft} intent={props.intent} isRunning={props.isRunning} activeStep={props.activeStep} followUp={props.followUp} mode={props.mode} streamDetails={props.streamDetails} onModeChange={props.onModeChange} onSend={props.onSendMessage} onViewItinerary={() => { props.onViewModeChange("timeline"); setMobileTab("preview") }} onAddPlace={() => openAddPlace()} onSaveDraft={props.onSaveDraft} />
         </div>
 
         <div className={`${mobileTab === "preview" ? "block" : "hidden"} h-full min-h-0 min-w-0 md:block`}>

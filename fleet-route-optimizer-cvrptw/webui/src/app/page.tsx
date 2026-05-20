@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { BuilderWorkspace } from "@/components/BuilderWorkspace"
@@ -8,7 +8,9 @@ import { MockAuthModal } from "@/components/MockAuthModal"
 import { SavedTripsPage } from "@/components/SavedTripsPage"
 import { Toast } from "@/components/Toast"
 import { getSavedDrafts, saveDraft } from "@/lib/storage"
-import { addPoiToDay, extractTripIntent, generateItineraryDraft, getNextFollowUpQuestion, lightenItinerary, reduceCost, removeItemFromDay, restoreItemToDay, searchPois } from "@/lib/planner"
+import { searchPois } from "@/lib/mockItineraryFallback"
+import { generateRealItinerary, searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api"
+import { streamTripPlan, type StreamStep } from "@/lib/streamApi"
 import type { AIMessage } from "@/components/AITripChatPanel"
 import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, POI, PreviewMode, TripIntent } from "@/types/trip"
 
@@ -45,6 +47,7 @@ export default function Page() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [undoState, setUndoState] = useState<UndoState | null>(null)
+  const [streamDetails, setStreamDetails] = useState<Record<number, string>>({})
 
   useEffect(() => {
     setSavedDrafts(getSavedDrafts())
@@ -80,80 +83,200 @@ export default function Page() {
     if (!cleanPrompt || isRunning) return
     setShowAuthModal(false)
     setMessages([{ role: "user", content: cleanPrompt }])
-    setScreen("home")
-    await runBuildSteps()
-
-    const nextIntent = extractTripIntent(cleanPrompt)
-    handleIntentResult(nextIntent, mode, true)
-  }
-
-  function handleIntentResult(nextIntent: TripIntent, nextMode: BuilderMode, fromHome = false) {
-    const nextQuestion = getNextFollowUpQuestion(nextIntent)
-    setIntent(nextIntent)
-    setFollowUp(nextQuestion)
+    
     setScreen("builder")
+    setDraft(null)
+    setIsRunning(true)
+    setStatus("building")
+    setActiveStep(1) // Phân tích Intent
+    
+    try {
+      setStreamDetails({ 0: "Đang phân tích ý định đi du lịch..." })
 
-    if (nextQuestion) {
+      const emptyContract = {
+        destination: null,
+        budget_max: null,
+        radius_km: 10.0,
+        num_days: 1,
+        tags: [],
+        locked_pois: []
+      }
+
+      const res = await chatProcess(cleanPrompt, [], emptyContract)
+
+      const updatedIntent: TripIntent = {
+        destination: res.updated_contract.destination || undefined,
+        days: res.updated_contract.num_days,
+        budget: res.updated_contract.budget_max || undefined,
+        interests: res.updated_contract.tags || [],
+        lockedPoiNames: res.updated_contract.locked_pois || [],
+        rawPrompt: cleanPrompt
+      }
+      setIntent(updatedIntent)
+
+      if (res.status === "ready") {
+        setStreamDetails(prev => ({ ...prev, 0: `Đã xác nhận đầy đủ thông tin: ${updatedIntent.destination}, ${updatedIntent.days} ngày.` }))
+        await delay(500)
+        
+        setStreamDetails(prev => ({ ...prev, 1: "Đang tìm kiếm địa điểm và tối ưu lịch trình..." }))
+        const nextDraft = await generateRealItinerary(
+          cleanPrompt,
+          updatedIntent.days,
+          updatedIntent.budget,
+          updatedIntent.destination || "Huế",
+          updatedIntent.interests
+        )
+
+        setActiveStep(3)
+        setStreamDetails(prev => ({ ...prev, 2: `Tối ưu: ${nextDraft.optimizationStats?.totalDistanceKm?.toFixed(1) || "?"} km` }))
+        await delay(600)
+        setStreamDetails(prev => ({ ...prev, 3: "Hoàn tất!" }))
+        await delay(400)
+
+        setDraft(nextDraft)
+        setIntent(nextDraft.intent)
+        setStatus("live")
+        setViewMode("split")
+        setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
+        setMessages((items) => [
+          ...items,
+          { role: "assistant", content: res.reply },
+          { role: "assistant", content: `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày từ hệ thống AI.` }
+        ])
+        setToastMessage("Đã tự động tạo lịch trình thành công.")
+      } else {
+        setMessages((items) => [...items, { role: "assistant", content: res.reply }])
+        setStatus("live")
+        setStreamDetails({})
+      }
+    } catch (e: any) {
+      setToastMessage("Lỗi kết nối Backend: " + e.message)
       setStatus("empty")
-      setMessages((items) => [...items, { role: "assistant", content: `Mình cần thêm một chút thông tin: ${nextQuestion.question}` }])
-      return
+    } finally {
+      setIsRunning(false)
     }
-
-    if (nextMode === "plan" && fromHome) {
-      setStatus("empty")
-      setMessages((items) => [...items, { role: "assistant", content: `Đã phân tích: ${nextIntent.destination}, ${nextIntent.days} ngày, ngân sách khoảng ${nextIntent.budget?.toLocaleString("vi-VN")}đ. Chuyển sang Build khi bạn muốn tạo bản nháp.` }])
-      return
-    }
-
-    const nextDraft = generateItineraryDraft(nextIntent)
-    setDraft(nextDraft)
-    setStatus("live")
-    setViewMode("split")
-    setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
-    setMessages((items) => [...items, { role: "assistant", content: `Đã tạo bản nháp ${nextDraft.destination} ${nextDraft.days.length} ngày. Mình đã đặt các điểm lên timeline và bản đồ mock OpenStreetMap.` }])
-    setToastMessage("Đã tạo lịch trình nháp.")
   }
+
+
 
   async function handleChatSend(message: string) {
     if (isRunning) return
-    setMessages((items) => [...items, { role: "user", content: message }])
-
-    if (followUp) {
-      await runBuildSteps()
-      const nextIntent = extractTripIntent(message, intent)
-      handleIntentResult(nextIntent, "build")
-      return
-    }
+    
+    const userMsg = { role: "user" as const, content: message }
+    setMessages((items) => [...items, userMsg])
 
     const normalized = normalize(message)
-    if (draft && (normalized.includes("giam chi phi") || normalized.includes("tiet kiem"))) {
-      const nextDraft = reduceCost(draft)
-      setDraft(nextDraft)
-      setMessages((items) => [...items, { role: "assistant", content: "Mình đã giảm chi phí bằng cách ưu tiên các điểm có cost thấp hơn trong từng ngày." }])
-      setToastMessage("Đã tối ưu lịch trình theo chi phí.")
-      return
-    }
-
-    if (draft && (normalized.includes("di nhe") || normalized.includes("nhe hon"))) {
-      const nextDraft = lightenItinerary(draft)
-      setDraft(nextDraft)
-      setMessages((items) => [...items, { role: "assistant", content: "Mình đã làm lịch trình nhẹ hơn, giảm số điểm mỗi ngày để có thêm thời gian nghỉ." }])
-      setToastMessage("Đã làm lịch trình nhẹ hơn.")
-      return
-    }
-
+    
     if (draft && normalized.includes("them")) {
-      const match = searchPois(message).find((poi) => !draft.days.some((day) => day.items.some((item) => item.poiId === poi.id)))
+      setIsRunning(true)
+      const results = await searchPoisBackend(message)
+      const match = results.find((poi) => !draft.days.some((day) => day.items.some((item) => item.poiId === poi.id)))
+      setIsRunning(false)
       if (match) {
-        handleAddPoi(draft.days[0]?.dayNumber ?? 1, match)
-        setMessages((items) => [...items, { role: "assistant", content: `Đã thêm ${match.name} vào lịch trình và cập nhật bản đồ.` }])
+        await handleAddPoiBackend(draft.days[0]?.dayNumber ?? 1, match)
         return
       }
     }
 
-    await runBuildSteps()
-    const nextIntent = extractTripIntent(message, intent)
-    handleIntentResult(nextIntent, mode)
+    if (!draft) {
+      setIsRunning(true)
+      setStatus("building")
+      setActiveStep(1)
+      
+      try {
+        setStreamDetails({ 0: "AI đang phân tích ý định..." })
+        
+        const currentContract = {
+          destination: intent?.destination || null,
+          budget_max: intent?.budget || null,
+          radius_km: 10.0,
+          num_days: intent?.days || 1,
+          tags: intent?.interests || [],
+          locked_pois: intent?.lockedPoiNames || []
+        }
+
+        const historyList = messages.map(m => ({
+          role: m.role,
+          content: m.content
+        }))
+
+        const res = await chatProcess(message, historyList, currentContract)
+
+        const updatedIntent: TripIntent = {
+          destination: res.updated_contract.destination || undefined,
+          days: res.updated_contract.num_days,
+          budget: res.updated_contract.budget_max || undefined,
+          interests: res.updated_contract.tags || [],
+          lockedPoiNames: res.updated_contract.locked_pois || [],
+          rawPrompt: intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message
+        }
+        setIntent(updatedIntent)
+
+        if (res.status === "ready") {
+          setStreamDetails(prev => ({ ...prev, 0: `Đã đủ thông tin: ${updatedIntent.destination}, ${updatedIntent.days} ngày.` }))
+          await delay(500)
+          
+          setStreamDetails(prev => ({ ...prev, 1: "Đang tối ưu lịch trình qua OR-Tools..." }))
+          
+          const nextDraft = await generateRealItinerary(
+            updatedIntent.rawPrompt,
+            updatedIntent.days,
+            updatedIntent.budget,
+            updatedIntent.destination || "Huế",
+            updatedIntent.interests
+          )
+
+          setActiveStep(3)
+          setStreamDetails(prev => ({ ...prev, 2: `Tối ưu: ${nextDraft.optimizationStats?.totalDistanceKm?.toFixed(1) || "?"} km` }))
+          await delay(600)
+          setStreamDetails(prev => ({ ...prev, 3: "Hoàn tất!" }))
+          await delay(400)
+
+          setDraft(nextDraft)
+          setIntent(nextDraft.intent)
+          setStatus("live")
+          setViewMode("split")
+          setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
+          setMessages((items) => [
+            ...items,
+            { role: "assistant", content: res.reply },
+            { role: "assistant", content: `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày từ hệ thống AI.` }
+          ])
+          setToastMessage("Đã tự động tạo lịch trình thành công.")
+        } else {
+          setMessages((items) => [...items, { role: "assistant", content: res.reply }])
+          setStatus("live")
+          setStreamDetails({})
+        }
+      } catch (e: any) {
+        setToastMessage("Lỗi xử lý chat: " + e.message)
+        setStatus("live")
+      } finally {
+        setIsRunning(false)
+      }
+      return
+    }
+
+    setIsRunning(true)
+    setStatus("building")
+    try {
+      const nextDraft = await generateRealItinerary(
+        (intent?.rawPrompt || "") + " " + message, 
+        intent?.days, 
+        intent?.budget, 
+        intent?.destination, 
+        intent?.interests
+      )
+      setDraft(nextDraft)
+      setIntent(nextDraft.intent)
+      setStatus("live")
+      setFollowUp(null)
+    } catch(e: any) {
+      setToastMessage("Lỗi xử lý: " + e.message)
+      setStatus("live")
+    } finally { 
+      setIsRunning(false) 
+    }
   }
 
   function handleSaveDraft() {
@@ -164,34 +287,141 @@ export default function Page() {
     setUndoState(null)
   }
 
-  function handleAddPoi(dayNumber: number, poi: POI) {
+  async function handleAddPoiBackend(dayNumber: number, poi: POI) {
     if (!draft) return
-    const nextDraft = addPoiToDay(draft, dayNumber, poi)
-    setDraft(nextDraft)
-    setSelectedPoiId(poi.id)
-    setFitSignal((value) => value + 1)
-    setToastMessage("Đã thêm địa điểm và cập nhật bản đồ.")
-    setUndoState(null)
+    setIsRunning(true)
+    setStatus("resolving")
+    try {
+       const dayIndex = dayNumber - 1
+       const day = draft.days[dayIndex]
+       const remainingPoiIds = day.items.map(i => i.poiId).concat(poi.id)
+       
+       const originalItinerary = {
+         days: draft.days.map(d => ({
+           day_index: d.dayNumber - 1,
+           date: `Day ${d.dayNumber}`,
+           hotel_name: draft.destination + " Hotel",
+           hotel_location: { latitude: 16.4637, longitude: 107.5905 },
+           stops: d.items.map(item => ({
+             poi_id: item.poiId,
+             poi_name: POI_CACHE.get(item.poiId)?.name || "Unknown",
+             location: { latitude: POI_CACHE.get(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || 0 },
+             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || 60
+           }))
+         }))
+       }
+
+       const result = await reRouteDay(
+         16.4637, 107.5905,
+         remainingPoiIds,
+         originalItinerary,
+         dayIndex,
+         []
+       )
+
+       if (result.status === "error" || result.status === "infeasible" || !result.day) {
+          setToastMessage("Không thể thêm điểm này vào lịch trình (hết thời gian).")
+          setStatus("live")
+          return
+       }
+
+       const newItems = result.day.stops
+         .filter((stop: any) => !stop.poi_id.startsWith("hotel_day_"))
+         .map((stop: any) => {
+           const h = Math.floor(stop.arrival_time_min / 60)
+           const m = stop.arrival_time_min % 60
+           return {
+             id: `${dayIndex}-${stop.poi_id}-${stop.arrival_time_min}`,
+             poiId: stop.poi_id,
+             time: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
+             note: ""
+           }
+         })
+
+       const newDays = [...draft.days]
+       newDays[dayIndex] = { ...newDays[dayIndex], items: newItems }
+       
+       setDraft({ ...draft, days: newDays })
+       setSelectedPoiId(poi.id)
+       setMessages((items) => [...items, { role: "assistant", content: `Đã thêm ${poi.name} và tối ưu lại (qua OR-Tools).` }])
+       setToastMessage("Đã tối ưu lại lịch trình thành công.")
+    } catch (e: any) {
+       setToastMessage("Lỗi re-route: " + e.message)
+    } finally {
+       setIsRunning(false)
+       setStatus("live")
+    }
   }
 
-  function handleRemovePlace(dayNumber: number, itemId: string) {
+  async function handleRemovePlaceBackend(dayNumber: number, itemId: string) {
     if (!draft) return
-    const result = removeItemFromDay(draft, dayNumber, itemId)
-    if (!result.removed) return
-    setDraft(result.draft)
-    setUndoState({ dayNumber, item: result.removed, index: result.index })
-    setToastMessage("Đã xóa địa điểm.")
-    if (selectedPoiId === result.removed.poiId) setSelectedPoiId(null)
+    const dayIndex = dayNumber - 1
+    const day = draft.days[dayIndex]
+    const itemToRemove = day.items.find(i => i.id === itemId)
+    if (!itemToRemove) return
+    
+    setIsRunning(true)
+    setStatus("resolving")
+    try {
+       const remainingPoiIds = day.items.filter(i => i.id !== itemId).map(i => i.poiId)
+       
+       const originalItinerary = {
+         days: draft.days.map(d => ({
+           day_index: d.dayNumber - 1,
+           date: `Day ${d.dayNumber}`,
+           hotel_name: draft.destination + " Hotel",
+           hotel_location: { latitude: 16.4637, longitude: 107.5905 },
+           stops: d.items.map(item => ({
+             poi_id: item.poiId,
+             poi_name: POI_CACHE.get(item.poiId)?.name || "Unknown",
+             location: { latitude: POI_CACHE.get(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || 0 },
+             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || 60
+           }))
+         }))
+       }
+
+       const result = await reRouteDay(
+         16.4637, 107.5905,
+         remainingPoiIds,
+         originalItinerary,
+         dayIndex,
+         [itemToRemove.poiId] // exclude this POI
+       )
+
+       if (result.status === "error" || result.status === "infeasible" || !result.day) {
+          setToastMessage("Lỗi server khi tính lại route.")
+          setStatus("live")
+          return
+       }
+
+       const newItems = result.day.stops
+         .filter((stop: any) => !stop.poi_id.startsWith("hotel_day_"))
+         .map((stop: any) => {
+           const h = Math.floor(stop.arrival_time_min / 60)
+           const m = stop.arrival_time_min % 60
+           return {
+             id: `${dayIndex}-${stop.poi_id}-${stop.arrival_time_min}`,
+             poiId: stop.poi_id,
+             time: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
+             note: ""
+           }
+         })
+
+       const newDays = [...draft.days]
+       newDays[dayIndex] = { ...newDays[dayIndex], items: newItems }
+       
+       setDraft({ ...draft, days: newDays })
+       setMessages((items) => [...items, { role: "assistant", content: `Đã xóa một địa điểm và tối ưu lại lịch trình.` }])
+       setToastMessage("Đã cập nhật lại lịch trình.")
+    } catch (e: any) {
+       setToastMessage("Lỗi re-route: " + e.message)
+    } finally {
+       setIsRunning(false)
+       setStatus("live")
+    }
   }
 
-  function handleUndoRemove() {
-    if (!draft || !undoState) return
-    setDraft(restoreItemToDay(draft, undoState.dayNumber, undoState.item, undoState.index))
-    setSelectedPoiId(undoState.item.poiId)
-    setUndoState(null)
-    setToastMessage(null)
-    setFitSignal((value) => value + 1)
-  }
+
 
   function handleOptimizeDay(dayNumber: number) {
     setStatus("resolving")
@@ -202,8 +432,20 @@ export default function Page() {
 
   async function handleRebuild() {
     if (!intent) return
-    await runBuildSteps()
-    handleIntentResult(intent, "build")
+    setIsRunning(true)
+    setStatus("building")
+    try {
+      const nextDraft = await generateRealItinerary(intent.rawPrompt, intent.days, intent.budget, intent.destination, intent.interests)
+      setDraft(nextDraft)
+      setIntent(nextDraft.intent)
+      setStatus("live")
+      setToastMessage("Đã tạo lại lịch trình.")
+    } catch (e: any) {
+      setToastMessage("Lỗi tạo lại: " + e.message)
+      setStatus("live")
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   function openSavedDraft(nextDraft: ItineraryDraft) {
@@ -271,11 +513,12 @@ export default function Page() {
           onShowCostChange={setShowCost}
           onShowCategoriesChange={setShowCategories}
           onFitMap={() => setFitSignal((value) => value + 1)}
-          onAddPoi={handleAddPoi}
-          onRemovePlace={handleRemovePlace}
+          onAddPoi={handleAddPoiBackend}
+          onRemovePlace={handleRemovePlaceBackend}
           onOptimizeDay={handleOptimizeDay}
+          streamDetails={streamDetails}
         />
-        <Toast message={toastMessage} actionLabel={undoState ? "Hoàn tác" : undefined} onAction={undoState ? handleUndoRemove : undefined} onClose={() => { setToastMessage(null); setUndoState(null) }} />
+        <Toast message={toastMessage} onClose={() => { setToastMessage(null); setUndoState(null) }} />
       </>
     )
   }
@@ -284,11 +527,11 @@ export default function Page() {
     <>
       <HomePage prompt={prompt} mode={mode} isLoading={isRunning} progressStep={activeStep} onPromptChange={setPrompt} onModeChange={setMode} onSubmit={handleHomeSubmit} onAuthClick={() => setShowAuthModal(true)} onNav={(target) => setScreen(target === "demo" ? "home" : target)} />
       <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => void continueAfterMockAuth()} />
-      <Toast message={toastMessage} actionLabel={undoState ? "Hoàn tác" : undefined} onAction={undoState ? handleUndoRemove : undefined} onClose={() => { setToastMessage(null); setUndoState(null) }} />
+      <Toast message={toastMessage} onClose={() => { setToastMessage(null); setUndoState(null) }} />
     </>
   )
 }
 
 function normalize(value: string): string {
-  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d")
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/d/g, "d")
 }

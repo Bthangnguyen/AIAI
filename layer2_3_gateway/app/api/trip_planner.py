@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 
 from app.database import AsyncSessionFactory
-from app.schemas.trip import TripPlanRequest, TripPlanResponse, LLMDataContract, POIResponse
+from app.schemas.trip import TripPlanRequest, TripPlanResponse, LLMDataContract, POIResponse, ChatProcessRequest, ChatProcessResponse
 from app.schemas.re_route import MobileReRouteRequest, ReRouteResponse
 from app.services.llm_extractor import LLMExtractorService
 from app.services.spatial_filter import SpatialFilterService
@@ -50,7 +50,7 @@ async def _run_pipeline(
         hotel_lat=request.hotel_lat,
         hotel_lon=request.hotel_lon,
         hotel_name=request.hotel_name,
-        num_days=request.num_days,
+        num_days=request.num_days or 1,
     )
 
     query_vector = None
@@ -66,6 +66,37 @@ async def _run_pipeline(
 
     # ──── PHASE B: DATABASE I/O (FLASH OPEN/CLOSE ~50ms) ────
     async with AsyncSessionFactory() as db_session:
+        # Select hotel if missing
+        if contract.hotel_lat is None or contract.hotel_lon is None:
+            from sqlalchemy import select
+            from geoalchemy2.functions import ST_AsGeoJSON
+            from app.models.poi import PointOfInterest
+            import json as json_lib
+            
+            POI = PointOfInterest
+            # Dùng category là "Khách sạn" hoặc tên có chữ hotel
+            stmt = select(POI.name, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
+                POI.category.ilike("%Khách sạn%")
+            )
+            if contract.budget_max:
+                # hotel price heuristic: <= 30% of total budget
+                stmt = stmt.where(POI.price <= contract.budget_max * 0.3)
+            stmt = stmt.order_by(POI.priority_score.desc()).limit(1)
+            
+            result = await db_session.execute(stmt)
+            row = result.first()
+            if row:
+                contract.hotel_name = row.name
+                geojson = json_lib.loads(row.geojson)
+                contract.hotel_lon = geojson["coordinates"][0]
+                contract.hotel_lat = geojson["coordinates"][1]
+                logger.info(f"🏨 Auto-selected hotel: {contract.hotel_name}")
+            else:
+                contract.hotel_name = "Hue Default Hotel"
+                contract.hotel_lat = 16.4637
+                contract.hotel_lon = 107.5905
+                logger.warning("No hotel found matching criteria, using default.")
+
         pois = await spatial_service.get_optimized_pois(
             contract=contract,
             db_session=db_session,
@@ -83,7 +114,7 @@ async def plan_trip(request: Request, body: TripPlanRequest):
 
     if not pois:
         return TripPlanResponse(
-            status="error", llm_contract=contract, pois_found=0,
+            status="error", llm_contract=contract, pois=[],
             message="No POIs found matching your criteria.",
         )
 
@@ -92,7 +123,7 @@ async def plan_trip(request: Request, body: TripPlanRequest):
 
     return TripPlanResponse(
         status="success" if l4_result else "partial",
-        llm_contract=contract, pois_found=len(pois),
+        llm_contract=contract, pois=pois,
         locked_pois=locked_count, layer4_result=l4_result,
         message="Route optimized" if l4_result else "Route optimization unavailable",
     )
@@ -129,9 +160,73 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest):
     )
 
 
+@router.post("/chat_process", response_model=ChatProcessResponse)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
+async def chat_process(request: Request, body: ChatProcessRequest):
+    """Processes a chat turn to build travel contract parameters step-by-step."""
+    # Convert history schema to dict list expected by service
+    history_dict = [{"role": h.role, "content": h.content} for h in body.history]
+    
+    result = await llm_service.process_chat_turn(
+        message=body.message,
+        history=history_dict,
+        current_contract=body.current_contract,
+    )
+    
+    return ChatProcessResponse(
+        status=result["status"],
+        reply=result["reply"],
+        updated_contract=result["updated_contract"],
+    )
+
+
 @router.get("/health")
 async def health():
     return {"status": "ready", "service": "Layer 2&3 Gateway"}
+
+
+@router.get("/search_pois", response_model=List[POIResponse])
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
+async def search_pois_endpoint(request: Request, query: str, limit: int = 5):
+    """Tìm kiếm POI theo tên để hỗ trợ thao tác Add POI."""
+    from sqlalchemy import select
+    from app.models.poi import PointOfInterest
+    from geoalchemy2.functions import ST_AsGeoJSON
+    import json as json_lib
+    
+    POI = PointOfInterest
+    stmt = select(
+        POI, ST_AsGeoJSON(POI.coordinates).label("geojson")
+    ).where(POI.name.ilike(f"%{query}%")).limit(limit)
+    
+    async with AsyncSessionFactory() as db_session:
+        result = await db_session.execute(stmt)
+        rows = result.all()
+        
+        pois = []
+        for row in rows:
+            poi = row.PointOfInterest
+            geojson = json_lib.loads(row.geojson) if row.geojson else None
+            lat = geojson["coordinates"][1] if geojson else 0.0
+            lon = geojson["coordinates"][0] if geojson else 0.0
+            
+            pois.append(POIResponse(
+                uuid=poi.uuid,
+                name=poi.name,
+                category=poi.category,
+                description=poi.description,
+                latitude=lat,
+                longitude=lon,
+                visit_duration_min=poi.visit_duration_min,
+                price=poi.price,
+                entrance_fee=poi.entrance_fee,
+                open_time=poi.open_time,
+                close_time=poi.close_time,
+                priority_score=poi.priority_score,
+                tags=poi.tags,
+                is_locked=False,
+            ))
+        return pois
 
 
 @router.post("/re_route")
@@ -159,7 +254,14 @@ async def re_route(request: Request, body: MobileReRouteRequest):
                 message="Layer 4 solver unavailable or returned no result",
             )
 
-        return ReRouteResponse(status="success", day=result)
+        # Lấy status thực tế từ solver (vd: infeasible, optimized_with_warning)
+        solver_status = result.get("status", "success")
+        
+        return ReRouteResponse(
+            status=solver_status, 
+            day=result if solver_status in ["success", "optimized_with_warning"] else None,
+            message=result.get("message")
+        )
 
     except Exception as e:
         logger.error(f"Re-route proxy error: {e}")

@@ -1,5 +1,5 @@
-﻿import { Clock3, Star, Trash2 } from "lucide-react"
-import { getPoi } from "@/lib/generateItinerary"
+import { Clock3, Star, Trash2 } from "lucide-react"
+import { getPoi } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryItem } from "@/types/trip"
 
@@ -36,7 +36,7 @@ export function TimelinePlaceCard({ item, selected, onSelect, onHover, onRemove 
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-orange-950/60">
         <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1"><Clock3 className="h-3 w-3" /> {poi.estimatedDurationMinutes} phút</span>
         <span className="rounded-full bg-orange-100 px-2.5 py-1">{formatCurrency(poi.estimatedCost)}</span>
-        {poi.tags.slice(0, 3).map((tag) => <span key={tag} className="rounded-full bg-orange-100 px-2.5 py-1">{tag}</span>)}
+        {poi.tags.slice(0, 3).map((tag: string) => <span key={tag} className="rounded-full bg-orange-100 px-2.5 py-1">{tag}</span>)}
       </div>
     </article>
   )

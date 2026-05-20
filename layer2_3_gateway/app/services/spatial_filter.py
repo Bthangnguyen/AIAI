@@ -77,13 +77,26 @@ class SpatialFilterService:
         if not locked_names:
             return []
 
+        # Sanitize general city names to prevent 0-day empty itinerary bug
+        city_blacklist = {
+            "huế", "hue", "đà nẵng", "da nang", "hà nội", "ha noi",
+            "sài gòn", "sai gon", "hồ chí minh", "ho chi minh", "tp hcm", "tphcm"
+        }
+        sanitized_names = [
+            name for name in locked_names
+            if name.lower().strip() not in city_blacklist
+        ]
+        
+        if not sanitized_names:
+            return []
+
         POI = PointOfInterest
         center = func.ST_SetSRID(ST_MakePoint(hotel_lon, hotel_lat), 4326)
         safety_radius_m = safety_radius_km * 1000
 
         name_conditions = [
             func.lower(POI.name).contains(name.lower())
-            for name in locked_names
+            for name in sanitized_names
         ]
 
         stmt = select(
@@ -180,6 +193,21 @@ class SpatialFilterService:
             conditions.append(POI.is_outdoor == False)
         elif contract.weather_preference == "outdoor":
             conditions.append(POI.is_outdoor == True)
+
+        # Strict vegetarian exclusion
+        is_vegetarian = any(
+            t.lower() in ("vegetarian", "vegan", "chay")
+            for t in (contract.tags or [])
+        )
+        if is_vegetarian:
+            conditions.append(or_(
+                and_(
+                    func.lower(POI.category) != "restaurant",
+                    func.lower(POI.category) != "nhà hàng",
+                    func.lower(POI.category) != "quán ăn"
+                ),
+                POI.tags.overlap(["vegetarian", "vegan", "chay"])
+            ))
 
         stmt = select(
             POI.uuid, POI.name, POI.category, POI.description,

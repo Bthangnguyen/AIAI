@@ -1,6 +1,6 @@
-﻿import { Plus, RefreshCw } from "lucide-react"
+import { Plus, RefreshCw } from "lucide-react"
 import { TimelinePlaceCard } from "@/components/TimelinePlaceCard"
-import { getPoi } from "@/lib/generateItinerary"
+import { getPoi } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryDay } from "@/types/trip"
 

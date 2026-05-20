@@ -1,8 +1,10 @@
+import type { OptimizationStats } from "./stats"
+
 export type TravelStyle = "relaxed" | "balanced" | "dense"
 export type DraftStatus = "draft"
 export type MissingIntentField = "destination" | "days" | "budget"
 export type BuilderMode = "plan" | "build"
-export type PreviewMode = "timeline" | "map" | "split"
+export type PreviewMode = "timeline" | "map" | "split" | "compare"
 export type BuildStatus = "empty" | "building" | "resolving" | "live"
 
 export interface POI {
@@ -53,6 +55,7 @@ export interface ItineraryDraft {
   updatedAt: string
   status: DraftStatus
   intent: TripIntent
+  optimizationStats?: OptimizationStats
 }
 
 export interface FollowUpQuestion {

@@ -55,8 +55,9 @@ async def test_scenario_1_happy_path(client: AsyncClient, mock_llm):
     if response.status_code == 200:
         data = response.json()
         save_output("Mức độ 1: Happy Path", data)
-        assert data["pois_found"] > 0
+        assert len(data["pois"]) > 0
         assert data["llm_contract"]["budget_max"] == 500000
+
 
 
 async def test_scenario_2_hard_constraints(client: AsyncClient, mock_llm):
@@ -144,19 +145,21 @@ async def test_scenario_4_multi_day(client: AsyncClient, mock_llm):
 
 
 async def test_scenario_5_system_resilience(client: AsyncClient):
-    """Mức độ 5: System Resilience (LLM Fails -> Fallback used).
-    We do NOT mock LLM here to ensure the real exception triggers fallback.
-    """
-    response = await client.post(
-        "/trip/plan_trip",
-        json={
-            "user_prompt": "Test fallback",
-            "hotel_lat": 16.4637,
-            "hotel_lon": 107.5905,
-            "hotel_name": "Saigon Morin",
-            "num_days": 1,
-        },
-    )
+    """Mức độ 5: System Resilience (LLM Fails -> Fallback used)."""
+    with patch("app.services.llm_extractor.LLMExtractorService.client") as mock_client:
+        mock_client.chat.completions.create.side_effect = Exception(
+            "OpenAI API quota exceeded or connection timed out"
+        )
+        response = await client.post(
+            "/trip/plan_trip",
+            json={
+                "user_prompt": "Test fallback",
+                "hotel_lat": 16.4637,
+                "hotel_lon": 107.5905,
+                "hotel_name": "Saigon Morin",
+                "num_days": 1,
+            },
+        )
     
     # Must gracefully degrade and NOT return 500
     assert response.status_code in [200, 404]

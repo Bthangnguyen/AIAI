@@ -1,7 +1,7 @@
-﻿"use client"
+"use client"
 
 import { Map, Plus, RefreshCw, RotateCcw, Save, Smartphone } from "lucide-react"
-import { draftTotals } from "@/lib/generateItinerary"
+import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import type { BuildStatus, ItineraryDraft } from "@/types/trip"
 

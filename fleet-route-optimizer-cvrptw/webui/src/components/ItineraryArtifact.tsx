@@ -1,6 +1,7 @@
-﻿import { Smartphone } from "lucide-react"
+import { Smartphone } from "lucide-react"
 import { TimelineDayCard } from "@/components/TimelineDayCard"
-import { draftTotals } from "@/lib/generateItinerary"
+import { TripStatsPanel } from "@/components/TripStatsPanel"
+import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryDraft } from "@/types/trip"
 
@@ -45,6 +46,8 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
         <Metric label="Tổng chi phí" value={formatCurrency(totals.estimatedCost)} />
         <Metric label="Trạng thái" value={enoughInfo ? "Đã đủ thông tin" : "Cần hỏi thêm"} />
       </section>
+
+      {draft.optimizationStats ? <TripStatsPanel stats={draft.optimizationStats} /> : null}
 
       <div className="space-y-4">
         {draft.days.map((day) => (

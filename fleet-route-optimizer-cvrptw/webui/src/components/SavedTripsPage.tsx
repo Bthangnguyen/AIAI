@@ -1,7 +1,7 @@
-﻿"use client"
+"use client"
 
 import { ArrowLeft, FolderOpen, Plus } from "lucide-react"
-import { draftTotals } from "@/lib/generateItinerary"
+import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import type { ItineraryDraft } from "@/types/trip"
 

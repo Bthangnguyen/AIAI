@@ -1,9 +1,9 @@
-﻿"use client"
+"use client"
 
 import { ChevronDown, ChevronRight, Loader2, Send, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { AgentStatusSteps } from "@/components/AgentStatusSteps"
-import { draftTotals } from "@/lib/generateItinerary"
+import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { BuilderMode, FollowUpQuestion, ItineraryDraft, TripIntent } from "@/types/trip"
 
@@ -20,6 +20,7 @@ interface AITripChatPanelProps {
   activeStep: number
   followUp: FollowUpQuestion | null
   mode: BuilderMode
+  streamDetails?: Record<number, string>
   onModeChange: (mode: BuilderMode) => void
   onSend: (message: string) => void
   onViewItinerary: () => void
@@ -30,7 +31,7 @@ interface AITripChatPanelProps {
 const quickActions = ["Thêm cafe muối", "Giảm chi phí", "Đi nhẹ hơn", "Thêm món chay"]
 const budgetSuggestions = ["500k", "1 triệu", "2 triệu"]
 
-export function AITripChatPanel({ messages, draft, intent, isRunning, activeStep, followUp, mode, onModeChange, onSend, onViewItinerary, onAddPlace, onSaveDraft }: AITripChatPanelProps) {
+export function AITripChatPanel({ messages, draft, intent, isRunning, activeStep, followUp, mode, streamDetails, onModeChange, onSend, onViewItinerary, onAddPlace, onSaveDraft }: AITripChatPanelProps) {
   const [input, setInput] = useState("")
   const [followUpAnswer, setFollowUpAnswer] = useState("")
   const [expanded, setExpanded] = useState(true)
@@ -60,7 +61,7 @@ export function AITripChatPanel({ messages, draft, intent, isRunning, activeStep
 
       {isRunning ? (
         <div className="shrink-0 border-b border-orange-200 p-3">
-          <AgentStatusSteps activeIndex={activeStep} />
+          <AgentStatusSteps activeIndex={activeStep} details={streamDetails} />
         </div>
       ) : null}
 

@@ -41,3 +41,15 @@ async def client(start_db) -> AsyncClient:
         app.async_pool = AsyncConnectionPool(conninfo=_conninfo)
         yield test_client
         await app.async_pool.close()
+
+
+from unittest.mock import patch
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_embedding_service():
+    """Mock EmbeddingService.aembed_text to prevent real network calls to OpenAI during tests."""
+    with patch("app.services.embedding_service.EmbeddingService.aembed_text") as mock:
+        # Return a 1536-dimensional mock vector
+        mock.return_value = [0.0] * 1536
+        yield mock
+

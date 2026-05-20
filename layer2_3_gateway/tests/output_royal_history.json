@@ -1,0 +1,1517 @@
+{
+  "status": "success",
+  "llm_contract": {
+    "destination": "Huế",
+    "budget_max": 2000000.0,
+    "radius_km": 10.0,
+    "num_days": 2,
+    "time_window": null,
+    "tags": [
+      "culture",
+      "history",
+      "temple"
+    ],
+    "locked_pois": [],
+    "weather_preference": null,
+    "hotel_lat": 16.4637,
+    "hotel_lon": 107.5905,
+    "hotel_name": "Saigon Morin"
+  },
+  "pois": [
+    {
+      "uuid": "6d0892cf-83d4-4dff-95aa-134160cfcf96",
+      "name": "Đại Nội Huế",
+      "category": "historical",
+      "description": "Imperial Citadel of Hue - UNESCO World Heritage",
+      "latitude": 16.4698,
+      "longitude": 107.5786,
+      "visit_duration_min": 120,
+      "price": 0.0,
+      "entrance_fee": 200000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.8,
+      "tags": [
+        "culture",
+        "heritage",
+        "UNESCO"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "a7b3852a-9d68-48e8-9090-8484f0febae3",
+      "name": "Lăng Minh Mạng",
+      "category": "historical",
+      "description": "Tomb of Emperor Minh Mang with lakes and gardens",
+      "latitude": 16.4102,
+      "longitude": 107.5538,
+      "visit_duration_min": 90,
+      "price": 0.0,
+      "entrance_fee": 150000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.7500000000000001,
+      "tags": [
+        "culture",
+        "heritage",
+        "tomb"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "10b9fad0-9406-46cf-8756-a5850e7631b3",
+      "name": "Lăng Tự Đức",
+      "category": "historical",
+      "description": "Tomb of Emperor Tu Duc in lush gardens",
+      "latitude": 16.4575,
+      "longitude": 107.5668,
+      "visit_duration_min": 90,
+      "price": 0.0,
+      "entrance_fee": 150000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.7500000000000001,
+      "tags": [
+        "culture",
+        "heritage",
+        "tomb"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "7b865ddf-d922-4bd4-9f97-549ab39db609",
+      "name": "Lăng Khải Định",
+      "category": "historical",
+      "description": "Ornate tomb with mosaic decorations",
+      "latitude": 16.4062,
+      "longitude": 107.5994,
+      "visit_duration_min": 90,
+      "price": 0.0,
+      "entrance_fee": 150000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.7500000000000001,
+      "tags": [
+        "culture",
+        "heritage",
+        "art_deco"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "63d8ea41-7ab9-4779-863f-3f5503370099",
+      "name": "Hue Citadel Night Tour",
+      "category": "tour",
+      "description": "Special evening tour of illuminated Imperial City",
+      "latitude": 16.4698,
+      "longitude": 107.5786,
+      "visit_duration_min": 90,
+      "price": 0.0,
+      "entrance_fee": 150000.0,
+      "open_time": 1080,
+      "close_time": 1320,
+      "priority_score": 0.7500000000000001,
+      "tags": [
+        "culture",
+        "night",
+        "heritage"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "b520a02c-1e2d-46d0-916d-2a06a1c23232",
+      "name": "Núi Ngự Bình",
+      "category": "nature",
+      "description": "Mountain hike with panoramic city views",
+      "latitude": 16.4365,
+      "longitude": 107.5878,
+      "visit_duration_min": 150,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1080,
+      "priority_score": 0.7000000000000001,
+      "tags": [
+        "hiking",
+        "nature",
+        "panorama"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "5acccda5-7e91-4b89-a317-e855ba9e39c7",
+      "name": "Kim Long Garden House",
+      "category": "historical",
+      "description": "Traditional Hue garden house in Kim Long village",
+      "latitude": 16.4522,
+      "longitude": 107.5472,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 50000.0,
+      "open_time": 480,
+      "close_time": 1020,
+      "priority_score": 0.7000000000000001,
+      "tags": [
+        "garden",
+        "heritage",
+        "architecture"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "b542cdd1-8efc-4dba-8699-34ee7519ba5c",
+      "name": "Đầm Chuồn",
+      "category": "nature",
+      "description": "Tam Giang lagoon eco-tourism with fishing boats",
+      "latitude": 16.52,
+      "longitude": 107.61,
+      "visit_duration_min": 120,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 300,
+      "close_time": 1080,
+      "priority_score": 0.7000000000000001,
+      "tags": [
+        "lagoon",
+        "nature",
+        "fishing"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "19f7eca5-7b86-4a44-8e28-b7c2e01eb38d",
+      "name": "Biển Thuận An",
+      "category": "beach",
+      "description": "Nearest beach to Hue city center",
+      "latitude": 16.5437,
+      "longitude": 107.6312,
+      "visit_duration_min": 180,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1080,
+      "priority_score": 0.7000000000000001,
+      "tags": [
+        "beach",
+        "nature",
+        "swimming"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "f0af2a7b-8b85-4b55-abb1-2fd8fd9f167b",
+      "name": "Chợ Đông Ba",
+      "category": "market",
+      "description": "Largest market in Hue for local goods",
+      "latitude": 16.4687,
+      "longitude": 107.5851,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 300,
+      "close_time": 1140,
+      "priority_score": 0.68,
+      "tags": [
+        "market",
+        "street_food",
+        "shopping"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "11238f5d-c468-4902-aaec-693bfd25e879",
+      "name": "Bảo tàng Hồ Chí Minh Huế",
+      "category": "museum",
+      "description": "Ho Chi Minh Museum branch in Hue",
+      "latitude": 16.475,
+      "longitude": 107.589,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.6500000000000001,
+      "tags": [
+        "museum",
+        "history",
+        "culture"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "c2014f92-3901-4a76-870f-b2cc50e50743",
+      "name": "Vọng Cảnh Hill",
+      "category": "nature",
+      "description": "Hilltop viewpoint overlooking Perfume River",
+      "latitude": 16.43,
+      "longitude": 107.568,
+      "visit_duration_min": 90,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1080,
+      "priority_score": 0.6500000000000001,
+      "tags": [
+        "hiking",
+        "panorama",
+        "sunset"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "dde39c74-5956-4853-8711-6b5d8d68d61f",
+      "name": "Thiên An Hill",
+      "category": "nature",
+      "description": "Pine-covered hill with a monastery on top",
+      "latitude": 16.415,
+      "longitude": 107.595,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1080,
+      "priority_score": 0.6500000000000001,
+      "tags": [
+        "hiking",
+        "nature",
+        "monastery"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "bbe5a4d2-87d1-47a1-be42-6ee535a8175c",
+      "name": "Nhà hàng Cung Đình Tịnh Gia Viên",
+      "category": "restaurant",
+      "description": "Royal Hue cuisine fine dining experience",
+      "latitude": 16.4645,
+      "longitude": 107.576,
+      "visit_duration_min": 90,
+      "price": 300000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1260,
+      "priority_score": 0.6500000000000001,
+      "tags": [
+        "fine_dining",
+        "culture",
+        "royal"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "8a1fbd1b-096b-400d-83bd-1c3e09e7251f",
+      "name": "Sông Hương Boat Tour",
+      "category": "tour",
+      "description": "Sunset dragon boat cruise on Perfume River",
+      "latitude": 16.459,
+      "longitude": 107.577,
+      "visit_duration_min": 120,
+      "price": 200000.0,
+      "entrance_fee": 0.0,
+      "open_time": 480,
+      "close_time": 1020,
+      "priority_score": 0.65,
+      "tags": [
+        "river",
+        "scenic",
+        "boat"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "ebf7701c-e61d-4ba9-bb12-e2cb15cba39f",
+      "name": "Hue Wellness Spa",
+      "category": "spa",
+      "description": "Luxury spa with traditional Hue treatments",
+      "latitude": 16.464,
+      "longitude": 107.591,
+      "visit_duration_min": 120,
+      "price": 500000.0,
+      "entrance_fee": 0.0,
+      "open_time": 540,
+      "close_time": 1260,
+      "priority_score": 0.65,
+      "tags": [
+        "spa",
+        "relax",
+        "wellness"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "280ca7e5-e188-41fd-8e14-d221fcc88c06",
+      "name": "An Định Palace",
+      "category": "historical",
+      "description": "French-influenced royal palace on An Cuu River",
+      "latitude": 16.4615,
+      "longitude": 107.5845,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 50000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.65,
+      "tags": [
+        "heritage",
+        "architecture",
+        "royal"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "780811e5-f087-46c3-bdec-8fb078fde491",
+      "name": "Thanh Toàn Bridge",
+      "category": "historical",
+      "description": "Japanese-style covered tile bridge from 1776",
+      "latitude": 16.4315,
+      "longitude": 107.6352,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 20000.0,
+      "open_time": 420,
+      "close_time": 1080,
+      "priority_score": 0.65,
+      "tags": [
+        "heritage",
+        "architecture",
+        "village"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "0ba2d207-361e-4c50-be4f-eac9a3224220",
+      "name": "Phủ Tùng Thiện Vương",
+      "category": "historical",
+      "description": "Prince's residence and poetry museum",
+      "latitude": 16.458,
+      "longitude": 107.582,
+      "visit_duration_min": 40,
+      "price": 0.0,
+      "entrance_fee": 30000.0,
+      "open_time": 480,
+      "close_time": 1020,
+      "priority_score": 0.65,
+      "tags": [
+        "heritage",
+        "architecture",
+        "poetry"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "1f874fe6-07aa-4697-a6e0-bea852c67a37",
+      "name": "Vespa Adventures Hue",
+      "category": "tour",
+      "description": "Guided Vespa tour exploring Hue countryside",
+      "latitude": 16.4635,
+      "longitude": 107.5895,
+      "visit_duration_min": 240,
+      "price": 1200000.0,
+      "entrance_fee": 0.0,
+      "open_time": 480,
+      "close_time": 1020,
+      "priority_score": 0.65,
+      "tags": [
+        "vespa",
+        "adventure",
+        "food_tour"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "66cd5f01-820f-48bf-80e7-4a5c9346cfd6",
+      "name": "Cơm Âm Phủ",
+      "category": "restaurant",
+      "description": "Night-only rice dish served near ghost market",
+      "latitude": 16.466,
+      "longitude": 107.588,
+      "visit_duration_min": 40,
+      "price": 35000.0,
+      "entrance_fee": 0.0,
+      "open_time": 1020,
+      "close_time": 1380,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "night",
+        "rice"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "882431fc-b39e-4bf7-8ec6-8b5554cbdad6",
+      "name": "Bánh Khoái Hàng Me",
+      "category": "restaurant",
+      "description": "Famous crispy Hue pancake shop",
+      "latitude": 16.4658,
+      "longitude": 107.585,
+      "visit_duration_min": 40,
+      "price": 45000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1200,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "pancake",
+        "crispy"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "68091896-6c56-488a-8c58-7731a2e91fba",
+      "name": "Bún Bò Huế Bà Tuyết",
+      "category": "restaurant",
+      "description": "Famous Bun Bo Hue noodle shop",
+      "latitude": 16.4629,
+      "longitude": 107.5893,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1260,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "local",
+        "spicy"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "d1eb6549-eb78-4be8-8bf9-57f67bd89d7c",
+      "name": "Nem Lụi Bà Hạnh",
+      "category": "restaurant",
+      "description": "Best grilled pork skewers in Hue",
+      "latitude": 16.4645,
+      "longitude": 107.5865,
+      "visit_duration_min": 35,
+      "price": 30000.0,
+      "entrance_fee": 0.0,
+      "open_time": 540,
+      "close_time": 1260,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "grilled",
+        "skewer"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "2d513f92-049e-46df-8934-550020f34fcc",
+      "name": "Quán Hạnh",
+      "category": "restaurant",
+      "description": "Popular vegetarian noodle shop",
+      "latitude": 16.4618,
+      "longitude": 107.5888,
+      "visit_duration_min": 45,
+      "price": 40000.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1260,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "local",
+        "vegetarian"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "ef870bd1-190f-4161-8427-4468dc9f2efe",
+      "name": "Cơm Hến Bà Hoa",
+      "category": "restaurant",
+      "description": "Famous clam rice dish of Hue",
+      "latitude": 16.467,
+      "longitude": 107.589,
+      "visit_duration_min": 40,
+      "price": 30000.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1200,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "local",
+        "traditional"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "28722e08-2a35-49f8-841c-823ae25bbff0",
+      "name": "Bánh Bèo Bà Đỏ",
+      "category": "restaurant",
+      "description": "Traditional Hue steamed rice cakes",
+      "latitude": 16.4655,
+      "longitude": 107.5875,
+      "visit_duration_min": 30,
+      "price": 25000.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1200,
+      "priority_score": 0.63,
+      "tags": [
+        "street_food",
+        "local",
+        "snack"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "8f11254d-f6e1-4de0-b9f2-b19b170899c5",
+      "name": "Hue Imperial Museum of Fine Arts",
+      "category": "museum",
+      "description": "Fine arts museum in Long An Palace",
+      "latitude": 16.463,
+      "longitude": 107.5795,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 30000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "art",
+        "museum",
+        "culture"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "a64f6cd4-53b4-4e0a-b2a7-5238d92d5cdd",
+      "name": "Chùa Thiên Mụ",
+      "category": "temple",
+      "description": "Iconic 7-story pagoda on Perfume River",
+      "latitude": 16.4538,
+      "longitude": 107.5466,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1080,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "temple",
+        "spiritual",
+        "panorama"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "a3226593-e2bf-4375-84e4-2df34ac794a2",
+      "name": "Hồ Tịnh Tâm",
+      "category": "nature",
+      "description": "Tranquil lotus pond inside Imperial City walls",
+      "latitude": 16.4725,
+      "longitude": 107.584,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "nature",
+        "garden",
+        "relax"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "f1820383-551f-4361-8a49-060eb7493a27",
+      "name": "Bảo tàng Cổ vật Cung đình Huế",
+      "category": "museum",
+      "description": "Royal antiquities museum inside the Citadel",
+      "latitude": 16.4712,
+      "longitude": 107.5798,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 50000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "museum",
+        "culture",
+        "artifact"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "1b75754b-5b79-4cb8-a4e0-7b7d9f18cd8e",
+      "name": "Phố đi bộ Nguyễn Đình Chiểu",
+      "category": "entertainment",
+      "description": "Pedestrian night street with food vendors",
+      "latitude": 16.464,
+      "longitude": 107.5898,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 1080,
+      "close_time": 1380,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "nightlife",
+        "walking",
+        "food"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "767c0fae-2a5a-477c-8c71-08270134d3b7",
+      "name": "Chùa Từ Hiếu",
+      "category": "temple",
+      "description": "Zen Buddhist monastery where Thich Nhat Hanh lived",
+      "latitude": 16.4372,
+      "longitude": 107.5585,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "temple",
+        "spiritual",
+        "zen"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "fff7dbf0-ed72-47e2-a533-bca2ce5747f2",
+      "name": "Chùa Huyền Không Sơn Thượng",
+      "category": "temple",
+      "description": "Beautiful Zen temple in hills west of Hue",
+      "latitude": 16.433,
+      "longitude": 107.545,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "temple",
+        "zen",
+        "peaceful"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "d620b19d-29e7-49f9-a717-b807723be566",
+      "name": "Alba Spa Hue",
+      "category": "spa",
+      "description": "Five-star spa in the heart of Hue",
+      "latitude": 16.4655,
+      "longitude": 107.592,
+      "visit_duration_min": 90,
+      "price": 400000.0,
+      "entrance_fee": 0.0,
+      "open_time": 540,
+      "close_time": 1260,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "spa",
+        "massage",
+        "luxury"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "86eb41b9-9bd6-442b-afcf-28ab1abe56b7",
+      "name": "Hồ Thủy Tiên Water Park",
+      "category": "abandoned",
+      "description": "Abandoned water park - popular for photography",
+      "latitude": 16.39,
+      "longitude": 107.55,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.6000000000000001,
+      "tags": [
+        "urban_exploration",
+        "photography",
+        "abandoned"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "2463ca26-c045-410c-9fb7-96b3a50b404b",
+      "name": "Cà phê Sơn",
+      "category": "cafe",
+      "description": "Rooftop cafe with Perfume River views",
+      "latitude": 16.4635,
+      "longitude": 107.5882,
+      "visit_duration_min": 45,
+      "price": 30000.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1320,
+      "priority_score": 0.55,
+      "tags": [
+        "cafe",
+        "view",
+        "relax"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "d899190a-9235-48c0-ba91-c3c8b2c6692e",
+      "name": "Highlands Coffee Trường Tiền",
+      "category": "cafe",
+      "description": "Modern cafe with Truong Tien Bridge view",
+      "latitude": 16.4685,
+      "longitude": 107.581,
+      "visit_duration_min": 30,
+      "price": 40000.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1380,
+      "priority_score": 0.55,
+      "tags": [
+        "cafe",
+        "modern",
+        "bridge_view"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "3f01e208-cbeb-4ab0-a96b-0b2416e9b851",
+      "name": "Quán ăn Lạc Thiện",
+      "category": "restaurant",
+      "description": "Long-established vegetarian restaurant",
+      "latitude": 16.462,
+      "longitude": 107.587,
+      "visit_duration_min": 45,
+      "price": 35000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1260,
+      "priority_score": 0.55,
+      "tags": [
+        "vegetarian",
+        "local",
+        "buddhist"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "f2a437ed-4a38-48bf-be49-d164005e7f03",
+      "name": "Arena Trường Đấu Voi",
+      "category": "historical",
+      "description": "Ruins of historic elephant fighting arena",
+      "latitude": 16.4555,
+      "longitude": 107.587,
+      "visit_duration_min": 30,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.55,
+      "tags": [
+        "landmark",
+        "history",
+        "unique"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "b679d4a6-ffc5-42d6-991a-2b1c2d0d26d0",
+      "name": "Cà phê Mơ",
+      "category": "cafe",
+      "description": "Hidden garden cafe popular with locals",
+      "latitude": 16.465,
+      "longitude": 107.5905,
+      "visit_duration_min": 40,
+      "price": 25000.0,
+      "entrance_fee": 0.0,
+      "open_time": 480,
+      "close_time": 1380,
+      "priority_score": 0.55,
+      "tags": [
+        "cafe",
+        "garden",
+        "quiet"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "1cb6bc05-f610-4895-9f05-79b3a9de9beb",
+      "name": "Chè Hẻm",
+      "category": "restaurant",
+      "description": "Hidden alley sweet soup shop famous among locals",
+      "latitude": 16.4638,
+      "longitude": 107.5902,
+      "visit_duration_min": 30,
+      "price": 20000.0,
+      "entrance_fee": 0.0,
+      "open_time": 540,
+      "close_time": 1320,
+      "priority_score": 0.55,
+      "tags": [
+        "dessert",
+        "local",
+        "sweet"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "1a08e5bb-a10e-4db7-ad3c-08e85df8cf26",
+      "name": "Công viên Thương Bạc",
+      "category": "park",
+      "description": "Riverside park near Truong Tien Bridge",
+      "latitude": 16.4672,
+      "longitude": 107.583,
+      "visit_duration_min": 30,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.55,
+      "tags": [
+        "park",
+        "relax",
+        "riverside"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "5bf8fd79-d69d-4d4b-9fc9-02ea91cf27b1",
+      "name": "Trường Quốc Học Huế",
+      "category": "historical",
+      "description": "Historic school where Ho Chi Minh studied",
+      "latitude": 16.468,
+      "longitude": 107.587,
+      "visit_duration_min": 30,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.55,
+      "tags": [
+        "education",
+        "history",
+        "landmark"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "09de1a13-52d2-4560-a706-4c64e02fc24a",
+      "name": "Điện Hòn Chén",
+      "category": "temple",
+      "description": "Riverside temple dedicated to goddess Po Nagar",
+      "latitude": 16.4261,
+      "longitude": 107.5425,
+      "visit_duration_min": 60,
+      "price": 0.0,
+      "entrance_fee": 30000.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.55,
+      "tags": [
+        "temple",
+        "spiritual",
+        "river"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "0e1fe047-d0f7-4f7e-a80f-3b513d25b10d",
+      "name": "Cầu Trường Tiền",
+      "category": "landmark",
+      "description": "Historic bridge spanning Perfume River",
+      "latitude": 16.4691,
+      "longitude": 107.5801,
+      "visit_duration_min": 30,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.55,
+      "tags": [
+        "landmark",
+        "photo",
+        "riverside"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "6d2dbf2a-234d-4b74-9dda-3ae20ea8b033",
+      "name": "Chùa Báo Quốc",
+      "category": "temple",
+      "description": "Historic Buddhist temple from 1670",
+      "latitude": 16.459,
+      "longitude": 107.585,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 420,
+      "close_time": 1020,
+      "priority_score": 0.55,
+      "tags": [
+        "temple",
+        "spiritual",
+        "historic"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "3d376117-3500-4735-a627-f66625506160",
+      "name": "Đập đá Vĩ Dạ",
+      "category": "landmark",
+      "description": "Iconic location from famous Vietnamese poem",
+      "latitude": 16.451,
+      "longitude": 107.592,
+      "visit_duration_min": 30,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 0,
+      "close_time": 1440,
+      "priority_score": 0.55,
+      "tags": [
+        "landmark",
+        "poetry",
+        "nostalgia"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "a6f1968d-b8d0-4799-930c-c332382a3dce",
+      "name": "Chợ Tây Lộc",
+      "category": "market",
+      "description": "Traditional morning market for Hue locals",
+      "latitude": 16.476,
+      "longitude": 107.572,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 300,
+      "close_time": 1020,
+      "priority_score": 0.55,
+      "tags": [
+        "market",
+        "local",
+        "morning"
+      ],
+      "is_locked": false
+    },
+    {
+      "uuid": "2fc1c868-c79b-492f-8306-ac4f4b29199c",
+      "name": "Làng Hương Thủy Xuân",
+      "category": "cultural",
+      "description": "Traditional incense making village",
+      "latitude": 16.44,
+      "longitude": 107.575,
+      "visit_duration_min": 45,
+      "price": 0.0,
+      "entrance_fee": 0.0,
+      "open_time": 480,
+      "close_time": 1080,
+      "priority_score": 0.55,
+      "tags": [
+        "craft",
+        "incense",
+        "village"
+      ],
+      "is_locked": false
+    }
+  ],
+  "locked_pois": 0,
+  "layer4_result": {
+    "status": "success",
+    "num_days": 2,
+    "days": [
+      {
+        "day_index": 0,
+        "date": "day-0",
+        "start_hotel_name": "Saigon Morin",
+        "start_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "end_hotel_name": "Saigon Morin",
+        "end_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "stops": [
+          {
+            "poi_id": "1cb6bc05-f610-4895-9f05-79b3a9de9beb",
+            "poi_name": "Chè Hẻm",
+            "location": {
+              "latitude": 16.4638,
+              "longitude": 107.5902
+            },
+            "arrival_time_min": 540,
+            "departure_time_min": 570,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "d620b19d-29e7-49f9-a717-b807723be566",
+            "poi_name": "Alba Spa Hue",
+            "location": {
+              "latitude": 16.4655,
+              "longitude": 107.592
+            },
+            "arrival_time_min": 630,
+            "departure_time_min": 720,
+            "visit_duration_min": 90,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "ef870bd1-190f-4161-8427-4468dc9f2efe",
+            "poi_name": "Cơm Hến Bà Hoa",
+            "location": {
+              "latitude": 16.467,
+              "longitude": 107.589
+            },
+            "arrival_time_min": 670,
+            "departure_time_min": 710,
+            "visit_duration_min": 40,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "b679d4a6-ffc5-42d6-991a-2b1c2d0d26d0",
+            "poi_name": "Cà phê Mơ",
+            "location": {
+              "latitude": 16.465,
+              "longitude": 107.5905
+            },
+            "arrival_time_min": 710,
+            "departure_time_min": 750,
+            "visit_duration_min": 40,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "28722e08-2a35-49f8-841c-823ae25bbff0",
+            "poi_name": "Bánh Bèo Bà Đỏ",
+            "location": {
+              "latitude": 16.4655,
+              "longitude": 107.5875
+            },
+            "arrival_time_min": 745,
+            "departure_time_min": 775,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "280ca7e5-e188-41fd-8e14-d221fcc88c06",
+            "poi_name": "An Định Palace",
+            "location": {
+              "latitude": 16.4615,
+              "longitude": 107.5845
+            },
+            "arrival_time_min": 790,
+            "departure_time_min": 835,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "3f01e208-cbeb-4ab0-a96b-0b2416e9b851",
+            "poi_name": "Quán ăn Lạc Thiện",
+            "location": {
+              "latitude": 16.462,
+              "longitude": 107.587
+            },
+            "arrival_time_min": 835,
+            "departure_time_min": 880,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "0ba2d207-361e-4c50-be4f-eac9a3224220",
+            "poi_name": "Phủ Tùng Thiện Vương",
+            "location": {
+              "latitude": 16.458,
+              "longitude": 107.582
+            },
+            "arrival_time_min": 875,
+            "departure_time_min": 915,
+            "visit_duration_min": 40,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 30000.0
+          },
+          {
+            "poi_id": "6d2dbf2a-234d-4b74-9dda-3ae20ea8b033",
+            "poi_name": "Chùa Báo Quốc",
+            "location": {
+              "latitude": 16.459,
+              "longitude": 107.585
+            },
+            "arrival_time_min": 925,
+            "departure_time_min": 970,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "f2a437ed-4a38-48bf-be49-d164005e7f03",
+            "poi_name": "Arena Trường Đấu Voi",
+            "location": {
+              "latitude": 16.4555,
+              "longitude": 107.587
+            },
+            "arrival_time_min": 955,
+            "departure_time_min": 985,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "3d376117-3500-4735-a627-f66625506160",
+            "poi_name": "Đập đá Vĩ Dạ",
+            "location": {
+              "latitude": 16.451,
+              "longitude": 107.592
+            },
+            "arrival_time_min": 985,
+            "departure_time_min": 1015,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "2d513f92-049e-46df-8934-550020f34fcc",
+            "poi_name": "Quán Hạnh",
+            "location": {
+              "latitude": 16.4618,
+              "longitude": 107.5888
+            },
+            "arrival_time_min": 1035,
+            "departure_time_min": 1080,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "2463ca26-c045-410c-9fb7-96b3a50b404b",
+            "poi_name": "Cà phê Sơn",
+            "location": {
+              "latitude": 16.4635,
+              "longitude": 107.5882
+            },
+            "arrival_time_min": 1080,
+            "departure_time_min": 1125,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "68091896-6c56-488a-8c58-7731a2e91fba",
+            "poi_name": "Bún Bò Huế Bà Tuyết",
+            "location": {
+              "latitude": 16.4629,
+              "longitude": 107.5893
+            },
+            "arrival_time_min": 1125,
+            "departure_time_min": 1170,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          }
+        ],
+        "total_travel_min": 0,
+        "total_visit_min": 600,
+        "total_distance_km": 8.22,
+        "total_entrance_fee": 80000.0,
+        "num_pois": 14
+      },
+      {
+        "day_index": 1,
+        "date": "day-1",
+        "start_hotel_name": "Saigon Morin",
+        "start_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "end_hotel_name": "Saigon Morin",
+        "end_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "stops": [
+          {
+            "poi_id": "d1eb6549-eb78-4be8-8bf9-57f67bd89d7c",
+            "poi_name": "Nem Lụi Bà Hạnh",
+            "location": {
+              "latitude": 16.4645,
+              "longitude": 107.5865
+            },
+            "arrival_time_min": 540,
+            "departure_time_min": 575,
+            "visit_duration_min": 35,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "1a08e5bb-a10e-4db7-ad3c-08e85df8cf26",
+            "poi_name": "Công viên Thương Bạc",
+            "location": {
+              "latitude": 16.4672,
+              "longitude": 107.583
+            },
+            "arrival_time_min": 570,
+            "departure_time_min": 600,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "882431fc-b39e-4bf7-8ec6-8b5554cbdad6",
+            "poi_name": "Bánh Khoái Hàng Me",
+            "location": {
+              "latitude": 16.4658,
+              "longitude": 107.585
+            },
+            "arrival_time_min": 610,
+            "departure_time_min": 650,
+            "visit_duration_min": 40,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "0e1fe047-d0f7-4f7e-a80f-3b513d25b10d",
+            "poi_name": "Cầu Trường Tiền",
+            "location": {
+              "latitude": 16.4691,
+              "longitude": 107.5801
+            },
+            "arrival_time_min": 645,
+            "departure_time_min": 675,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "d899190a-9235-48c0-ba91-c3c8b2c6692e",
+            "poi_name": "Highlands Coffee Trường Tiền",
+            "location": {
+              "latitude": 16.4685,
+              "longitude": 107.581
+            },
+            "arrival_time_min": 675,
+            "departure_time_min": 705,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "f1820383-551f-4361-8a49-060eb7493a27",
+            "poi_name": "Bảo tàng Cổ vật Cung đình Huế",
+            "location": {
+              "latitude": 16.4712,
+              "longitude": 107.5798
+            },
+            "arrival_time_min": 735,
+            "departure_time_min": 795,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "a3226593-e2bf-4375-84e4-2df34ac794a2",
+            "poi_name": "Hồ Tịnh Tâm",
+            "location": {
+              "latitude": 16.4725,
+              "longitude": 107.584
+            },
+            "arrival_time_min": 780,
+            "departure_time_min": 825,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "f0af2a7b-8b85-4b55-abb1-2fd8fd9f167b",
+            "poi_name": "Chợ Đông Ba",
+            "location": {
+              "latitude": 16.4687,
+              "longitude": 107.5851
+            },
+            "arrival_time_min": 840,
+            "departure_time_min": 900,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "5bf8fd79-d69d-4d4b-9fc9-02ea91cf27b1",
+            "poi_name": "Trường Quốc Học Huế",
+            "location": {
+              "latitude": 16.468,
+              "longitude": 107.587
+            },
+            "arrival_time_min": 870,
+            "departure_time_min": 900,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "66cd5f01-820f-48bf-80e7-4a5c9346cfd6",
+            "poi_name": "Cơm Âm Phủ",
+            "location": {
+              "latitude": 16.466,
+              "longitude": 107.588
+            },
+            "arrival_time_min": 1020,
+            "departure_time_min": 1060,
+            "visit_duration_min": 40,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "1b75754b-5b79-4cb8-a4e0-7b7d9f18cd8e",
+            "poi_name": "Phố đi bộ Nguyễn Đình Chiểu",
+            "location": {
+              "latitude": 16.464,
+              "longitude": 107.5898
+            },
+            "arrival_time_min": 1080,
+            "departure_time_min": 1140,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "ebf7701c-e61d-4ba9-bb12-e2cb15cba39f",
+            "poi_name": "Hue Wellness Spa",
+            "location": {
+              "latitude": 16.464,
+              "longitude": 107.591
+            },
+            "arrival_time_min": 1200,
+            "departure_time_min": 1320,
+            "visit_duration_min": 120,
+            "travel_time_from_prev_min": 0,
+            "entrance_fee": 0.0
+          }
+        ],
+        "total_travel_min": 0,
+        "total_visit_min": 580,
+        "total_distance_km": 5.6,
+        "total_entrance_fee": 50000.0,
+        "num_pois": 12
+      }
+    ],
+    "total_pois_visited": 26,
+    "total_pois_dropped": 24,
+    "total_entrance_fee": 130000.0,
+    "total_travel_min": 0,
+    "total_distance_km": 13.82,
+    "budget_total": 2000000.0,
+    "budget_used": 130000.0,
+    "dropped_pois": [
+      {
+        "poi_id": "6d0892cf-83d4-4dff-95aa-134160cfcf96",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "a7b3852a-9d68-48e8-9090-8484f0febae3",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "10b9fad0-9406-46cf-8756-a5850e7631b3",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "7b865ddf-d922-4bd4-9f97-549ab39db609",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "63d8ea41-7ab9-4779-863f-3f5503370099",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "b520a02c-1e2d-46d0-916d-2a06a1c23232",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "5acccda5-7e91-4b89-a317-e855ba9e39c7",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "b542cdd1-8efc-4dba-8699-34ee7519ba5c",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "19f7eca5-7b86-4a44-8e28-b7c2e01eb38d",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "11238f5d-c468-4902-aaec-693bfd25e879",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "c2014f92-3901-4a76-870f-b2cc50e50743",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "dde39c74-5956-4853-8711-6b5d8d68d61f",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "bbe5a4d2-87d1-47a1-be42-6ee535a8175c",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "8a1fbd1b-096b-400d-83bd-1c3e09e7251f",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "780811e5-f087-46c3-bdec-8fb078fde491",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "1f874fe6-07aa-4697-a6e0-bea852c67a37",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "8f11254d-f6e1-4de0-b9f2-b19b170899c5",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "a64f6cd4-53b4-4e0a-b2a7-5238d92d5cdd",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "767c0fae-2a5a-477c-8c71-08270134d3b7",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "fff7dbf0-ed72-47e2-a533-bca2ce5747f2",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "86eb41b9-9bd6-442b-afcf-28ab1abe56b7",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "09de1a13-52d2-4560-a706-4c64e02fc24a",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "a6f1968d-b8d0-4799-930c-c332382a3dce",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "2fc1c868-c79b-492f-8306-ac4f4b29199c",
+        "reason": "solver_dropped"
+      }
+    ],
+    "solver": "ortools",
+    "message": null
+  },
+  "message": "Route optimized"
+}

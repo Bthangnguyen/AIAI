@@ -17,6 +17,7 @@ class TimeWindowSpec(BaseModel):
 
 class LLMDataContract(BaseModel):
     """JSON contract produced by Layer 2 (LLM intent extraction)."""
+    destination: Optional[str] = Field(None, description="Destination city name")
     budget_max: Optional[float] = Field(None, description="Max budget in VND")
     radius_km: float = Field(10.0, description="Search radius from hotel in km")
     num_days: int = Field(1, description="Number of travel days")
@@ -24,9 +25,16 @@ class LLMDataContract(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Preference tags")
     locked_pois: List[str] = Field(default_factory=list, description="Must-visit POI names")
     weather_preference: Optional[str] = Field(None, description="indoor/outdoor/any")
-    hotel_lat: float = Field(..., description="Hotel latitude")
-    hotel_lon: float = Field(..., description="Hotel longitude")
-    hotel_name: str = Field("Hotel", description="Hotel display name")
+    hotel_lat: Optional[float] = Field(None, description="Hotel latitude")
+    hotel_lon: Optional[float] = Field(None, description="Hotel longitude")
+    hotel_name: Optional[str] = Field("Hotel", description="Hotel display name")
+
+
+class ChatProcessResponse(BaseModel):
+    """Output of /chat_process containing status, AI reply, and updated contract."""
+    status: str = Field(..., description="'ready' or 'clarifying'")
+    reply: str = Field(..., description="Conversational Vietnamese response or follow-up question")
+    updated_contract: LLMDataContract
 
 
 # === Layer 3 Output: POI returned from spatial filter ===
@@ -54,19 +62,33 @@ class POIResponse(BaseModel):
 # === Orchestrator Output: Assembled for Layer 4 ===
 
 class TripPlanRequest(BaseModel):
-    """User-facing request: just send text + hotel info."""
+    """User-facing request: text, optional hotel info. Backend auto-picks hotel if missing."""
     user_prompt: str = Field(..., description="Natural language travel request")
-    hotel_lat: float = Field(..., description="Hotel latitude")
-    hotel_lon: float = Field(..., description="Hotel longitude")
-    hotel_name: str = Field("Hotel", description="Hotel name")
-    num_days: int = Field(1, description="Number of travel days")
+    num_days: Optional[int] = Field(None, description="Number of travel days")
+    budget: Optional[float] = Field(None, description="Target budget (VND)")
+    destination: Optional[str] = Field("Huế", description="Destination city")
+    preferences: Optional[List[str]] = Field(None, description="Additional preference tags")
+    hotel_lat: Optional[float] = Field(None, description="Hotel latitude")
+    hotel_lon: Optional[float] = Field(None, description="Hotel longitude")
+    hotel_name: Optional[str] = Field(None, description="Hotel name")
 
 
 class TripPlanResponse(BaseModel):
     """Response from orchestrator (wraps Layer 4 output)."""
     status: str = "success"
     llm_contract: Optional[LLMDataContract] = None
-    pois_found: int = 0
+    pois: Optional[List[POIResponse]] = None
     locked_pois: int = 0
     layer4_result: Optional[dict] = None
     message: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatProcessRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = Field(default_factory=list)
+    current_contract: LLMDataContract

@@ -1,8 +1,9 @@
-﻿"use client"
+"use client"
 
 import { Expand, RefreshCw } from "lucide-react"
 import { ItineraryArtifact } from "@/components/ItineraryArtifact"
 import { ItineraryMapPanel } from "@/components/ItineraryMapPanel"
+import { RouteComparisonPanel } from "@/components/RouteComparisonPanel"
 import type { BuildStatus, ItineraryDraft, PreviewMode } from "@/types/trip"
 
 interface ItineraryPreviewPanelProps {
@@ -35,9 +36,9 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
         <div className="flex items-center gap-2">
           <button type="button" onClick={onRebuild} className="rounded-lg p-2 text-orange-950/60 transition hover:bg-white-2 hover:text-orange-950" aria-label="Rebuild"><RefreshCw size={15} /></button>
           <div className="hidden rounded-lg border border-orange-200 bg-white p-1 sm:flex">
-            {(["timeline", "map", "split"] as PreviewMode[]).map((mode) => (
+            {(["timeline", "map", "split", "compare"] as PreviewMode[]).map((mode) => (
               <button key={mode} type="button" onClick={() => onViewModeChange(mode)} className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${viewMode === mode ? "bg-white-2 text-orange-950" : "text-orange-950/60"}`}>
-                {mode === "timeline" ? "Timeline" : mode === "map" ? "Map" : "Split"}
+                {mode === "timeline" ? "Timeline" : mode === "map" ? "Map" : mode === "split" ? "Split" : "⚡ Compare"}
               </button>
             ))}
           </div>
@@ -60,6 +61,9 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
         ) : null}
         {draft && viewMode === "map" ? (
           <div className="relative z-10 h-full min-h-[560px] w-full"><ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} /></div>
+        ) : null}
+        {draft && viewMode === "compare" ? (
+          <div className="relative z-10 w-full"><RouteComparisonPanel draft={draft} /></div>
         ) : null}
       </div>
     </div>

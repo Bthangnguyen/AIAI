@@ -1,7 +1,8 @@
-﻿"use client"
+"use client"
 
 import dynamic from "next/dynamic"
-import { MapPinned } from "lucide-react"
+import { useState } from "react"
+import { MapPinned, Play, Square } from "lucide-react"
 import type { ItineraryDraft } from "@/types/trip"
 
 const ItineraryMap = dynamic(() => import("@/components/ItineraryMap").then((mod) => mod.ItineraryMap), {
@@ -20,6 +21,7 @@ interface ItineraryMapPanelProps {
 }
 
 export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onSelectPoi }: ItineraryMapPanelProps) {
+  const [isJourneyPlaying, setIsJourneyPlaying] = useState(false)
   if (!draft) {
     return (
       <div className="flex h-full min-h-[360px] items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-white/60 p-8 text-center">
@@ -34,15 +36,33 @@ export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selected
 
   return (
     <div className="relative h-full min-h-[360px] overflow-hidden rounded-3xl border border-orange-200 bg-white">
-      <ItineraryMap
-        itineraryDraft={draft}
-        selectedPoiId={selectedPoiId}
-        hoveredPoiId={hoveredPoiId}
-        onSelectPoi={onSelectPoi}
-        selectedDay={selectedDay}
-        showRouteLines={showRouteLines}
-        onFitBoundsRequest={fitSignal}
-      />
+      <div className="relative h-full w-full">
+        <div className="absolute right-3 top-3 z-[1000] flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsJourneyPlaying(!isJourneyPlaying)}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black shadow-lg backdrop-blur transition ${
+              isJourneyPlaying
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-white/90 text-orange-700 hover:bg-orange-50"
+            }`}
+          >
+            {isJourneyPlaying ? <><Square className="h-3.5 w-3.5" /> Dừng</> : <><Play className="h-3.5 w-3.5" /> Phát hành trình</>}
+          </button>
+        </div>
+        <ItineraryMap
+          itineraryDraft={draft}
+          selectedPoiId={selectedPoiId}
+          hoveredPoiId={hoveredPoiId}
+          onSelectPoi={onSelectPoi}
+          selectedDay={selectedDay}
+          showRouteLines={showRouteLines}
+          onFitBoundsRequest={fitSignal}
+          isJourneyPlaying={isJourneyPlaying}
+          onJourneyStepChange={(poiId) => onSelectPoi(poiId)}
+          onJourneyFinish={() => setIsJourneyPlaying(false)}
+        />
+      </div>
       <MapLegend draft={draft} />
     </div>
   )

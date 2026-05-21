@@ -1,0 +1,151 @@
+=== TOTAL POIs: 61 ===
+
+  [historical] Đại Nội Huế               | dur=120min | fee=  200000 | open=420-1020 | prio=0.80 | outdoor=['culture', 'heritage', 'UNESCO'] | tags=False
+              coords: POINT(107.5786 16.4698)
+  [historical] Lăng Khải Định            | dur=90min | fee=  150000 | open=420-1020 | prio=0.75 | outdoor=['culture', 'heritage', 'art_deco'] | tags=False
+              coords: POINT(107.5994 16.4062)
+  [historical] Lăng Gia Long             | dur=90min | fee=  100000 | open=420-1020 | prio=0.75 | outdoor=['culture', 'heritage', 'tomb'] | tags=True
+              coords: POINT(107.5355 16.3888)
+  [historical] Lăng Tự Đức               | dur=90min | fee=  150000 | open=420-1020 | prio=0.75 | outdoor=['culture', 'heritage', 'tomb'] | tags=True
+              coords: POINT(107.5668 16.4575)
+  [historical] Lăng Minh Mạng            | dur=90min | fee=  150000 | open=420-1020 | prio=0.75 | outdoor=['culture', 'heritage', 'tomb'] | tags=True
+              coords: POINT(107.5538 16.4102)
+  [tour      ] Hue Citadel Night Tour    | dur=90min | fee=  150000 | open=1080-1320 | prio=0.75 | outdoor=['culture', 'night', 'heritage'] | tags=False
+              coords: POINT(107.5786 16.4698)
+  [nature    ] Đầm Chuồn                 | dur=120min | fee=       0 | open=300-1080 | prio=0.70 | outdoor=['lagoon', 'nature', 'fishing'] | tags=True
+              coords: POINT(107.61 16.52)
+  [cultural  ] Làng cổ Phước Tích        | dur=90min | fee=   30000 | open=480-1020 | prio=0.70 | outdoor=['village', 'heritage', 'pottery'] | tags=False
+              coords: POINT(107.34 16.51)
+  [nature    ] Ruộng bậc thang A Lưới    | dur=120min | fee=       0 | open=360-1080 | prio=0.70 | outdoor=['rice_terraces', 'nature', 'ethnic'] | tags=True
+              coords: POINT(107.29 16.24)
+  [beach     ] Biển Thuận An             | dur=180min | fee=       0 | open=360-1080 | prio=0.70 | outdoor=['beach', 'nature', 'swimming'] | tags=True
+              coords: POINT(107.6312 16.5437)
+  [nature    ] Núi Ngự Bình              | dur=150min | fee=       0 | open=360-1080 | prio=0.70 | outdoor=['hiking', 'nature', 'panorama'] | tags=True
+              coords: POINT(107.5878 16.4365)
+  [nature    ] Phá Tam Giang             | dur=180min | fee=       0 | open=300-1080 | prio=0.70 | outdoor=['lagoon', 'nature', 'boat'] | tags=True
+              coords: POINT(107.62 16.55)
+  [historical] Kim Long Garden House     | dur=60min | fee=   50000 | open=480-1020 | prio=0.70 | outdoor=['garden', 'heritage', 'architecture'] | tags=True
+              coords: POINT(107.5472 16.4522)
+  [market    ] Chợ Đông Ba               | dur=60min | fee=       0 | open=300-1140 | prio=0.68 | outdoor=['market', 'street_food', 'shopping'] | tags=False
+              coords: POINT(107.5851 16.4687)
+  [nature    ] Thiên An Hill             | dur=60min | fee=       0 | open=360-1080 | prio=0.65 | outdoor=['hiking', 'nature', 'monastery'] | tags=True
+              coords: POINT(107.595 16.415)
+  [restaurant] Nhà hàng Cung Đình Tịnh Gia Viên | dur=90min | fee=       0 | open=600-1260 | prio=0.65 | outdoor=['fine_dining', 'culture', 'royal'] | tags=False
+              coords: POINT(107.576 16.4645)
+  [museum    ] Bảo tàng Hồ Chí Minh Huế  | dur=60min | fee=       0 | open=420-1020 | prio=0.65 | outdoor=['museum', 'history', 'culture'] | tags=False
+              coords: POINT(107.589 16.475)
+  [nature    ] Vọng Cảnh Hill            | dur=90min | fee=       0 | open=360-1080 | prio=0.65 | outdoor=['hiking', 'panorama', 'sunset'] | tags=True
+              coords: POINT(107.568 16.43)
+  [historical] Phủ Tùng Thiện Vương      | dur=40min | fee=   30000 | open=480-1020 | prio=0.65 | outdoor=['heritage', 'architecture', 'poetry'] | tags=False
+              coords: POINT(107.582 16.458)
+  [nature    ] Bạch Mã National Park     | dur=300min | fee=   60000 | open=420-1020 | prio=0.65 | outdoor=['hiking', 'nature', 'wildlife'] | tags=True
+              coords: POINT(107.87 16.21)
+  [nature    ] Suối Voi (Elephant Spring) | dur=120min | fee=   30000 | open=420-1080 | prio=0.65 | outdoor=['waterfall', 'nature', 'swimming'] | tags=True
+              coords: POINT(107.75 16.27)
+  [tour      ] Vespa Adventures Hue      | dur=240min | fee=       0 | open=480-1020 | prio=0.65 | outdoor=['vespa', 'adventure', 'food_tour'] | tags=True
+              coords: POINT(107.5895 16.4635)
+  [spa       ] Hue Wellness Spa          | dur=120min | fee=       0 | open=540-1260 | prio=0.65 | outdoor=['spa', 'relax', 'wellness'] | tags=False
+              coords: POINT(107.591 16.464)
+  [nature    ] Suối khoáng nóng Thanh Tân | dur=180min | fee=  200000 | open=480-1020 | prio=0.65 | outdoor=['hot_spring', 'nature', 'relax'] | tags=True
+              coords: POINT(107.49 16.28)
+  [historical] An Định Palace            | dur=45min | fee=   50000 | open=420-1020 | prio=0.65 | outdoor=['heritage', 'architecture', 'royal'] | tags=False
+              coords: POINT(107.5845 16.4615)
+  [tour      ] Sông Hương Boat Tour      | dur=120min | fee=       0 | open=480-1020 | prio=0.65 | outdoor=['river', 'scenic', 'boat'] | tags=True
+              coords: POINT(107.577 16.459)
+  [historical] Thanh Toàn Bridge         | dur=45min | fee=   20000 | open=420-1080 | prio=0.65 | outdoor=['heritage', 'architecture', 'village'] | tags=True
+              coords: POINT(107.6352 16.4315)
+  [restaurant] Nem Lụi Bà Hạnh           | dur=35min | fee=       0 | open=540-1260 | prio=0.63 | outdoor=['street_food', 'grilled', 'skewer'] | tags=False
+              coords: POINT(107.5865 16.4645)
+  [restaurant] Bún Bò Huế Bà Tuyết       | dur=45min | fee=       0 | open=360-1260 | prio=0.63 | outdoor=['street_food', 'local', 'spicy'] | tags=False
+              coords: POINT(107.5893 16.4629)
+  [restaurant] Cơm Hến Bà Hoa            | dur=40min | fee=       0 | open=360-1200 | prio=0.63 | outdoor=['street_food', 'local', 'traditional'] | tags=False
+              coords: POINT(107.589 16.467)
+  [restaurant] Quán Hạnh                 | dur=45min | fee=       0 | open=360-1260 | prio=0.63 | outdoor=['street_food', 'local', 'vegetarian'] | tags=False
+              coords: POINT(107.5888 16.4618)
+  [restaurant] Bánh Bèo Bà Đỏ            | dur=30min | fee=       0 | open=360-1200 | prio=0.63 | outdoor=['street_food', 'local', 'snack'] | tags=False
+              coords: POINT(107.5875 16.4655)
+  [restaurant] Bánh Khoái Hàng Me        | dur=40min | fee=       0 | open=600-1200 | prio=0.63 | outdoor=['street_food', 'pancake', 'crispy'] | tags=False
+              coords: POINT(107.585 16.4658)
+  [restaurant] Cơm Âm Phủ                | dur=40min | fee=       0 | open=1020-1380 | prio=0.63 | outdoor=['street_food', 'night', 'rice'] | tags=False
+              coords: POINT(107.588 16.466)
+  [temple    ] Thiền viện Trúc Lâm Bạch Mã | dur=60min | fee=       0 | open=420-1020 | prio=0.60 | outdoor=['temple', 'zen', 'mountain'] | tags=True
+              coords: POINT(107.85 16.25)
+  [museum    ] Hue Imperial Museum of Fine Arts | dur=60min | fee=   30000 | open=420-1020 | prio=0.60 | outdoor=['art', 'museum', 'culture'] | tags=False
+              coords: POINT(107.5795 16.463)
+  [museum    ] Bảo tàng Cổ vật Cung đình Huế | dur=60min | fee=   50000 | open=420-1020 | prio=0.60 | outdoor=['museum', 'culture', 'artifact'] | tags=False
+              coords: POINT(107.5798 16.4712)
+  [abandoned ] Hồ Thủy Tiên Water Park   | dur=60min | fee=       0 | open=0-1440 | prio=0.60 | outdoor=['urban_exploration', 'photography', 'abandoned'] | tags=True
+              coords: POINT(107.55 16.39)
+  [temple    ] Chùa Từ Hiếu              | dur=60min | fee=       0 | open=420-1020 | prio=0.60 | outdoor=['temple', 'spiritual', 'zen'] | tags=True
+              coords: POINT(107.5585 16.4372)
+  [nature    ] Hồ Tịnh Tâm               | dur=45min | fee=       0 | open=0-1440 | prio=0.60 | outdoor=['nature', 'garden', 'relax'] | tags=True
+              coords: POINT(107.584 16.4725)
+  [spa       ] Alba Spa Hue              | dur=90min | fee=       0 | open=540-1260 | prio=0.60 | outdoor=['spa', 'massage', 'luxury'] | tags=False
+              coords: POINT(107.592 16.4655)
+  [temple    ] Chùa Thiên Mụ             | dur=60min | fee=       0 | open=360-1080 | prio=0.60 | outdoor=['temple', 'spiritual', 'panorama'] | tags=True
+              coords: POINT(107.5466 16.4538)
+  [temple    ] Chùa Huyền Không Sơn Thượng | dur=60min | fee=       0 | open=420-1020 | prio=0.60 | outdoor=['temple', 'zen', 'peaceful'] | tags=True
+              coords: POINT(107.545 16.433)
+  [entertainment] Phố đi bộ Nguyễn Đình Chiểu | dur=60min | fee=       0 | open=1080-1380 | prio=0.60 | outdoor=['nightlife', 'walking', 'food'] | tags=True
+              coords: POINT(107.5898 16.464)
+  [entertainment] Công viên nước Thanh Tân  | dur=240min | fee=  250000 | open=480-1020 | prio=0.60 | outdoor=['water_park', 'family', 'fun'] | tags=True
+              coords: POINT(107.485 16.28)
+  [landmark  ] Cầu Trường Tiền           | dur=30min | fee=       0 | open=0-1440 | prio=0.55 | outdoor=['landmark', 'photo', 'riverside'] | tags=True
+              coords: POINT(107.5801 16.4691)
+  [restaurant] Chè Hẻm                   | dur=30min | fee=       0 | open=540-1320 | prio=0.55 | outdoor=['dessert', 'local', 'sweet'] | tags=False
+              coords: POINT(107.5902 16.4638)
+  [temple    ] Điện Hòn Chén             | dur=60min | fee=   30000 | open=420-1020 | prio=0.55 | outdoor=['temple', 'spiritual', 'river'] | tags=True
+              coords: POINT(107.5425 16.4261)
+  [nature    ] Cáp treo Bạch Mã          | dur=60min | fee=  200000 | open=480-1020 | prio=0.55 | outdoor=['cable_car', 'panorama', 'mountain'] | tags=True
+              coords: POINT(107.86 16.215)
+  [market    ] Chợ Tây Lộc               | dur=45min | fee=       0 | open=300-1020 | prio=0.55 | outdoor=['market', 'local', 'morning'] | tags=False
+              coords: POINT(107.572 16.476)
+  [historical] Arena Trường Đấu Voi      | dur=30min | fee=       0 | open=0-1440 | prio=0.55 | outdoor=['landmark', 'history', 'unique'] | tags=True
+              coords: POINT(107.587 16.4555)
+  [cultural  ] Làng Hương Thủy Xuân      | dur=45min | fee=       0 | open=480-1080 | prio=0.55 | outdoor=['craft', 'incense', 'village'] | tags=True
+              coords: POINT(107.575 16.44)
+  [cafe      ] Cà phê Sơn                | dur=45min | fee=       0 | open=420-1320 | prio=0.55 | outdoor=['cafe', 'view', 'relax'] | tags=False
+              coords: POINT(107.5882 16.4635)
+  [cafe      ] Cà phê Mơ                 | dur=40min | fee=       0 | open=480-1380 | prio=0.55 | outdoor=['cafe', 'garden', 'quiet'] | tags=False
+              coords: POINT(107.5905 16.465)
+  [cafe      ] Highlands Coffee Trường Tiền | dur=30min | fee=       0 | open=420-1380 | prio=0.55 | outdoor=['cafe', 'modern', 'bridge_view'] | tags=False
+              coords: POINT(107.581 16.4685)
+  [restaurant] Quán ăn Lạc Thiện         | dur=45min | fee=       0 | open=600-1260 | prio=0.55 | outdoor=['vegetarian', 'local', 'buddhist'] | tags=False
+              coords: POINT(107.587 16.462)
+  [temple    ] Chùa Báo Quốc             | dur=45min | fee=       0 | open=420-1020 | prio=0.55 | outdoor=['temple', 'spiritual', 'historic'] | tags=False
+              coords: POINT(107.585 16.459)
+  [landmark  ] Đập đá Vĩ Dạ              | dur=30min | fee=       0 | open=0-1440 | prio=0.55 | outdoor=['landmark', 'poetry', 'nostalgia'] | tags=True
+              coords: POINT(107.592 16.451)
+  [historical] Trường Quốc Học Huế       | dur=30min | fee=       0 | open=0-1440 | prio=0.55 | outdoor=['education', 'history', 'landmark'] | tags=False
+              coords: POINT(107.587 16.468)
+  [park      ] Công viên Thương Bạc      | dur=30min | fee=       0 | open=0-1440 | prio=0.55 | outdoor=['park', 'relax', 'riverside'] | tags=True
+              coords: POINT(107.583 16.4672)
+  [museum    ] Trung tâm Nghệ thuật Điềm Phùng Thị | dur=45min | fee=   20000 | open=480-1020 | prio=0.50 | outdoor=['art', 'museum', 'sculpture'] | tags=False
+              coords: POINT(107.58 16.4685)
+
+=== TABLE SCHEMA ===
+  uuid                      | uuid                 | null=NO
+  name                      | character varying    | null=NO
+  category                  | character varying    | null=NO
+  description               | text                 | null=YES
+  coordinates               | USER-DEFINED         | null=NO
+  tags_vector               | USER-DEFINED         | null=YES
+  visit_duration_min        | integer              | null=NO
+  price                     | double precision     | null=NO
+  entrance_fee              | double precision     | null=NO
+  open_time                 | integer              | null=NO
+  close_time                | integer              | null=NO
+  priority_score            | double precision     | null=NO
+  tags                      | ARRAY                | null=YES
+  is_outdoor                | boolean              | null=NO
+  weather_penalty           | double precision     | null=NO
+  datetime_created          | timestamp with time zone | null=NO
+  datetime_modified         | timestamp with time zone | null=NO
+
+=== INDEXES ===
+  poi_pkey
+  uq_poi_name_coord
+  idx_poi_coordinates
+  idx_poi_price
+  idx_poi_tags_vector
+  idx_poi_weather_penalty

@@ -13,6 +13,7 @@ from geoalchemy2.types import Geography  # Only for casting center point
 
 from app.models.poi import PointOfInterest
 from app.schemas.trip import LLMDataContract, POIResponse
+from app.services.utility_scorer import UtilityScorer
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +231,28 @@ class SpatialFilterService:
 
         result = await db_session.execute(stmt)
         rows = result.fetchall()
-        return [self._row_to_poi(row, is_locked=False) for row in rows]
+
+        # Score POIs with UtilityScorer
+        scorer = UtilityScorer()
+        existing_categories = set()
+        scored_pois = []
+
+        for row in rows:
+            poi = self._row_to_poi(row, is_locked=False)
+
+            # Cosine similarity: not available as named column, use fallback
+            cosine_sim = 0.5
+
+            breakdown = scorer.score_poi(poi, contract, cosine_sim, existing_categories)
+            poi.score_breakdown = breakdown
+            poi.utility_score = scorer.compute_utility(breakdown)
+
+            existing_categories.add(poi.category)
+            scored_pois.append(poi)
+
+        # Sort by utility_score descending
+        scored_pois.sort(key=lambda p: p.utility_score, reverse=True)
+        return scored_pois
 
     @staticmethod
     def _row_to_poi(row, is_locked: bool) -> POIResponse:

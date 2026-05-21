@@ -8,7 +8,7 @@ import { MockAuthModal } from "@/components/MockAuthModal"
 import { SavedTripsPage } from "@/components/SavedTripsPage"
 import { Toast } from "@/components/Toast"
 import { getSavedDrafts, saveDraft } from "@/lib/storage"
-import { searchPois } from "@/lib/mockItineraryFallback"
+import { searchPois, getPoi } from "@/lib/mockItineraryFallback"
 import { generateRealItinerary, searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api"
 import { streamTripPlan, type StreamStep } from "@/lib/streamApi"
 import type { AIMessage } from "@/components/AITripChatPanel"
@@ -304,9 +304,9 @@ export default function Page() {
            hotel_location: { latitude: 16.4637, longitude: 107.5905 },
            stops: d.items.map(item => ({
              poi_id: item.poiId,
-             poi_name: POI_CACHE.get(item.poiId)?.name || "Unknown",
-             location: { latitude: POI_CACHE.get(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || 0 },
-             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || 60
+             poi_name: POI_CACHE.get(item.poiId)?.name || getPoi(item.poiId)?.name || "Unknown",
+             location: { latitude: POI_CACHE.get(item.poiId)?.lat || getPoi(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || getPoi(item.poiId)?.lng || 0 },
+             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || getPoi(item.poiId)?.estimatedDurationMinutes || 60
            }))
          }))
        }
@@ -373,9 +373,9 @@ export default function Page() {
            hotel_location: { latitude: 16.4637, longitude: 107.5905 },
            stops: d.items.map(item => ({
              poi_id: item.poiId,
-             poi_name: POI_CACHE.get(item.poiId)?.name || "Unknown",
-             location: { latitude: POI_CACHE.get(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || 0 },
-             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || 60
+             poi_name: POI_CACHE.get(item.poiId)?.name || getPoi(item.poiId)?.name || "Unknown",
+             location: { latitude: POI_CACHE.get(item.poiId)?.lat || getPoi(item.poiId)?.lat || 0, longitude: POI_CACHE.get(item.poiId)?.lng || getPoi(item.poiId)?.lng || 0 },
+             visit_duration_min: POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || getPoi(item.poiId)?.estimatedDurationMinutes || 60
            }))
          }))
        }

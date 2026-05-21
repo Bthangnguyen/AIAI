@@ -48,7 +48,7 @@ def test_impossible_time_windows():
     request = TravelPlanRequest(pois=[p01, p03], hotels=[hotel], constraints=constraints)
     
     service = TravelPlanService()
-    result = service.plan(request, time_limit_per_day=5)
+    result = service.plan(request, time_limit=5)
     
     # Kết quả trả về phải hợp lệ
     assert result.num_days == 1
@@ -91,7 +91,7 @@ def test_penalty_imbalance():
     constraints = TravelConstraints(num_days=1, transport_modes=[TransportMode.TAXI])
     request = TravelPlanRequest(pois=pois, hotels=[hotel], constraints=constraints)
     
-    result = service.plan(request, time_limit_per_day=5)
+    result = service.plan(request, time_limit=5)
     
     # Restore monkeypatch
     src.services.travel_solver.create_solver = original_create_solver
@@ -120,7 +120,7 @@ def test_capacity_bottleneck():
     
     request = TravelPlanRequest(pois=pois, hotels=[hotel], constraints=constraints, day_plans=day_plans)
     service = TravelPlanService()
-    result = service.plan(request, time_limit_per_day=5)
+    result = service.plan(request, time_limit=5)
     
     # Toan bo thoi gian di chuyen + thoi gian tham quan cua tat ca 14 POIs
     # vuot xa 240 phut. Allocator Stage 1 se drop phan lon.

@@ -1,62 +1,62 @@
 name,category,latitude,longitude,visit_duration_min,price,entrance_fee,open_time,close_time,tags,description,is_outdoor
-Đại Nội Huế,historical,16.4698,107.5786,120,0,200000,420,1020,"culture,heritage,UNESCO",Imperial Citadel of Hue - UNESCO World Heritage,false
-Chùa Thiên Mụ,temple,16.4538,107.5466,60,0,0,360,1080,"temple,spiritual,panorama",Iconic 7-story pagoda on Perfume River,true
-Lăng Tự Đức,historical,16.4575,107.5668,90,0,150000,420,1020,"culture,heritage,tomb",Tomb of Emperor Tu Duc in lush gardens,true
-Chợ Đông Ba,market,16.4687,107.5851,60,0,0,300,1140,"market,street_food,shopping",Largest market in Hue for local goods,false
-Cầu Trường Tiền,landmark,16.4691,107.5801,30,0,0,0,1440,"landmark,photo,riverside",Historic bridge spanning Perfume River,true
-Bún Bò Huế Bà Tuyết,restaurant,16.4629,107.5893,45,50000,0,360,1260,"street_food,local,spicy",Famous Bun Bo Hue noodle shop,false
-Lăng Khải Định,historical,16.4062,107.5994,90,0,150000,420,1020,"culture,heritage,art_deco",Ornate tomb with mosaic decorations,false
-Biển Thuận An,beach,16.5437,107.6312,180,0,0,360,1080,"beach,nature,swimming",Nearest beach to Hue city center,true
-Sông Hương Boat Tour,tour,16.4590,107.5770,120,200000,0,480,1020,"river,scenic,boat",Sunset dragon boat cruise on Perfume River,true
-Núi Ngự Bình,nature,16.4365,107.5878,150,0,0,360,1080,"hiking,nature,panorama",Mountain hike with panoramic city views,true
-Lăng Minh Mạng,historical,16.4102,107.5538,90,0,150000,420,1020,"culture,heritage,tomb",Tomb of Emperor Minh Mang with lakes and gardens,true
-Điện Hòn Chén,temple,16.4261,107.5425,60,0,30000,420,1020,"temple,spiritual,river",Riverside temple dedicated to goddess Po Nagar,true
-Hồ Tịnh Tâm,nature,16.4725,107.5840,45,0,0,0,1440,"nature,garden,relax",Tranquil lotus pond inside Imperial City walls,true
-Bảo tàng Cổ vật Cung đình Huế,museum,16.4712,107.5798,60,0,50000,420,1020,"museum,culture,artifact",Royal antiquities museum inside the Citadel,false
-Phố đi bộ Nguyễn Đình Chiểu,entertainment,16.4640,107.5898,60,0,0,1080,1380,"nightlife,walking,food",Pedestrian night street with food vendors,true
-Công viên Thương Bạc,park,16.4672,107.5830,30,0,0,0,1440,"park,relax,riverside",Riverside park near Truong Tien Bridge,true
-Nhà hàng Cung Đình Tịnh Gia Viên,restaurant,16.4645,107.5760,90,300000,0,600,1260,"fine_dining,culture,royal",Royal Hue cuisine fine dining experience,false
-Quán Hạnh,restaurant,16.4618,107.5888,45,40000,0,360,1260,"street_food,local,vegetarian",Popular vegetarian noodle shop,false
-Cơm Hến Bà Hoa,restaurant,16.4670,107.5890,40,30000,0,360,1200,"street_food,local,traditional",Famous clam rice dish of Hue,false
-Bánh Bèo Bà Đỏ,restaurant,16.4655,107.5875,30,25000,0,360,1200,"street_food,local,snack",Traditional Hue steamed rice cakes,false
-Chè Hẻm,restaurant,16.4638,107.5902,30,20000,0,540,1320,"dessert,local,sweet",Hidden alley sweet soup shop famous among locals,false
-Kim Long Garden House,historical,16.4522,107.5472,60,0,50000,480,1020,"garden,heritage,architecture",Traditional Hue garden house in Kim Long village,true
-Thanh Toàn Bridge,historical,16.4315,107.6352,45,0,20000,420,1080,"heritage,architecture,village",Japanese-style covered tile bridge from 1776,true
-Đầm Chuồn,nature,16.5200,107.6100,120,0,0,300,1080,"lagoon,nature,fishing",Tam Giang lagoon eco-tourism with fishing boats,true
-Chùa Từ Hiếu,temple,16.4372,107.5585,60,0,0,420,1020,"temple,spiritual,zen",Zen Buddhist monastery where Thich Nhat Hanh lived,true
-Lăng Gia Long,historical,16.3888,107.5355,90,0,100000,420,1020,"culture,heritage,tomb",Remote tomb of founding Nguyen Dynasty emperor,true
-Phá Tam Giang,nature,16.5500,107.6200,180,0,0,300,1080,"lagoon,nature,boat",Largest lagoon in Southeast Asia - boat tours,true
-Suối khoáng nóng Thanh Tân,nature,16.2800,107.4900,180,0,200000,480,1020,"hot_spring,nature,relax",Natural hot springs resort 30km from Hue,true
-Bạch Mã National Park,nature,16.2100,107.8700,300,0,60000,420,1020,"hiking,nature,wildlife",Mountain national park with waterfalls and trails,true
-Chùa Huyền Không Sơn Thượng,temple,16.4330,107.5450,60,0,0,420,1020,"temple,zen,peaceful",Beautiful Zen temple in hills west of Hue,true
-An Định Palace,historical,16.4615,107.5845,45,0,50000,420,1020,"heritage,architecture,royal",French-influenced royal palace on An Cuu River,false
-Bảo tàng Hồ Chí Minh Huế,museum,16.4750,107.5890,60,0,0,420,1020,"museum,history,culture",Ho Chi Minh Museum branch in Hue,false
-Trung tâm Nghệ thuật Điềm Phùng Thị,museum,16.4685,107.5800,45,0,20000,480,1020,"art,museum,sculpture",Art center with sculptures by Diem Phung Thi,false
-Phủ Tùng Thiện Vương,historical,16.4580,107.5820,40,0,30000,480,1020,"heritage,architecture,poetry",Prince's residence and poetry museum,false
-Vọng Cảnh Hill,nature,16.4300,107.5680,90,0,0,360,1080,"hiking,panorama,sunset",Hilltop viewpoint overlooking Perfume River,true
-Hue Imperial Museum of Fine Arts,museum,16.4630,107.5795,60,0,30000,420,1020,"art,museum,culture",Fine arts museum in Long An Palace,false
-Arena Trường Đấu Voi,historical,16.4555,107.5870,30,0,0,0,1440,"landmark,history,unique",Ruins of historic elephant fighting arena,true
-Thiên An Hill,nature,16.4150,107.5950,60,0,0,360,1080,"hiking,nature,monastery",Pine-covered hill with a monastery on top,true
-Làng Hương Thủy Xuân,cultural,16.4400,107.5750,45,0,0,480,1080,"craft,incense,village",Traditional incense making village,true
-Cà phê Sơn,cafe,16.4635,107.5882,45,30000,0,420,1320,"cafe,view,relax",Rooftop cafe with Perfume River views,false
-Cà phê Mơ,cafe,16.4650,107.5905,40,25000,0,480,1380,"cafe,garden,quiet",Hidden garden cafe popular with locals,false
-Highlands Coffee Trường Tiền,cafe,16.4685,107.5810,30,40000,0,420,1380,"cafe,modern,bridge_view",Modern cafe with Truong Tien Bridge view,false
-Quán ăn Lạc Thiện,restaurant,16.4620,107.5870,45,35000,0,600,1260,"vegetarian,local,buddhist",Long-established vegetarian restaurant,false
-Bánh Khoái Hàng Me,restaurant,16.4658,107.5850,40,45000,0,600,1200,"street_food,pancake,crispy",Famous crispy Hue pancake shop,false
-Nem Lụi Bà Hạnh,restaurant,16.4645,107.5865,35,30000,0,540,1260,"street_food,grilled,skewer",Best grilled pork skewers in Hue,false
-Cơm Âm Phủ,restaurant,16.4660,107.5880,40,35000,0,1020,1380,"street_food,night,rice",Night-only rice dish served near ghost market,false
-Hue Wellness Spa,spa,16.4640,107.5910,120,500000,0,540,1260,"spa,relax,wellness",Luxury spa with traditional Hue treatments,false
-Alba Spa Hue,spa,16.4655,107.5920,90,400000,0,540,1260,"spa,massage,luxury",Five-star spa in the heart of Hue,false
-Vespa Adventures Hue,tour,16.4635,107.5895,240,1200000,0,480,1020,"vespa,adventure,food_tour",Guided Vespa tour exploring Hue countryside,true
-Hue Citadel Night Tour,tour,16.4698,107.5786,90,0,150000,1080,1320,"culture,night,heritage",Special evening tour of illuminated Imperial City,false
-Chùa Báo Quốc,temple,16.4590,107.5850,45,0,0,420,1020,"temple,spiritual,historic",Historic Buddhist temple from 1670,false
-Đập đá Vĩ Dạ,landmark,16.4510,107.5920,30,0,0,0,1440,"landmark,poetry,nostalgia",Iconic location from famous Vietnamese poem,true
-Hồ Thủy Tiên Water Park,abandoned,16.3900,107.5500,60,0,0,0,1440,"urban_exploration,photography,abandoned",Abandoned water park - popular for photography,true
-Trường Quốc Học Huế,historical,16.4680,107.5870,30,0,0,0,1440,"education,history,landmark",Historic school where Ho Chi Minh studied,false
-Thiền viện Trúc Lâm Bạch Mã,temple,16.2500,107.8500,60,0,0,420,1020,"temple,zen,mountain",Zen monastery in Bach Ma mountain setting,true
-Ruộng bậc thang A Lưới,nature,16.2400,107.2900,120,0,0,360,1080,"rice_terraces,nature,ethnic",Stunning rice terraces in A Luoi highland,true
-Suối Voi (Elephant Spring),nature,16.2700,107.7500,120,0,30000,420,1080,"waterfall,nature,swimming",Natural swimming hole with elephant-shaped rocks,true
-Làng cổ Phước Tích,cultural,16.5100,107.3400,90,0,30000,480,1020,"village,heritage,pottery",500-year-old craft village with ancient houses,false
-Công viên nước Thanh Tân,entertainment,16.2800,107.4850,240,0,250000,480,1020,"water_park,family,fun",Water park next to hot springs resort,true
-Cáp treo Bạch Mã,nature,16.2150,107.8600,60,0,200000,480,1020,"cable_car,panorama,mountain",Cable car ride with mountain panoramas,true
-Chợ Tây Lộc,market,16.4760,107.5720,45,0,0,300,1020,"market,local,morning",Traditional morning market for Hue locals,false
+Đại Nội Huế,historical,16.4678,107.5784,120,0,200000,420,1020,"culture,heritage,UNESCO",Imperial Citadel of Hue - UNESCO World Heritage,false
+Chùa Thiên Mụ,temple,16.4536,107.5448,60,0,0,360,1080,"temple,spiritual,panorama",Iconic 7-story pagoda on Perfume River,true
+Lăng Tự Đức,historical,16.4326,107.5658,90,0,150000,420,1020,"culture,heritage,tomb",Tomb of Emperor Tu Duc in lush gardens,true
+Chợ Đông Ba,market,16.4726,107.5885,60,0,0,300,1140,"market,street_food,shopping",Largest market in Hue for local goods,false
+Cầu Trường Tiền,landmark,16.4689,107.5886,30,0,0,0,1440,"landmark,photo,riverside",Historic bridge spanning Perfume River,true
+Bún Bò Huế Bà Tuyết,restaurant,16.4714,107.5982,45,50000,0,360,1260,"street_food,local,spicy",Famous Bun Bo Hue noodle shop,false
+Lăng Khải Định,historical,16.3989,107.5903,90,0,150000,420,1020,"culture,heritage,art_deco",Ornate tomb with mosaic decorations,false
+Biển Thuận An,beach,16.5615,107.6369,180,0,0,360,1080,"beach,nature,swimming",Nearest beach to Hue city center,true
+Sông Hương Boat Tour,tour,16.4668,107.5925,120,200000,0,480,1020,"river,scenic,boat",Sunset dragon boat cruise on Perfume River,true
+Núi Ngự Bình,nature,16.4390,107.5880,150,0,0,360,1080,"hiking,nature,panorama",Mountain hike with panoramic city views,true
+Lăng Minh Mạng,historical,16.3875,107.5694,90,0,150000,420,1020,"culture,heritage,tomb",Tomb of Emperor Minh Mang with lakes and gardens,true
+Điện Hòn Chén,temple,16.4258,107.5211,60,0,30000,420,1020,"temple,spiritual,river",Riverside temple dedicated to goddess Po Nagar,true
+Hồ Tịnh Tâm,nature,16.4760,107.5794,45,0,0,0,1440,"nature,garden,relax",Tranquil lotus pond inside Imperial City walls,true
+Bảo tàng Cổ vật Cung đình Huế,museum,16.4687,107.5815,60,0,50000,420,1020,"museum,culture,artifact",Royal antiquities museum inside the Citadel,false
+Phố đi bộ Nguyễn Đình Chiểu,entertainment,16.4678,107.5856,60,0,0,1080,1380,"nightlife,walking,food",Pedestrian night street with food vendors,true
+Công viên Thương Bạc,park,16.4682,107.5828,30,0,0,0,1440,"park,relax,riverside",Riverside park near Truong Tien Bridge,true
+Nhà hàng Cung Đình Tịnh Gia Viên,restaurant,16.4660,107.5856,90,300000,0,600,1260,"fine_dining,culture,royal",Royal Hue cuisine fine dining experience,false
+Quán Hạnh,restaurant,16.4664,107.5951,45,40000,0,360,1260,"street_food,local,vegetarian",Popular vegetarian noodle shop,false
+Cơm Hến Bà Hoa,restaurant,16.4671,107.5892,40,30000,0,360,1200,"street_food,local,traditional",Famous clam rice dish of Hue,false
+Bánh Bèo Bà Đỏ,restaurant,16.4746,107.5925,30,25000,0,360,1200,"street_food,local,snack",Traditional Hue steamed rice cakes,false
+Chè Hẻm,restaurant,16.4650,107.5908,30,20000,0,540,1320,"dessert,local,sweet",Hidden alley sweet soup shop famous among locals,false
+Kim Long Garden House,historical,16.4539,107.5512,60,0,50000,480,1020,"garden,heritage,architecture",Traditional Hue garden house in Kim Long village,true
+Thanh Toàn Bridge,historical,16.4318,107.6358,45,0,20000,420,1080,"heritage,architecture,village",Japanese-style covered tile bridge from 1776,true
+Đầm Chuồn,nature,16.5050,107.6690,120,0,0,300,1080,"lagoon,nature,fishing",Tam Giang lagoon eco-tourism with fishing boats,true
+Chùa Từ Hiếu,temple,16.4408,107.5741,60,0,0,420,1020,"temple,spiritual,zen",Zen Buddhist monastery where Thich Nhat Hanh lived,true
+Lăng Gia Long,historical,16.3725,107.5619,90,0,100000,420,1020,"culture,heritage,tomb",Remote tomb of founding Nguyen Dynasty emperor,true
+Phá Tam Giang,nature,16.5860,107.5250,180,0,0,300,1080,"lagoon,nature,boat",Largest lagoon in Southeast Asia - boat tours,true
+Suối khoáng nóng Thanh Tân,nature,16.4022,107.3876,180,0,200000,480,1020,"hot_spring,nature,relax",Natural hot springs resort 30km from Hue,true
+Bạch Mã National Park,nature,16.1979,107.8596,300,0,60000,420,1020,"hiking,nature,wildlife",Mountain national park with waterfalls and trails,true
+Chùa Huyền Không Sơn Thượng,temple,16.4839,107.5028,60,0,0,420,1020,"temple,zen,peaceful",Beautiful Zen temple in hills west of Hue,true
+An Định Palace,historical,16.4586,107.5910,45,0,50000,420,1020,"heritage,architecture,royal",French-influenced royal palace on An Cuu River,false
+Bảo tàng Hồ Chí Minh Huế,museum,16.4646,107.5840,60,0,0,420,1020,"museum,history,culture",Ho Chi Minh Museum branch in Hue,false
+Trung tâm Nghệ thuật Điềm Phùng Thị,museum,16.4664,107.5846,45,0,20000,480,1020,"art,museum,sculpture",Art center with sculptures by Diem Phung Thi,false
+Phủ Tùng Thiện Vương,historical,16.4582,107.5815,40,0,30000,480,1020,"heritage,architecture,poetry",Prince's residence and poetry museum,false
+Vọng Cảnh Hill,nature,16.4333,107.5650,90,0,0,360,1080,"hiking,panorama,sunset",Hilltop viewpoint overlooking Perfume River,true
+Hue Imperial Museum of Fine Arts,museum,16.4687,107.5815,60,0,30000,420,1020,"art,museum,culture",Fine arts museum in Long An Palace,false
+Arena Trường Đấu Voi,historical,16.4429,107.5583,30,0,0,0,1440,"landmark,history,unique",Ruins of historic elephant fighting arena,true
+Thiên An Hill,nature,16.4124,107.5960,60,0,0,360,1080,"hiking,nature,monastery",Pine-covered hill with a monastery on top,true
+Làng Hương Thủy Xuân,cultural,16.4385,107.5684,45,0,0,480,1080,"craft,incense,village",Traditional incense making village,true
+Cà phê Sơn,cafe,16.4527,107.5512,45,30000,0,420,1320,"cafe,view,relax",Rooftop cafe with Perfume River views,false
+Cà phê Mơ,cafe,16.4653,107.5910,40,25000,0,480,1380,"cafe,garden,quiet",Hidden garden cafe popular with locals,false
+Highlands Coffee Trường Tiền,cafe,16.4685,107.5878,30,40000,0,420,1380,"cafe,modern,bridge_view",Modern cafe with Truong Tien Bridge view,false
+Quán ăn Lạc Thiện,restaurant,16.4716,107.5855,45,35000,0,600,1260,"vegetarian,local,buddhist",Long-established vegetarian restaurant,false
+Bánh Khoái Hàng Me,restaurant,16.4671,107.5946,40,45000,0,600,1200,"street_food,pancake,crispy",Famous crispy Hue pancake shop,false
+Nem Lụi Bà Hạnh,restaurant,16.4664,107.5951,35,30000,0,540,1260,"street_food,grilled,skewer",Best grilled pork skewers in Hue,false
+Cơm Âm Phủ,restaurant,16.4646,107.5944,40,35000,0,1020,1380,"street_food,night,rice",Night-only rice dish served near ghost market,false
+Hue Wellness Spa,spa,16.4695,107.5960,120,500000,0,540,1260,"spa,relax,wellness",Luxury spa with traditional Hue treatments,false
+Alba Spa Hue,spa,16.4678,107.5956,90,400000,0,540,1260,"spa,massage,luxury",Five-star spa in the heart of Hue,false
+Vespa Adventures Hue,tour,16.4678,107.5956,240,1200000,0,480,1020,"vespa,adventure,food_tour",Guided Vespa tour exploring Hue countryside,true
+Hue Citadel Night Tour,tour,16.4678,107.5784,90,0,150000,1080,1320,"culture,night,heritage",Special evening tour of illuminated Imperial City,false
+Chùa Báo Quốc,temple,16.4589,107.5807,45,0,0,420,1020,"temple,spiritual,historic",Historic Buddhist temple from 1670,false
+Đập đá Vĩ Dạ,landmark,16.4619,107.5956,30,0,0,0,1440,"landmark,poetry,nostalgia",Iconic location from famous Vietnamese poem,true
+Hồ Thủy Tiên Water Park,abandoned,16.4081,107.5789,60,0,0,0,1440,"urban_exploration,photography,abandoned",Abandoned water park - popular for photography,true
+Trường Quốc Học Huế,historical,16.4595,107.5838,30,0,0,0,1440,"education,history,landmark",Historic school where Ho Chi Minh studied,false
+Thiền viện Trúc Lâm Bạch Mã,temple,16.1833,107.7333,60,0,0,420,1020,"temple,zen,mountain",Zen monastery in Bach Ma mountain setting,true
+Ruộng bậc thang A Lưới,nature,16.2300,107.2800,120,0,0,360,1080,"rice_terraces,nature,ethnic",Stunning rice terraces in A Luoi highland,true
+Suối Voi (Elephant Spring),nature,16.2086,107.9620,120,0,30000,420,1080,"waterfall,nature,swimming",Natural swimming hole with elephant-shaped rocks,true
+Làng cổ Phước Tích,cultural,16.6382,107.3020,90,0,30000,480,1020,"village,heritage,pottery",500-year-old craft village with ancient houses,false
+Công viên nước Thanh Tân,entertainment,16.4022,107.3876,240,0,250000,480,1020,"water_park,family,fun",Water park next to hot springs resort,true
+Cáp treo Bạch Mã,nature,16.1979,107.8596,60,0,200000,480,1020,"cable_car,panorama,mountain",Cable car ride with mountain panoramas,true
+Chợ Tây Lộc,market,16.4746,107.5684,45,0,0,300,1020,"market,local,morning",Traditional morning market for Hue locals,false

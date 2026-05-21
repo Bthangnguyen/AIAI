@@ -27,8 +27,8 @@ class TestTravelItineraryDay:
         day = TravelItineraryDay(
             day_index=0,
             date="2025-06-15",
-            hotel_name="Rex Hotel",
-            hotel_location=Location(latitude=10.7769, longitude=106.7009),
+            start_hotel_name="Rex Hotel",
+            start_hotel_location=Location(latitude=10.7769, longitude=106.7009),
             stops=[],
             total_travel_min=0,
             total_visit_min=0,

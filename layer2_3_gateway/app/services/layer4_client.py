@@ -35,7 +35,7 @@ class Layer4Client:
                     "end_min": p.close_time,
                 },
                 "entrance_fee": p.entrance_fee,
-                "priority_score": p.priority_score,
+                "priority_score": p.utility_score,  # utility_score from Phase 0B scorer
                 "tags": p.tags or [],
                 "description": p.description,
                 "is_locked": p.is_locked,

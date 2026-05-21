@@ -26,6 +26,13 @@ def get_intensity(category: str) -> str:
     """Map POI category to intensity level for rhythm penalty."""
     return INTENSITY_MAP.get(category.lower(), "medium")
 
+def compute_fatigue_cost(poi) -> int:
+    """Compute fatigue cost from intensity × duration. Always positive."""
+    intensity = poi.intensity if poi.intensity != "medium" else get_intensity(poi.category)
+    base = {"light": 1.0, "medium": 2.0, "heavy": 3.0}.get(intensity, 2.0)
+    duration_factor = poi.visit_duration_min / 60.0
+    return max(1, round(base * duration_factor))
+
 
 class TravelSolverAdapter:
     """Adapts travel models to CVRPTW solver input and interprets output."""
@@ -152,6 +159,15 @@ class TravelSolverAdapter:
             "categories": categories,
             "intensities": intensities,
             "meal_assignments": meal_assignments,
+            "node_utilities": [0.0] * num_hotel_nodes + [poi.priority_score for poi in pois],
+            "fatigue_costs": [0] * num_hotel_nodes + [
+                poi.fatigue_cost if poi.fatigue_cost is not None else compute_fatigue_cost(poi)
+                for poi in pois
+            ],
+            "max_fatigue_per_day": kwargs.get("max_fatigue_per_day", 15),
+            "is_outdoor_list": [False] * num_hotel_nodes + [
+                getattr(poi, "is_outdoor", False) for poi in pois
+            ],
         }
 
         # Inject distance/duration matrices if available
@@ -300,6 +316,16 @@ class TravelSolverAdapter:
             "is_locked_list": is_locked_list,
             "categories": categories,
             "intensities": intensities,
+            # Phase 0C: utility-based drop penalty
+            "node_utilities": [0.0] + [poi.priority_score for poi in pois],
+            # Phase 2A: fatigue dimension
+            "fatigue_costs": [0] + [
+                poi.fatigue_cost if poi.fatigue_cost is not None else compute_fatigue_cost(poi)
+                for poi in pois
+            ],
+            "max_fatigue_per_day": 15,
+            # Phase 2B: outdoor avoidance
+            "is_outdoor_list": [False] + [getattr(poi, "is_outdoor", False) for poi in pois],
         }
         
         # If real matrix provided, extract distance and duration for this subset of locations

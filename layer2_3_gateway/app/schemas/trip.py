@@ -1,6 +1,6 @@
 """Pydantic schemas bridging Layer 2 (LLM) → Layer 3 (DB) → Layer 4 (Solver)."""
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 
@@ -29,6 +29,35 @@ class LLMDataContract(BaseModel):
     hotel_lon: Optional[float] = Field(None, description="Hotel longitude")
     hotel_name: Optional[str] = Field("Hotel", description="Hotel display name")
 
+    # === NEW: Scheduling Hints ===
+    estimated_pois: Optional[int] = Field(
+        None, description="Predicted number of POIs user wants (2-3 cho buổi tối, 8-12 cho cả ngày)"
+    )
+    time_slot: Optional[str] = Field(
+        None, description="morning/afternoon/evening/full_day/multi_day"
+    )
+    trip_duration_hours: Optional[float] = Field(
+        None, description="Estimated active hours (VD: 5.0 cho buổi tối)"
+    )
+    vibe: Optional[str] = Field(
+        None, description="romantic/adventure/chill/cultural/foodie/family"
+    )
+    trip_type: Optional[str] = Field(
+        None, description="sightseeing/food_tour/cafe_hopping/nightlife/mixed"
+    )
+
+    # === NEW: Preference weights ===
+    preferred_pace: Optional[str] = Field(None, description="chill/balanced/intense")
+    walking_tolerance: Optional[str] = Field(None, description="low/medium/high")
+    food_preferences: List[str] = Field(default_factory=list, description="vegetarian, bun_bo, cafe_muoi, etc.")
+    avoid_tags: List[str] = Field(default_factory=list, description="crowded, expensive, touristy")
+
+    # === NEW: Target category distribution (LLM infers from intent) ===
+    target_category_distribution: Optional[Dict[str, float]] = Field(
+        None,
+        description="VD: {'culture': 0.45, 'food': 0.20, 'cafe': 0.15, 'nature': 0.10, 'shopping': 0.05, 'rest': 0.05}"
+    )
+
 
 class ChatProcessResponse(BaseModel):
     """Output of /chat_process containing status, AI reply, and updated contract."""
@@ -38,6 +67,18 @@ class ChatProcessResponse(BaseModel):
 
 
 # === Layer 3 Output: POI returned from spatial filter ===
+
+class POIScoreBreakdown(BaseModel):
+    """Per-POI utility breakdown — transparent scoring."""
+    semantic_score: float = Field(0.5, description="pgvector cosine similarity to user intent")
+    quality_score: float = Field(0.5, description="Rating + review count + popularity")
+    localness_score: float = Field(0.5, description="Tính bản địa, không generic")
+    novelty_score: float = Field(0.5, description="Khác biệt so với lịch trình bình thường")
+    comfort_score: float = Field(0.5, description="Phù hợp pace/walking tolerance của user")
+    budget_score: float = Field(0.5, description="Cost-value ratio so với budget user")
+    distance_score: float = Field(0.5, description="Gần hotel/cluster hiện tại")
+    diversity_gain: float = Field(0.0, description="Marginal diversity gain khi thêm POI này")
+
 
 class POIResponse(BaseModel):
     """Single POI result from Layer 3 spatial filter."""
@@ -57,6 +98,8 @@ class POIResponse(BaseModel):
     priority_score: float = 0.5
     tags: Optional[List[str]] = None
     is_locked: bool = False
+    score_breakdown: Optional[POIScoreBreakdown] = None
+    utility_score: float = Field(0.5, description="Weighted sum of breakdown scores")
 
 
 # === Orchestrator Output: Assembled for Layer 4 ===

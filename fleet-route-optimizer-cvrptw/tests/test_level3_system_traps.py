@@ -63,7 +63,7 @@ def test_matrix_explosion():
     day_plans = [DayPlan(day_index=0, date="Day 1", hotel_id="hotel_1", max_daily_minutes=1440, max_pois=100)]
     request.day_plans = day_plans
     
-    result = service.plan(request, time_limit_per_day=3)
+    result = service.plan(request, time_limit=3)
     elapsed = time.time() - start_time
     
     assert result.status == "success"
@@ -88,7 +88,7 @@ def test_osrm_timeout_fallback(monkeypatch):
     pois = generate_random_pois(5)
     
     request = TravelPlanRequest(pois=pois, hotels=[hotel], constraints=constraints)
-    result = service.plan(request, time_limit_per_day=2)
+    result = service.plan(request, time_limit=2)
     
     assert result.status == "success"
     assert result.total_pois_visited > 0

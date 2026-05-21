@@ -23,6 +23,8 @@ from ..models.domain import (
 from ..models.api import TravelPlanRequest, ReRouteRequest
 from .travel_solver import TravelSolverAdapter
 from .distance_cache import DistanceCacheService
+from .itinerary_validator import ItineraryValidator
+from .rest_inserter import RestBreakInserter
 from ..config import get_logger
 
 logger = get_logger(__name__)
@@ -105,19 +107,46 @@ class TravelPlanService:
             request.constraints, matrix, time_limit, solver_type
         )
 
-        # 5. Assemble response
+        # 5. Post-solve validation
+        poi_map = {p.id: p for p in request.pois}
+        validator = ItineraryValidator()
+        validation = validator.validate(days_result, poi_map, {
+            "max_consecutive_heavy": getattr(request.constraints, "max_consecutive_heavy", 2),
+            "avoid_outdoor_start": 720,
+            "avoid_outdoor_end": 840,
+            "rest_interval_min": getattr(request.constraints, "rest_interval_min", 180),
+        })
+        validation_notes = []
+        if validation.issues:
+            logger.info(f"Validation: {len(validation.issues)} issues (score={validation.score:.2f})")
+            for issue in validation.issues:
+                logger.info(f"  [{issue.severity}] {issue.rule}: {issue.message}")
+                validation_notes.append(f"[{issue.severity}] {issue.message}")
+
+        # 6. Post-solve rest break insertion
+        rest_inserter = RestBreakInserter()
+        rest_interval = getattr(request.constraints, "rest_interval_min", 180)
+        rest_duration = getattr(request.constraints, "rest_duration_min", 20)
+        for i, day in enumerate(days_result):
+            days_result[i] = rest_inserter.insert_breaks(
+                day, poi_map,
+                rest_interval_min=rest_interval,
+                rest_duration_min=rest_duration,
+            )
+
+        # 7. Assemble response
         total_pois = sum(d.num_pois for d in days_result)
         total_fee = sum(d.total_entrance_fee for d in days_result)
         total_travel = sum(d.total_travel_min for d in days_result)
         total_dist = sum(d.total_distance_km for d in days_result)
 
         # Collect dropped POIs
-        visited_poi_ids = {stop.poi_id for day in days_result for stop in day.stops}
+        visited_poi_ids = {stop.poi_id for day in days_result for stop in day.stops if stop.poi_id != "__rest_break__"}
         dropped_pois = [
             {"poi_id": p.id, "reason": "solver_dropped"}
             for p in request.pois if p.id not in visited_poi_ids
         ]
-        total_dropped = len(request.pois) - total_pois
+        total_dropped = len(request.pois) - len(visited_poi_ids)
 
         return TravelItinerary(
             status="success",
@@ -132,6 +161,7 @@ class TravelPlanService:
             budget_used=total_fee,
             dropped_pois=dropped_pois if dropped_pois else None,
             solver=solver_type,
+            validation_notes=validation_notes if validation_notes else None,
         )
 
     def _validate_budget(

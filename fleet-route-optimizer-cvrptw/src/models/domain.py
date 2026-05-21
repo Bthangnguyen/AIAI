@@ -62,6 +62,10 @@ class POI(BaseModel):
     intensity: Literal["heavy", "medium", "light"] = Field(
         "medium", description="Activity intensity for rhythm penalty (heavy/medium/light)"
     )
+    is_outdoor: bool = Field(False, description="Outdoor POI (affected by weather/heat)")
+    fatigue_cost: Optional[int] = Field(
+        None, description="Override fatigue cost. If None, auto-computed from intensity + duration."
+    )
 
 
 class Hotel(BaseModel):
@@ -115,6 +119,11 @@ class TravelConstraints(BaseModel):
     meal_break_window: Optional[TimeWindow] = Field(
         None, description="Preferred meal time window (e.g. 11:30-13:30)"
     )
+    # === NEW: Comfort/Fatigue constraints ===
+    max_consecutive_heavy: int = Field(2, description="Max consecutive heavy-intensity POIs before validator warns")
+    rest_interval_min: int = Field(180, description="Insert rest break every N minutes of activity")
+    rest_duration_min: int = Field(20, description="Duration of auto-inserted rest break")
+    max_fatigue_per_day: int = Field(15, description="Max accumulated fatigue score per day")
 
 
 class TravelItineraryStop(BaseModel):
@@ -143,6 +152,10 @@ class TravelItineraryDay(BaseModel):
     total_distance_km: float = Field(..., description="Total distance traveled")
     total_entrance_fee: float = Field(0.0, description="Total entrance fees for this day")
     num_pois: int = Field(..., description="Number of POIs visited")
+    # === NEW: Narrative fields ===
+    narrative_title: Optional[str] = Field(None, description="VD: 'Làm quen với Huế cổ'")
+    narrative_description: Optional[str] = Field(None, description="Flow trải nghiệm dạng story")
+    plan_reasoning: Optional[List[str]] = Field(None, description="Why this plan works bullets")
 
 
 class TravelItinerary(BaseModel):
@@ -160,3 +173,6 @@ class TravelItinerary(BaseModel):
     dropped_pois: Optional[List[Dict]] = Field(None, description="POIs not visited")
     solver: Optional[str] = Field(None, description="Solver used")
     message: Optional[str] = Field(None, description="Error/info message")
+    # === NEW: Narrative + validation fields ===
+    trip_narrative: Optional[str] = Field(None, description="Câu chuyện tổng thể chuyến đi")
+    validation_notes: Optional[List[str]] = Field(None, description="Ghi chú chất lượng lịch")

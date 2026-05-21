@@ -28,7 +28,16 @@ Phân tích yêu cầu và trả về JSON với các trường sau:
 QUAN TRỌNG:
 - Cứ hễ khách nhắc đến tên địa điểm cụ thể là phải đưa vào locked_pois.
 - tags nên là danh sách ngắn gọn, chuẩn hóa bằng tiếng Anh.
-- Không bịa thêm thông tin khách không nói."""
+- Không bịa thêm thông tin khách không nói.
+
+THÊM: Phân tích và suy luận các trường sau:
+- estimated_pois: Ước lượng số địa điểm user muốn đi. "buổi tối 2-3 quán" → 3. "đi Huế 3 ngày" → 15-20. "tìm 1 quán cafe" → 1.
+- time_slot: Khung giờ. "buổi tối" → "evening". "cả ngày" → "full_day". "sáng mai" → "morning".
+- trip_duration_hours: Thời lượng. "buổi tối" → 4-5h. "cả ngày" → 10-12h. "1 buổi sáng" → 3-4h.
+- vibe: "lãng mạn" → "romantic". "khám phá" → "adventure". "chill" → "chill". "ăn uống" → "foodie".
+- trip_type: "food tour" → "food_tour". "cafe hopping" → "cafe_hopping". "ngắm cảnh" → "sightseeing".
+- target_category_distribution: Suy luận từ ý định. VD "văn hóa lịch sử" → {"culture": 0.50, "food": 0.20, "cafe": 0.15, "nature": 0.10, "shopping": 0.05}
+- avoid_tags: "không muốn đông" → ["crowded"]. "tránh chỗ đắt" → ["expensive"]."""
 
 CHAT_PROCESS_SYSTEM_PROMPT = """Bạn là trợ lý du lịch ảo chuyên trách phân tích và cập nhật hợp đồng dữ liệu chuyến đi (LLMDataContract) từ cuộc trò chuyện với khách hàng.
 
@@ -51,6 +60,16 @@ Nhiệm vụ của bạn:
 4. Xử lý trường hợp đặc biệt:
    - Nếu khách chọn địa điểm ngoài Huế (ví dụ "Hà Nội", "Đà Nẵng", "Paris"): đặt `destination` theo ý khách, nhưng set `status = "clarifying"`, và `reply` phải là câu hỏi khéo léo nói rằng hệ thống hiện tại chỉ hỗ trợ Huế và hỏi khách có muốn đổi sang đi Huế không.
    - Tránh đưa tên thành phố chung chung vào `locked_pois` (ví dụ "Huế", "Đà Nẵng"...) để tránh lỗi.
+
+THÊM: Cập nhật các trường scheduling hints khi khách đề cập:
+- estimated_pois: Ước lượng số địa điểm user muốn. "2-3 quán" → 3. "cả ngày" → 8-12.
+- time_slot: "buổi tối" → "evening". "cả ngày" → "full_day".
+- trip_duration_hours: "buổi tối" → 4-5. "cả ngày" → 10-12.
+- vibe: "lãng mạn" → "romantic". "chill" → "chill".
+- trip_type: "food tour" → "food_tour". "nghiêm túc" → "sightseeing".
+- target_category_distribution: Suy luận từ ý định.
+- avoid_tags: "không muốn đông" → ["crowded"].
+- preferred_pace: "thư thả" → "chill". "nhiều chỗ" → "intense".
 """
 
 

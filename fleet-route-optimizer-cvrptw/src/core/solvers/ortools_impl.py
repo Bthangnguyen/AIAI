@@ -194,20 +194,22 @@ class ORToolsSolverImpl:
         distance_weight: float = 1.0,
         **kwargs
     ) -> Optional[Dict]:
-        """
-        Solve CVRPTW problem using OR-Tools.
-        
-        Supports both single-depot and multi-depot modes.
-        Multi-depot mode is activated when 'starts' and 'ends' arrays
-        are present in problem_data.
-        
-        Args:
-            time_limit_seconds: Maximum time for solver
-            log_search: Whether to log search progress
-            vehicle_penalty_weight: Weight for minimizing number of vehicles (single-depot only)
-            distance_weight: Weight for distance minimization
-            **kwargs: diversity_penalty, rhythm_penalty, drop_penalty, first_solution_strategy
-        """
+        # Dump problem_data to a file for debugging
+        try:
+            import json
+            # Handle non-serializable objects (like tuples in locations) by converting them
+            serializable_data = {}
+            for k, v in self.problem_data.items():
+                if k == "locations":
+                    serializable_data[k] = [list(loc) for loc in v]
+                else:
+                    serializable_data[k] = v
+            with open("problem_data.json", "w", encoding="utf-8") as f:
+                json.dump(serializable_data, f, indent=2)
+            print("--- Wrote problem_data.json successfully ---")
+        except Exception as e:
+            print("--- Failed to write problem_data.json:", e)
+
         N = len(self.problem_data['distance_matrix'])
         num_vehicles = self.problem_data['num_vehicles']
         
@@ -304,6 +306,25 @@ class ORToolsSolverImpl:
         
         time_dimension = routing.GetDimensionOrDie('Time')
         
+        # === Fatigue dimension (cumulative, only positive) ===
+        fatigue_costs = self.problem_data.get('fatigue_costs', [])
+        max_fatigue = self.problem_data.get('max_fatigue_per_day', 15)
+        
+        if fatigue_costs:
+            def fatigue_callback(from_index):
+                node = manager.IndexToNode(from_index)
+                if node in depot_indices:
+                    return 0
+                return fatigue_costs[node] if node < len(fatigue_costs) else 0
+            
+            fatigue_cb_index = routing.RegisterUnaryTransitCallback(fatigue_callback)
+            routing.AddDimensionWithVehicleCapacity(
+                fatigue_cb_index, 0,
+                [max_fatigue] * num_vehicles,
+                True, 'Fatigue'
+            )
+            logger.info(f"Fatigue dimension added: max_per_day={max_fatigue}")
+        
         # POI time windows
         for loc_idx, tw in enumerate(self.problem_data['time_windows']):
             if loc_idx in depot_indices:
@@ -333,6 +354,27 @@ class ORToolsSolverImpl:
         if not is_multi_depot:
             routing.SetFixedCostOfAllVehicles(int(vehicle_penalty_weight))
         
+        # === Outdoor heat avoidance (CumulVar.RemoveInterval) ===
+        avoid_outdoor = self.problem_data.get('avoid_outdoor_window')
+        is_outdoor_list = self.problem_data.get('is_outdoor_list', [])
+        
+        if avoid_outdoor and is_outdoor_list:
+            avoid_start_scaled = int(avoid_outdoor[0] * 100)
+            avoid_end_scaled = int(avoid_outdoor[1] * 100)
+            outdoor_blocked = 0
+            
+            for node in range(N):
+                if node in depot_indices:
+                    continue
+                if node < len(is_outdoor_list) and is_outdoor_list[node]:
+                    index = manager.NodeToIndex(node)
+                    time_dimension.CumulVar(index).RemoveInterval(
+                        avoid_start_scaled, avoid_end_scaled
+                    )
+                    outdoor_blocked += 1
+            
+            logger.info(f"Outdoor avoidance: {outdoor_blocked} nodes blocked from {avoid_outdoor[0]}-{avoid_outdoor[1]} min")
+        
         logger.info(
             f"Penalties: diversity={diversity_penalty}, rhythm={rhythm_penalty}, "
             f"multi_depot={is_multi_depot}"
@@ -342,6 +384,7 @@ class ORToolsSolverImpl:
         drop_penalty = kwargs.get('drop_penalty', 10_000_000_000)
         is_locked_list = self.problem_data.get('is_locked_list', [])
         meal_assignments = self.problem_data.get('meal_assignments', {})
+        node_utilities = self.problem_data.get('node_utilities', [])
         
         for node in range(N):
             if node in depot_indices:
@@ -358,48 +401,79 @@ class ORToolsSolverImpl:
                 # Locked POI: must visit (no disjunction)
                 logger.info(f"Node {node} is locked -> must visit")
             else:
-                # Regular POI: can be dropped with high penalty
-                routing.AddDisjunction([index], drop_penalty)
+                # Utility-based drop penalty: high utility = hard to drop
+                if node_utilities and node < len(node_utilities):
+                    utility = max(0.0, min(1.0, node_utilities[node]))
+                    penalty = int(100_000 + utility * 900_000)
+                else:
+                    penalty = drop_penalty
+                routing.AddDisjunction([index], penalty)
         
         # === Search parameters ===
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        strategy_name = kwargs.get('first_solution_strategy', 'PATH_CHEAPEST_ARC')
-        search_parameters.first_solution_strategy = getattr(
-            routing_enums_pb2.FirstSolutionStrategy, strategy_name
-        )
         search_parameters.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
         )
         search_parameters.time_limit.seconds = time_limit_seconds
         search_parameters.log_search = log_search
         
-        # === Monitor thread ===
-        solving = [True]
-        start_time = time.time()
+        # Determine fallback strategies to try sequentially
+        requested_strategy = kwargs.get('first_solution_strategy', 'PATH_CHEAPEST_ARC')
+        strategies_to_try = []
+        if requested_strategy not in ['PARALLEL_CHEAPEST_INSERTION', 'PATH_MOST_CONSTRAINED_ARC', 'PATH_CHEAPEST_ARC']:
+            strategies_to_try.append(requested_strategy)
+        strategies_to_try.extend(['PARALLEL_CHEAPEST_INSERTION', 'PATH_MOST_CONSTRAINED_ARC', 'PATH_CHEAPEST_ARC'])
         
-        def monitor_progress():
-            last_report = start_time
-            while solving[0]:
-                time.sleep(1)
-                now = time.time()
-                if now - last_report >= 5.0:
-                    last_report = now
-                    logger.info(f"[{now - start_time:.0f}s] OR-Tools optimizing...")
+        # Filter duplicates while maintaining order
+        seen = set()
+        fallback_strategies = [x for x in strategies_to_try if not (x in seen or seen.add(x))]
         
-        monitor_thread = threading.Thread(target=monitor_progress, daemon=True)
-        monitor_thread.start()
+        solution = None
+        used_strategy = None
         
-        logger.info(f"Starting OR-Tools solver (time_limit={time_limit_seconds}s, nodes={N}, vehicles={num_vehicles})...")
-        solution = routing.SolveWithParameters(search_parameters)
-        
-        solving[0] = False
-        monitor_thread.join(timeout=1.0)
+        for strategy_name in fallback_strategies:
+            logger.info(f"Trying first solution strategy: {strategy_name}")
+            try:
+                search_parameters.first_solution_strategy = getattr(
+                    routing_enums_pb2.FirstSolutionStrategy, strategy_name
+                )
+            except AttributeError:
+                logger.error(f"Invalid strategy name: {strategy_name}, skipping.")
+                continue
+            
+            # === Monitor thread ===
+            solving = [True]
+            start_time = time.time()
+            
+            def monitor_progress():
+                last_report = start_time
+                while solving[0]:
+                    time.sleep(1)
+                    now = time.time()
+                    if now - last_report >= 5.0:
+                        last_report = now
+                        logger.info(f"[{now - start_time:.0f}s] OR-Tools optimizing...")
+            
+            monitor_thread = threading.Thread(target=monitor_progress, daemon=True)
+            monitor_thread.start()
+            
+            logger.info(f"Starting OR-Tools solver (strategy={strategy_name}, time_limit={time_limit_seconds}s, nodes={N}, vehicles={num_vehicles})...")
+            solution = routing.SolveWithParameters(search_parameters)
+            
+            solving[0] = False
+            monitor_thread.join(timeout=1.0)
+            
+            if solution:
+                used_strategy = strategy_name
+                logger.info(f"✓ Solution found using strategy {strategy_name} - Objective: {solution.ObjectiveValue():,.0f}")
+                break
+            else:
+                logger.warning(f"No solution found using strategy {strategy_name}")
         
         if solution:
-            logger.info(f"✓ Solution found - Objective: {solution.ObjectiveValue():,.0f}")
             return self._extract_solution(manager, routing, solution)
         else:
-            logger.warning("No solution found")
+            logger.error("No solution found after trying all fallback strategies")
             return None
     
     def _extract_solution(self, manager, routing, solution) -> Dict:
@@ -481,13 +555,9 @@ class ORToolsSolverImpl:
                 
                 previous_index = index
                 index = solution.Value(routing.NextVar(index))
-                arc_cost = routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
-                
-                # Subtract fixed cost from first arc
-                if is_first_arc:
-                    fixed_cost_scaled = int(routing.GetFixedCostOfVehicle(vehicle_id))
-                    arc_cost -= fixed_cost_scaled
-                    is_first_arc = False
+                previous_node = manager.IndexToNode(previous_index)
+                current_node = manager.IndexToNode(index)
+                arc_cost = int(self.problem_data['distance_matrix'][previous_node][current_node] * 100)
                 
                 route_distance += arc_cost
                 segment_distances.append(arc_cost)

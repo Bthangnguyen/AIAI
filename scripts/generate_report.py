@@ -37,7 +37,7 @@ def add_title_and_section1(doc):
     doc.add_paragraph("1. TripService: Thực hiện gọi API Gateway qua luồng Server-Sent Events (SSE) để kết xuất dữ liệu thời gian thực và điều khiển cổng tái tối ưu hóa lộ trình JIT (Just-In-Time) mid-day thông qua endpoint /re_route.", style='List Number')
     doc.add_paragraph("2. BackgroundLocationService: Sử dụng thư viện expo-location và expo-task-manager đăng ký tác vụ ngầm BACKGROUND_LOCATION_TASK, lấy tọa độ thiết bị định kỳ (mỗi 60 giây hoặc 100 mét dịch chuyển).", style='List Number')
     
-    doc.add_heading("1.3 Đánh giá và đề xuất hướng tổ chức state flow, xử lý lỗi/timeout", level=2)
+    doc.add_heading("1.4 Đánh giá và đề xuất hướng tổ chức state flow, xử lý lỗi/timeout", level=2)
     doc.add_paragraph(
         "Tổ chức State Flow sử dụng React Context hoặc Zustand để cô lập trạng thái đồng bộ hành trình. "
         "Để xử lý lỗi kết nối và độ trễ SSE, ứng dụng áp dụng chính sách Exponential Backoff and Jitter kết hợp "

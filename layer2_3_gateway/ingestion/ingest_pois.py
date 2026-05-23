@@ -16,6 +16,10 @@ import os
 import sys
 import uuid
 
+# Setup Windows asyncio policy for psycopg compatibility
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker

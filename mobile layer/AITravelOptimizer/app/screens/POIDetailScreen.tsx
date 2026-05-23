@@ -39,14 +39,24 @@ export const POIDetailScreen: React.FC<Props> = () => {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Props["route"]>()
   const {
-    poiName, photoUrl, rating, reviewCount, description,
-    entranceFee, openTime, closeTime, lat, lon,
+    poiName = "Attraction",
+    photoUrl = "https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?q=80&w=2070",
+    rating = 4.5,
+    reviewCount = 120,
+    description = "Một địa điểm tham quan thú vị tại cố đô Huế.",
+    entranceFee = 0,
+    openTime = "08:00",
+    closeTime = "17:00",
+    lat = 16.46,
+    lon = 107.59,
   } = route.params
 
   const [activeTab, setActiveTab] = useState<TabKey>("About")
 
-  const formatFee = (fee: number) =>
-    fee === 0 ? "Free" : `${fee.toLocaleString()} VND`
+  const formatFee = (fee?: number) => {
+    if (fee === undefined) return "Free"
+    return fee === 0 ? "Free" : `${fee.toLocaleString()} VND`
+  }
 
   const openNativeMap = () => {
     const url = Platform.select({

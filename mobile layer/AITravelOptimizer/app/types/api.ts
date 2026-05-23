@@ -28,8 +28,8 @@ export interface LLMDataContract {
   // Preferences
   preferred_pace?: 'chill' | 'balanced' | 'intense';
   walking_tolerance?: 'low' | 'medium' | 'high';
-  food_preferences: string[];
-  avoid_tags: string[];
+  food_preferences?: string[];
+  avoid_tags?: string[];
   
   target_category_distribution?: Record<string, number>;
 }
@@ -75,4 +75,5 @@ export type SSEStage =
   | 'optimization_completed'
   | 'validation_completed'
   | 'narrative_completed'
+  | 'completed'
   | 'error';

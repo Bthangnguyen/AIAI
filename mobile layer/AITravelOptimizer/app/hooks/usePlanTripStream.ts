@@ -2,7 +2,9 @@ import EventSource, { EventSourceListener } from 'react-native-sse';
 import { useTripStore } from '../store/useTripStore';
 import { SSEStage } from '../types/api';
 
-const GATEWAY_API_URL = 'http://localhost:8001'; // Thay đổi URL này trên môi trường thực tế
+// Dùng biến môi trường EXPO_PUBLIC_API_URL (cấu hình trong eas.json)
+// Fallback về localhost:8001 khi chạy trên máy tính (web)
+const GATEWAY_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
 
 export const usePlanTripStream = () => {
   const setSseStage = useTripStore((state) => state.setSseStage);

@@ -22,7 +22,7 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     setPrompt("")
     // Trigger follow-up check or progressive loading
     setTimeout(() => {
-      navigation.navigate("Loading", { intent: prompt })
+      navigation.navigate("Loading", { prompt: prompt })
     }, 1000)
   }
 
@@ -31,7 +31,7 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <Screen style={$root} preset="fixed">
+    <Screen style={$root} preset="fixed" contentContainerStyle={{ flex: 1 }} safeAreaEdges={["top"]}>
       <ImageBackground source={{ uri: BACKGROUND_URL }} style={$background} blurRadius={8}>
         <View style={$overlay} />
         

@@ -30,7 +30,7 @@ const CAMERA_BOUNDS_PADDING = {
   paddingRight: 40,
 }
 
-// ─── Types ──────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface FlatListItem {
   type: "header" | "stop"
   key: string
@@ -43,21 +43,21 @@ interface FlatListItem {
 
 interface MapTimelineScreenProps extends AppStackScreenProps<"MapTimeline"> {}
 
-// ─── Category Icons ─────────────────────────────────────────────
+// â”€â”€â”€ Category Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CATEGORY_EMOJI: Record<string, string> = {
-  museum: "🏛️",
-  temple: "⛩️",
-  park: "🌳",
-  market: "🛒",
-  restaurant: "🍜",
-  cafe: "☕",
-  beach: "🏖️",
-  waterfall: "💧",
-  pagoda: "🛕",
-  default: "📍",
+  museum: "ðŸ›ï¸",
+  temple: "â›©ï¸",
+  park: "ðŸŒ³",
+  market: "ðŸ›’",
+  restaurant: "ðŸœ",
+  cafe: "â˜•",
+  beach: "ðŸ–ï¸",
+  waterfall: "ðŸ’§",
+  pagoda: "ðŸ›•",
+  default: "ðŸ“",
 }
 
-// ─── Component ──────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigation }) => {
   // Use real itinerary from navigation params; fallback to mock for standalone testing
   const initialItinerary = route?.params?.itinerary ?? MOCK_ITINERARY
@@ -132,19 +132,19 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     try {
       let { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Cần quyền truy cập vị trí để điều hướng')
+        Alert.alert('Lá»—i', 'Cáº§n quyá»n truy cáº­p vá»‹ trÃ­ Ä‘á»ƒ Ä‘iá»u hÆ°á»›ng')
         return
       }
       let loc = await Location.getCurrentPositionAsync({})
-      console.log('Bỏ qua điểm hiện tại, đang Re-route từ vị trí:', loc.coords)
-      Alert.alert('Thành công', 'Đang tính toán lại lộ trình từ vị trí hiện tại...')
+      console.log('Bá» qua Ä‘iá»ƒm hiá»‡n táº¡i, Ä‘ang Re-route tá»« vá»‹ trÃ­:', loc.coords)
+      Alert.alert('ThÃ nh cÃ´ng', 'Äang tÃ­nh toÃ¡n láº¡i lá»™ trÃ¬nh tá»« vá»‹ trÃ­ hiá»‡n táº¡i...')
       // Call Backend API to Reroute with keep_depot_fixed=True
     } catch(e) {
       console.warn("Could not get location", e)
     }
   }
 
-  // ─── Re-route handler ──────────────────────────────
+  // â”€â”€â”€ Re-route handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleReRoutePress = useCallback(() => {
     reRouteSheetRef.current?.snapToIndex(0)
   }, [])
@@ -217,7 +217,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     return day.stops.filter((s) => !visited.has(s.poi_id))
   }, [itinerary, currentDayIndex, visitedPOIIds])
 
-  // ─── Flatten itinerary data for FlatList (filtered by selected day) ──────────
+  // â”€â”€â”€ Flatten itinerary data for FlatList (filtered by selected day) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredFlatListData = useMemo<FlatListItem[]>(() => {
     const items: FlatListItem[] = []
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
@@ -241,32 +241,32 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     return items
   }, [itinerary, selectedDayIndex])
 
-  // ─── Total estimated cost ─────────────────────────
+  // â”€â”€â”€ Total estimated cost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalCost = useMemo(() => {
     return itinerary.days.reduce((sum, day) => {
       return sum + day.stops.reduce((daySum, stop) => daySum + (stop.entrance_fee || 0), 0)
     }, 0)
   }, [itinerary])
 
-  // ─── Per-day cost ─────────────────────────────────
+  // â”€â”€â”€ Per-day cost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const dayCost = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     if (!day) return 0
     return day.stops.reduce((sum, stop) => sum + (stop.entrance_fee || 0), 0)
   }, [itinerary, selectedDayIndex])
 
-  // ─── Stops for current selected day (map markers) ─
+  // â”€â”€â”€ Stops for current selected day (map markers) â”€
   const dayStops = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     return day ? day.stops : []
   }, [itinerary, selectedDayIndex])
 
-  // ─── All stops with coordinates for map ───────────
+  // â”€â”€â”€ All stops with coordinates for map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const allStops = useMemo(() => {
     return itinerary.days.flatMap((day) => day.stops)
   }, [itinerary])
 
-  // ─── Route line GeoJSON ───────────────────────────
+  // â”€â”€â”€ Route line GeoJSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null)
   
   const filteredRouteGeoJSON = useMemo(() => {
@@ -279,7 +279,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
   useEffect(() => {
     const fetchRoutes = async () => {
-      // Use env variable for Mapbox token — NEVER hardcode tokens in source
+      // Use env variable for Mapbox token â€” NEVER hardcode tokens in source
       const accessToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN
       if (!accessToken) {
         console.error("EXPO_PUBLIC_MAPBOX_TOKEN not set in .env")
@@ -326,7 +326,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     fetchRoutes()
   }, [itinerary])
 
-  // ─── Camera bounds ────────────────────────────────
+  // â”€â”€â”€ Camera bounds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cameraBounds = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     if (!day) return null
@@ -345,7 +345,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     }
   }, [itinerary, selectedDayIndex])
 
-  // ─── Handlers ─────────────────────────────────────
+  // â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleMarkerPress = useCallback((stop: TravelItineraryStop) => {
     setSelectedStopId(stop.poi_id)
     setSelectedStop(stop)
@@ -365,14 +365,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     })
   }, [])
 
-  // ─── Time formatting helper ───────────────────────
+  // â”€â”€â”€ Time formatting helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60)
     const m = minutes % 60
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
   }
 
-  // ─── Render FlatList item ─────────────────────────
+  // â”€â”€â”€ Render FlatList item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderItem = useCallback(
     ({ item }: { item: FlatListItem }) => {
       if (item.type === "header") {
@@ -415,13 +415,13 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
                 <ItineraryCard
                   emoji={emoji}
                   title={stop.poi_name}
-                  timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
+                  timeString={`${formatTime(stop.arrival_time_min)} â€” ${formatTime(stop.departure_time_min)}`}
                   visitDurationMin={stop.visit_duration_min}
                   entranceFee={stop.entrance_fee}
                   travelTimeMin={stop.travel_time_from_prev_min}
                 />
                 <Pressable onPress={() => handleDelete(stop)} style={{ padding: 10 }}>
-                  <Text text="Xóa" style={{ color: 'red' }} />
+                  <Text text="XÃ³a" style={{ color: 'red' }} />
                 </Pressable>
               </View>
             </Animated.View>
@@ -432,7 +432,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     [selectedStopId, handleCardPress],
   )
 
-  // ─── Main Render ──────────────────────────────────
+  // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <View style={$root}>
       {/* Mapbox Map - Only render on native platforms */}
@@ -477,7 +477,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               coordinate={[hotelLoc.longitude, hotelLoc.latitude]}
             >
               <View style={$hotelMarker}>
-                <Text text="🏨" style={$markerEmoji} />
+                <Text text="ðŸ¨" style={$markerEmoji} />
               </View>
             </MapboxGL.PointAnnotation>
           )
@@ -540,7 +540,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         </View>
         <View style={$summaryDivider} />
         <View style={$summaryItem}>
-          <Text text={`${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "k₫" : "Free"}`} style={$summaryValue} />
+          <Text text={`${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "kâ‚«" : "Free"}`} style={$summaryValue} />
           <Text text="Est. Cost" style={$summaryLabel} />
         </View>
       </View>
@@ -549,13 +549,13 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {selectedStop && (
         <Animated.View entering={FadeInUp.duration(300)} style={$poiPopupCard}>
           <View style={$poiPopupHeader}>
-            <Text text={"📍"} style={$poiPopupEmoji} />
+            <Text text={"ðŸ“"} style={$poiPopupEmoji} />
             <View style={{ flex: 1, marginLeft: 8 }}>
               <Text text={selectedStop.poi_name} style={$poiPopupTitle} numberOfLines={1} />
-              <Text text={`${selectedStop.visit_duration_min} min • ${selectedStop.entrance_fee > 0 ? (selectedStop.entrance_fee / 1000).toFixed(0) + "k₫" : "Free"}`} style={$poiPopupSubtitle} />
+              <Text text={`${selectedStop.visit_duration_min} min â€¢ ${selectedStop.entrance_fee > 0 ? (selectedStop.entrance_fee / 1000).toFixed(0) + "kâ‚«" : "Free"}`} style={$poiPopupSubtitle} />
             </View>
             <Pressable onPress={() => { setSelectedStopId(null); setSelectedStop(null) }} style={{ padding: 4 }}>
-              <Text text="✕" style={$poiPopupClose} />
+              <Text text="âœ•" style={$poiPopupClose} />
             </Pressable>
           </View>
           <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", {
@@ -582,7 +582,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <View style={$sheetHeader}>
           <Text text="Itinerary" style={$sheetTitle} />
           <Text
-            text={`${itinerary.total_pois_visited} stops · ${itinerary.total_distance_km.toFixed(1)} km · ${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "k₫" : "Free"}`}
+            text={`${itinerary.total_pois_visited} stops Â· ${itinerary.total_distance_km.toFixed(1)} km Â· ${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "kâ‚«" : "Free"}`}
             style={$sheetSubtitle}
           />
         </View>
@@ -603,11 +603,11 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
                 style={[$dayTab, isActive && $dayTabActive]}
               >
                 <Text
-                  text={`Ngày ${day.day_index + 1}`}
+                  text={`NgÃ y ${day.day_index + 1}`}
                   style={[$dayTabText, isActive && $dayTabTextActive]}
                 />
                 <Text
-                  text={`${day.stops.length} điểm · ${cost > 0 ? (cost / 1000).toFixed(0) + "k₫" : "Free"}`}
+                  text={`${day.stops.length} Ä‘iá»ƒm Â· ${cost > 0 ? (cost / 1000).toFixed(0) + "kâ‚«" : "Free"}`}
                   style={[$dayTabSub, isActive && $dayTabSubActive]}
                 />
               </Pressable>
@@ -626,19 +626,19 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <View style={{ padding: 16 }}>
           {!isLocked && (
             <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
-              <Text text="+ Thêm địa điểm (AI Chat)" />
+              <Text text="+ ThÃªm Ä‘á»‹a Ä‘iá»ƒm (AI Chat)" />
             </Pressable>
           )}
         </View>
-        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, justifyContent: "space-between", backgroundColor: "#fff" }}>
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.08)" }}>
           {isLocked ? (
             <Pressable style={{ padding: 12, backgroundColor: "red", borderRadius: 8, flex: 1, alignItems: 'center' }} onPress={handleSkipStop}>
-              <Text text="Bỏ qua điểm này" style={{ color: "#fff", fontWeight: "bold" }} />
+              <Text text="Bá» qua Ä‘iá»ƒm nÃ y" style={{ color: "rgba(255,255,255,0.08)", fontWeight: "bold" }} />
             </Pressable>
           ) : (
             <>
-              <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="Lưu Nháp" /></Pressable>
-              <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }} onPress={() => setIsLocked(true)}><Text text="Chốt Lịch Trình" style={{ color: "#fff" }} /></Pressable>
+              <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="LÆ°u NhÃ¡p" /></Pressable>
+              <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }} onPress={() => setIsLocked(true)}><Text text="Chá»‘t Lá»‹ch TrÃ¬nh" style={{ color: "rgba(255,255,255,0.08)" }} /></Pressable>
             </>
           )}
         </View>
@@ -647,8 +647,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {/* Undo Snackbar */}
       {showSnackbar && (
         <View style={{ position: "absolute", bottom: 100, left: 20, right: 20, backgroundColor: "#333", padding: 15, borderRadius: 8, flexDirection: "row", justifyContent: "space-between", zIndex: 999 }}>
-          <Text text="Đã xóa địa điểm" style={{ color: "white" }} />
-          <Pressable onPress={handleUndo}><Text text="Hoàn tác" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
+          <Text text="ÄÃ£ xÃ³a Ä‘á»‹a Ä‘iá»ƒm" style={{ color: "white" }} />
+          <Pressable onPress={handleUndo}><Text text="HoÃ n tÃ¡c" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
         </View>
       )}
 
@@ -657,7 +657,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>
-        <Text text="📍" style={$myLocationIcon} />
+        <Text text="ðŸ“" style={$myLocationIcon} />
       </Pressable>
 
       {/* Re-route FAB */}
@@ -682,14 +682,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   )
 }
 
-// ─── Styles ─────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const $root: ViewStyle = {
   flex: 1,
   backgroundColor: colors.background,
 }
 
-// ─── Summary Bar ─────────────
+// â”€â”€â”€ Summary Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $summaryBar: ViewStyle = {
   position: "absolute",
   top: 56,
@@ -717,28 +717,28 @@ const $summaryItem: ViewStyle = {
 const $summaryValue: TextStyle = {
   fontSize: 18,
   fontFamily: typography.primary.semiBold,
-  color: colors.text,
+  color: '#FFFFFF',
 }
 
 const $summaryLabel: TextStyle = {
   fontSize: 12,
   fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayDark,
+  color: 'rgba(255,255,255,0.75)',
   marginTop: 2,
 }
 
 const $summaryDivider: ViewStyle = {
   width: 1,
   height: 28,
-  backgroundColor: colors.palette.figmaGrayLight,
+  backgroundColor: 'rgba(255,255,255,0.08)',
 }
 
-// ─── Map Markers ─────────────
+// â”€â”€â”€ Map Markers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $hotelMarker: ViewStyle = {
   width: 36,
   height: 36,
   borderRadius: 18,
-  backgroundColor: "#fff",
+  backgroundColor: "rgba(255,255,255,0.08)",
   justifyContent: "center",
   alignItems: "center",
   shadowColor: "#000",
@@ -760,7 +760,7 @@ const $poiMarker: ViewStyle = {
   justifyContent: "center",
   alignItems: "center",
   borderWidth: 2,
-  borderColor: "#fff",
+  borderColor: "rgba(255,255,255,0.08)",
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.2,
@@ -776,12 +776,12 @@ const $poiMarkerActive: ViewStyle = {
 }
 
 const $markerNumber: TextStyle = {
-  color: "#fff",
+  color: "rgba(255,255,255,0.08)",
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
 }
 
-// ─── Bottom Sheet ────────────
+// â”€â”€â”€ Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $myLocationBtn: ViewStyle = {
   position: "absolute",
   bottom: 120,
@@ -789,7 +789,7 @@ const $myLocationBtn: ViewStyle = {
   width: 48,
   height: 48,
   borderRadius: 24,
-  backgroundColor: colors.palette.figmaWhite,
+  backgroundColor: colors.palette.deepSlate,
   justifyContent: "center",
   alignItems: "center",
   zIndex: 100,
@@ -805,13 +805,13 @@ const $myLocationIcon: TextStyle = {
   fontSize: 20,
 }
 
-// ─── POI Popup ───────────────
+// â”€â”€â”€ POI Popup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $poiPopupCard: ViewStyle = {
   position: "absolute",
   top: 130,
   left: spacing.lg,
   right: spacing.lg,
-  backgroundColor: colors.palette.figmaWhite,
+  backgroundColor: colors.palette.deepSlate,
   borderRadius: 16,
   padding: spacing.md,
   // Figma shadow
@@ -836,31 +836,31 @@ const $poiPopupEmoji: TextStyle = {
 const $poiPopupTitle: TextStyle = {
   fontFamily: typography.primary.bold,
   fontSize: 16,
-  color: colors.palette.figmaPrimaryBlack,
+  color: '#FFFFFF',
 }
 
 const $poiPopupSubtitle: TextStyle = {
   fontFamily: typography.primary.normal,
   fontSize: 13,
-  color: colors.palette.figmaGrayDark,
+  color: 'rgba(255,255,255,0.75)',
   marginTop: 2,
 }
 
 const $poiPopupClose: TextStyle = {
   fontSize: 18,
-  color: colors.palette.figmaGrayMedium,
+  color: 'rgba(255,255,255,0.45)',
   fontFamily: typography.primary.bold,
 }
 
 const $poiPopupBtn: ViewStyle = {
-  backgroundColor: colors.palette.figmaPrimaryBlack,
+  backgroundColor: '#FFFFFF',
   borderRadius: 8,
   paddingVertical: 10,
   alignItems: "center",
 }
 
 const $poiPopupBtnText: TextStyle = {
-  color: colors.palette.figmaWhite,
+  color: '#FFFFFF',
   fontFamily: typography.primary.semiBold,
   fontSize: 14,
 }
@@ -874,7 +874,7 @@ const $sheetBackground: ViewStyle = {
 const $sheetHandle: ViewStyle = {
   width: 45,
   height: 5,
-  backgroundColor: colors.palette.figmaGrayLight,
+  backgroundColor: 'rgba(255,255,255,0.08)',
   borderRadius: 3,
 }
 
@@ -886,17 +886,17 @@ const $sheetHeader: ViewStyle = {
 const $sheetTitle: TextStyle = {
   fontSize: 20,
   fontFamily: typography.primary.semiBold,
-  color: colors.text,
+  color: '#FFFFFF',
 }
 
 const $sheetSubtitle: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayDark,
+  color: 'rgba(255,255,255,0.75)',
   marginTop: 4,
 }
 
-// ─── Day Tabs ────────────────
+// â”€â”€â”€ Day Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $dayTabsRow: ViewStyle = {
   flexDirection: "row",
   paddingHorizontal: spacing.lg,
@@ -908,7 +908,7 @@ const $dayTab: ViewStyle = {
   paddingHorizontal: 16,
   paddingVertical: 10,
   borderRadius: 14,
-  backgroundColor: colors.palette.figmaOffWhite,
+  backgroundColor: 'rgba(255,255,255,0.06)',
   borderWidth: 1.5,
   borderColor: "transparent",
   minWidth: 100,
@@ -923,17 +923,17 @@ const $dayTabActive: ViewStyle = {
 const $dayTabText: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
-  color: colors.palette.figmaGrayDark,
+  color: 'rgba(255,255,255,0.75)',
 }
 
 const $dayTabTextActive: TextStyle = {
-  color: "#fff",
+  color: "rgba(255,255,255,0.08)",
 }
 
 const $dayTabSub: TextStyle = {
   fontSize: 11,
   fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayMedium,
+  color: 'rgba(255,255,255,0.45)',
   marginTop: 2,
 }
 
@@ -946,7 +946,7 @@ const $flatListContent: ViewStyle = {
   paddingBottom: 120,
 }
 
-// ─── Day Headers ─────────────
+// â”€â”€â”€ Day Headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $dayHeader: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
@@ -964,17 +964,17 @@ const $dayBadge: ViewStyle = {
 const $dayBadgeText: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
-  color: "#fff",
+  color: "rgba(255,255,255,0.08)",
 }
 
 const $dayDate: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayDark,
+  color: 'rgba(255,255,255,0.75)',
   marginLeft: spacing.sm,
 }
 
-// ─── Timeline + Cards ────────
+// â”€â”€â”€ Timeline + Cards â”€â”€â”€â”€â”€â”€â”€â”€
 const $timelineRow: ViewStyle = {
   flexDirection: "row",
   minHeight: 88,
@@ -994,7 +994,7 @@ const $timelineNode: ViewStyle = {
 }
 
 const $nodeNumber: TextStyle = {
-  color: "#fff",
+  color: "rgba(255,255,255,0.08)",
   fontSize: 12,
   fontFamily: typography.primary.semiBold,
 }
@@ -1002,13 +1002,13 @@ const $nodeNumber: TextStyle = {
 const $timelineConnector: ViewStyle = {
   width: 2,
   flex: 1,
-  backgroundColor: colors.palette.figmaGrayLight,
+  backgroundColor: 'rgba(255,255,255,0.08)',
   marginVertical: 4,
 }
 
 const $stopCard: ViewStyle = {
   flex: 1,
-  backgroundColor: "#fff",
+  backgroundColor: "rgba(255,255,255,0.08)",
   borderRadius: 20,
   padding: spacing.md,
   marginLeft: spacing.sm,

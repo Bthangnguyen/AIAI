@@ -1,4 +1,4 @@
-﻿/**
+/**
  * POIDetailScreen - Authentic Narrative Guide (Screen 6)
  * Design: Parallax hero + Audio Guide player + Royal Hue glassmorphism
  */
@@ -13,7 +13,7 @@ import {
   StatusBar,
   Platform,
   Linking,
-  Image,
+  Alert,
 } from "react-native"
 import { Text } from "@/components/Text"
 import { LinearGradient } from "expo-linear-gradient"
@@ -26,7 +26,7 @@ import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.48
 
 const TABS = ["Câu chuyện", "Thông tin", "Giá vé", "Khách sạn"] as const
@@ -55,8 +55,8 @@ export const POIDetailScreen: React.FC<Props> = () => {
     entranceFee = 150000,
     openTime = "07:00",
     closeTime = "17:30",
-    lat = 16.4508,
-    lon = 107.5745,
+    lat,
+    lon,
   } = route.params ?? {}
 
   const [activeTab, setActiveTab] = useState<TabKey>("Câu chuyện")
@@ -68,7 +68,6 @@ export const POIDetailScreen: React.FC<Props> = () => {
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current
   const discRotate = useRef(new Animated.Value(0)).current
-  const progressAnim = useRef(new Animated.Value(0)).current
   const heartScale = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -116,6 +115,12 @@ export const POIDetailScreen: React.FC<Props> = () => {
   }
 
   const openNativeMap = () => {
+    // Safety check for invalid/default coordinates to prevent navigation errors
+    if (lat === undefined || lon === undefined || (lat === 0 && lon === 0)) {
+      Alert.alert("Lỗi bản đồ", "Địa điểm này chưa có thông tin tọa độ chi tiết.")
+      return
+    }
+
     const url = Platform.select({
       ios: `maps:0,0?q=${poiName}@${lat},${lon}`,
       android: `geo:0,0?q=${lat},${lon}(${poiName})`,
@@ -198,7 +203,7 @@ export const POIDetailScreen: React.FC<Props> = () => {
             <View style={styles.infoStripDivider} />
             <View style={styles.infoStripItem}>
               <Text style={styles.infoStripIcon}>📍</Text>
-              <Text style={styles.infoStripValue}>Kim Long</Text>
+              <Text style={styles.infoStripValue}>Huế</Text>
               <Text style={styles.infoStripLabel}>Khu vực</Text>
             </View>
           </View>
@@ -300,7 +305,7 @@ export const POIDetailScreen: React.FC<Props> = () => {
           {activeTab === "Thông tin" && (
             <View style={styles.infoSection}>
               {[
-                { icon: "📍", label: "Địa chỉ", value: "Kim Long, Huế, Việt Nam" },
+                { icon: "📍", label: "Địa chỉ", value: "Huế, Việt Nam" },
                 { icon: "🕐", label: "Giờ mở cửa", value: `${openTime} - ${closeTime}` },
                 { icon: "📞", label: "Điện thoại", value: "+84 234 3523 237" },
                 { icon: "🌐", label: "Website", value: "hue-tourism.gov.vn" },
@@ -402,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  floatBtnText: { fontSize: 20 },
+  floatBtnText: { fontSize: 20, color: "#FFFFFF" },
   heroImage: {
     width: "100%",
     height: "100%",

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * HomeScreen - AI Co-Pilot Chat Center
  * Design: Glassmorphism dark + Royal Hue + Floating Chips
  */

@@ -4,12 +4,14 @@ version = "0.0.2"
 description = ""
 authors = ["Jakub Miazek <the@grillazz.com>"]
 readme = "README.md"
+packages = [
+    { include = "app" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 fastapi = "^0.114.2"
 uvicorn = "^0.30.6"
-uvloop = "^0.20.0"
 httptools = "^0.6.1"
 sqlalchemy = "^2.0.35"
 pydantic-settings = "^2.5.2"

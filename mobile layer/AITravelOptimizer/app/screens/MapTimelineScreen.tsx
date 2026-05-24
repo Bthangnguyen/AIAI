@@ -1,4 +1,4 @@
-﻿import { FC, useCallback, useMemo, useRef, useState, useEffect } from "react"
+import { FC, useCallback, useMemo, useRef, useState, useEffect } from "react"
 import { View, ViewStyle, TextStyle, Pressable, Dimensions, StyleSheet, Alert, Platform } from "react-native"
 import BottomSheet, { BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import MapboxGL from "@rnmapbox/maps"
@@ -19,6 +19,7 @@ import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { getRemainingPOIIds, mergeReRoutedDay, getCurrentTimeMin } from "@/utils/itineraryHelpers"
+import { useTripStore } from "@/store/useTripStore"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -61,6 +62,15 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   // Use real itinerary from navigation params; fallback to mock for standalone testing
   const initialItinerary = route?.params?.itinerary ?? MOCK_ITINERARY
   const [itinerary, setItinerary] = useState(initialItinerary)
+  const setCurrentItinerary = useTripStore((state) => state.setCurrentItinerary)
+
+  // Sync manual edits and re-routed results to Zustand store (offline MMKV draft)
+  useEffect(() => {
+    if (itinerary) {
+      setCurrentItinerary(itinerary)
+    }
+  }, [itinerary, setCurrentItinerary])
+
   const bottomSheetRef = useRef<BottomSheet>(null)
   const reRouteSheetRef = useRef<BottomSheet>(null)
   const mapRef = useRef<MapboxGL.MapView>(null)
@@ -548,7 +558,13 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               <Text text="âœ•" style={$poiPopupClose} />
             </Pressable>
           </View>
-          <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", { poiId: selectedStop.poi_id })}>
+          <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", {
+            poiId: selectedStop.poi_id,
+            poiName: selectedStop.poi_name,
+            entranceFee: selectedStop.entrance_fee,
+            lat: selectedStop.location.latitude,
+            lon: selectedStop.location.longitude,
+          })}>
             <Text text="View Details" style={$poiPopupBtnText} />
           </Pressable>
         </Animated.View>
@@ -837,7 +853,7 @@ const $poiPopupClose: TextStyle = {
 }
 
 const $poiPopupBtn: ViewStyle = {
-  backgroundcolor: '#FFFFFF',
+  backgroundColor: '#FFFFFF',
   borderRadius: 8,
   paddingVertical: 10,
   alignItems: "center",

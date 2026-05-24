@@ -180,8 +180,8 @@ export const MockTripService = {
    */
   planTripStream: (
     _prompt: string,
-    _hotelLat: number,
-    _hotelLon: number,
+    _hotelLat?: number,
+    _hotelLon?: number,
     _hotelName?: string,
     _numDays?: number,
   ): MockStreamController => {

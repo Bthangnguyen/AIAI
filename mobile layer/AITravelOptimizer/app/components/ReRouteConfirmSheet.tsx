@@ -48,7 +48,7 @@ export const ReRouteConfirmSheet: React.FC<ReRouteConfirmSheetProps> = ({
       backgroundStyle={styles.sheetBg}
       handleIndicatorStyle={styles.handle}
     >
-      <BottomSheetView style={styles.container}>
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>🤖 Tối ưu lại lộ trình</Text>
@@ -102,7 +102,7 @@ export const ReRouteConfirmSheet: React.FC<ReRouteConfirmSheetProps> = ({
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      </BottomSheetView>
+      </View>
     </BottomSheet>
   )
 }

@@ -68,6 +68,19 @@ const palette = {
   // Legacy star rating gradient endpoints
   starGold: "#F7B502",
   starOrange: "#E88405",
+
+  // ─── Modern Royal Hue Palette (Approved) ──────────────────────
+  royalPurple: "#6C2A7B",
+  royalPurpleLight: "#8E3E9F",
+  imperialGold: "#FFB800",
+  imperialGoldLight: "#FFD066",
+  jadeGreen: "#00A86B",
+  jadeGreenLight: "#33C48F",
+  sunsetOrange: "#FF6B6B",
+  sunsetOrangeLight: "#FF8C8C",
+  deepSlate: "#0B0F19",
+  glassWhite: "rgba(255, 255, 255, 0.08)",
+  glassBorder: "rgba(255, 255, 255, 0.15)",
 } as const
 
 export const colors = {
@@ -95,8 +108,8 @@ export const colors = {
   backgroundSecondary: palette.figmaOffWhite,
   /** Default border/divider */
   border: palette.figmaGrayLight,
-  /** Primary CTA — Figma black button */
-  tint: palette.figmaPrimaryBlack,
+  /** Primary CTA — Royal Purple */
+  tint: palette.royalPurple,
   /** Link / accent blue */
   link: palette.figmaBlue,
   /** Gradient start (teal) */
@@ -108,9 +121,9 @@ export const colors = {
   /** Dividers and separators */
   separator: palette.figmaGrayLight,
   /** Warning / alert orange */
-  warning: palette.figmaOrange,
+  warning: palette.sunsetOrange,
   /** Success green */
-  success: palette.figmaSuccess,
+  success: palette.jadeGreen,
   /** Rating stars */
   star: palette.figmaStarYellow,
   /** Error messages */
@@ -122,4 +135,13 @@ export const colors = {
   glassWhite10: palette.glassWhite10,
   glassWhite70: palette.glassWhite70,
   glassWhite80: palette.glassWhite80,
+
+  // ─── Semantic Colors (Modern Royal Hue) ────────────────────────
+  primaryRoyal: palette.royalPurple,
+  accentGold: palette.imperialGold,
+  jadeGreen: palette.jadeGreen,
+  sunsetOrange: palette.sunsetOrange,
+  deepSlate: palette.deepSlate,
+  glassWhite: palette.glassWhite,
+  glassBorder: palette.glassBorder,
 } as const

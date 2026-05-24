@@ -1,9 +1,9 @@
-/**
- * HotelPicker — Hotel selection component with:
+﻿/**
+ * HotelPicker â€” Hotel selection component with:
  * 1. Preset hotel chips (quick select)
- * 2. Mapbox Geocoding search (type hotel name → autocomplete suggestions)
+ * 2. Mapbox Geocoding search (type hotel name â†’ autocomplete suggestions)
  *
- * Uses Mapbox Geocoding API v5 — no Google Maps needed.
+ * Uses Mapbox Geocoding API v5 â€” no Google Maps needed.
  */
 import React, { useState, useCallback, useRef } from "react"
 import {
@@ -21,7 +21,7 @@ import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { HUE_PRESET_HOTELS, PresetHotel } from "@/constants/presetHotels"
 
-// ─── Types ──────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface HotelSelection {
   name: string
   lat: number
@@ -40,20 +40,20 @@ interface GeocodingFeature {
   text: string
 }
 
-// ─── Mapbox Geocoding ───────────────────────────────────────────
+// â”€â”€â”€ Mapbox Geocoding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || ""
 
 const searchMapbox = async (query: string): Promise<GeocodingFeature[]> => {
   if (!query.trim() || query.length < 3 || !MAPBOX_TOKEN) return []
 
   try {
-    // Bias search towards Huế, Vietnam (bbox + proximity)
+    // Bias search towards Huáº¿, Vietnam (bbox + proximity)
     const url =
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
       `?access_token=${MAPBOX_TOKEN}` +
       `&types=poi,address` +
-      `&proximity=107.59,16.46` + // Huế center
-      `&bbox=107.45,16.30,107.75,16.60` + // Huế bounding box
+      `&proximity=107.59,16.46` + // Huáº¿ center
+      `&bbox=107.45,16.30,107.75,16.60` + // Huáº¿ bounding box
       `&limit=5` +
       `&language=vi`
 
@@ -66,7 +66,7 @@ const searchMapbox = async (query: string): Promise<GeocodingFeature[]> => {
   }
 }
 
-// ─── Component ──────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => {
   const [searchText, setSearchText] = useState("")
   const [suggestions, setSuggestions] = useState<GeocodingFeature[]>([])
@@ -74,7 +74,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
   const [showSearch, setShowSearch] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ─── Preset selection ─────────────────────────────────────────
+  // â”€â”€â”€ Preset selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handlePresetSelect = useCallback((preset: PresetHotel) => {
     onChange({ name: preset.name, lat: preset.lat, lon: preset.lon })
     setShowSearch(false)
@@ -82,7 +82,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
     setSuggestions([])
   }, [onChange])
 
-  // ─── Mapbox search with debounce ──────────────────────────────
+  // â”€â”€â”€ Mapbox search with debounce â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text)
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -111,7 +111,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
     setShowSearch(false)
   }, [onChange])
 
-  // ─── Selected indicator ───────────────────────────────────────
+  // â”€â”€â”€ Selected indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const selectedPreset = HUE_PRESET_HOTELS.find(
     (h) => h.name === value.name
   )
@@ -122,7 +122,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
 
       {/* Selected hotel display */}
       <View style={styles.selectedRow}>
-        <Text style={styles.selectedEmoji}>{selectedPreset?.emoji || "📍"}</Text>
+        <Text style={styles.selectedEmoji}>{selectedPreset?.emoji || "ðŸ“"}</Text>
         <Text style={styles.selectedName} numberOfLines={1}>{value.name}</Text>
       </View>
 
@@ -155,7 +155,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
           onPress={() => setShowSearch(!showSearch)}
           activeOpacity={0.7}
         >
-          <Text style={styles.chipEmoji}>🔍</Text>
+          <Text style={styles.chipEmoji}>ðŸ”</Text>
           <Text style={[styles.chipText, showSearch && styles.chipTextActive]}>
             Other...
           </Text>
@@ -170,7 +170,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
             value={searchText}
             onChangeText={handleSearchChange}
             placeholder="Search hotel or address..."
-            placeholderTextColor={colors.palette.figmaGrayMedium}
+            placeholderTextColor='rgba(255,255,255,0.3)'
             autoFocus
           />
 
@@ -204,7 +204,7 @@ export const HotelPicker: React.FC<HotelPickerProps> = ({ value, onChange }) => 
   )
 }
 
-// ─── Styles ─────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
@@ -212,13 +212,13 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: typography.primary.semiBold,
     fontSize: 15,
-    color: colors.palette.figmaBlack,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
   },
   selectedRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.palette.figmaOffWhite,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 15,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   selectedName: {
     fontFamily: typography.primary.medium,
     fontSize: 15,
-    color: colors.palette.figmaBlack,
+    color: '#FFFFFF',
     flex: 1,
   },
   chipsRow: {
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.palette.figmaOffWhite,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   chipText: {
     fontFamily: typography.primary.medium,
     fontSize: 12,
-    color: colors.palette.figmaGrayDark,
+    color: 'rgba(255,255,255,0.75)',
     maxWidth: 120,
   },
   chipTextActive: {
@@ -269,14 +269,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   searchInput: {
-    backgroundColor: colors.palette.figmaOffWhite,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 15,
     padding: spacing.md,
     fontFamily: typography.primary.normal,
     fontSize: 14,
-    color: colors.palette.figmaGrayDark,
+    color: 'rgba(255,255,255,0.75)',
     borderWidth: 1,
-    borderColor: colors.palette.figmaGrayLight,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   spinner: {
     position: "absolute",
@@ -285,10 +285,10 @@ const styles = StyleSheet.create({
   },
   suggestionsContainer: {
     marginTop: spacing.xs,
-    backgroundColor: colors.palette.figmaWhite,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: colors.palette.figmaGrayLight,
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: "hidden",
     // Shadow
     shadowColor: "#000",
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontFamily: typography.primary.normal,
     fontSize: 13,
-    color: colors.palette.figmaGrayDark,
+    color: 'rgba(255,255,255,0.75)',
     lineHeight: 18,
   },
 })

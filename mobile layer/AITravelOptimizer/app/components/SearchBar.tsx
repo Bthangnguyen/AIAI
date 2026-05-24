@@ -1,9 +1,8 @@
-/**
- * SearchBar — Figma "Front page" search input.
- * Rounded 25px, search icon left, gray border.
+﻿/**
+ * SearchBar - Dark Glassmorphism Design
  */
 import React from "react"
-import { View, TextInput, StyleSheet, TouchableOpacity, ViewStyle } from "react-native"
+import { View, TextInput, StyleSheet, TouchableOpacity, ViewStyle, Text } from "react-native"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
@@ -18,77 +17,41 @@ interface SearchBarProps {
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-  value,
-  onChangeText,
-  placeholder = "Search...",
-  onSubmit,
-  style,
-  testID,
-}) => {
-  return (
-    <View style={[styles.container, style]} testID={testID}>
-      {/* Search Icon */}
-      <View style={styles.iconContainer}>
-        <View style={styles.searchIconCircle}>
-          <View style={styles.searchIconLine} />
-        </View>
-      </View>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.palette.figmaGrayMedium}
-        onSubmitEditing={onSubmit}
-        returnKeyType="search"
-      />
-    </View>
-  )
-}
+  value, onChangeText, placeholder = "Tìm kiếm địa điểm...",
+  onSubmit, style, testID,
+}) => (
+  <View style={[styles.container, style]} testID={testID}>
+    <Text style={styles.searchIcon}>🔍</Text>
+    <TextInput
+      style={styles.input}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="rgba(255,255,255,0.3)"
+      onSubmitEditing={onSubmit}
+      returnKeyType="search"
+    />
+    {value.length > 0 && (
+      <TouchableOpacity onPress={() => onChangeText("")} style={styles.clearBtn}>
+        <Text style={styles.clearIcon}>✕</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+)
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.palette.figmaWhite,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: colors.palette.figmaGrayLight,
-    paddingHorizontal: spacing.md,
-    height: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: spacing.md, height: 50,
   },
-  iconContainer: {
-    marginRight: spacing.xs,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  searchIconCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.palette.figmaGrayMedium,
-  },
-  searchIconLine: {
-    position: "absolute",
-    bottom: -5,
-    right: -3,
-    width: 7,
-    height: 2,
-    backgroundColor: colors.palette.figmaGrayMedium,
-    borderRadius: 1,
-    transform: [{ rotate: "45deg" }],
-  },
+  searchIcon: { fontSize: 16, marginRight: spacing.sm },
   input: {
-    flex: 1,
-    fontFamily: typography.primary.normal,
-    fontSize: 14,
-    color: colors.palette.figmaGrayDark,
+    flex: 1, fontFamily: typography.primary.normal,
+    fontSize: 14, color: "#FFFFFF",
     paddingVertical: 0,
   },
+  clearBtn: { paddingLeft: spacing.sm },
+  clearIcon: { fontSize: 14, color: "rgba(255,255,255,0.4)" },
 })

@@ -55,17 +55,60 @@ class Layer4Client:
             })
 
         # Build Constraints
+        transport_modes = self._normalize_transport_modes(contract.transport_modes)
         constraints = {
             "num_days": contract.num_days,
-            "budget_total": contract.budget_max,
-            "transport_modes": ["taxi", "walking"],
+            "budget_total": None if contract.budget_is_unlimited else contract.budget_max,
+            "transport_modes": transport_modes,
         }
 
-        return {
+        payload = {
             "pois": l4_pois,
             "hotels": hotels,
             "constraints": constraints,
         }
+
+        if contract.time_window is not None:
+            payload["day_plans"] = [
+                {
+                    "day_index": day_idx,
+                    "date": f"Day {day_idx + 1}",
+                    "hotel_id": f"hotel_day_{day_idx}",
+                    "start_time_min": contract.time_window.start_min,
+                    "end_time_min": contract.time_window.end_min,
+                }
+                for day_idx in range(contract.num_days)
+            ]
+
+        return payload
+
+    @staticmethod
+    def _normalize_transport_modes(modes: List[str] | None) -> List[str]:
+        """Map conversational transport names to Layer 4's supported enum values."""
+        supported = {"walking", "taxi", "bus"}
+        aliases = {
+            "walk": "walking",
+            "foot": "walking",
+            "on_foot": "walking",
+            "car": "taxi",
+            "oto": "taxi",
+            "o_to": "taxi",
+            "private_car": "taxi",
+            "motorbike": "taxi",
+            "scooter": "taxi",
+            "xe_may": "taxi",
+            "xe máy": "taxi",
+            "bus": "bus",
+            "xe_buyt": "bus",
+            "xe buýt": "bus",
+        }
+        normalized: List[str] = []
+        for raw in modes or []:
+            key = str(raw).strip().lower().replace(" ", "_")
+            mode = aliases.get(key, key)
+            if mode in supported and mode not in normalized:
+                normalized.append(mode)
+        return normalized or ["taxi", "walking"]
 
     async def plan(
         self,

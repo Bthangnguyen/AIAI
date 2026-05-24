@@ -8,11 +8,10 @@ import { MockAuthModal } from "@/components/MockAuthModal"
 import { SavedTripsPage } from "@/components/SavedTripsPage"
 import { Toast } from "@/components/Toast"
 import { getSavedDrafts, saveDraft } from "@/lib/storage"
-import { searchPois, getPoi } from "@/lib/mockItineraryFallback"
-import { generateRealItinerary, searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api"
-import { streamTripPlan, type StreamStep } from "@/lib/streamApi"
+import { getPoi } from "@/lib/mockItineraryFallback"
+import { createEmptyContract, generateRealItinerary, intentFromContract, normalizeContract, searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api"
 import type { AIMessage } from "@/components/AITripChatPanel"
-import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, POI, PreviewMode, TripIntent } from "@/types/trip"
+import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, LLMDataContract, POI, PreviewMode, TripIntent } from "@/types/trip"
 
 type Screen = "home" | "builder" | "saved" | "mobile"
 
@@ -29,6 +28,7 @@ export default function Page() {
   const [prompt, setPrompt] = useState("")
   const [mode, setMode] = useState<BuilderMode>("build")
   const [intent, setIntent] = useState<TripIntent | undefined>()
+  const [contract, setContract] = useState<LLMDataContract | null>(null)
   const [followUp, setFollowUp] = useState<FollowUpQuestion | null>(null)
   const [draft, setDraft] = useState<ItineraryDraft | null>(null)
   const [savedDrafts, setSavedDrafts] = useState<ItineraryDraft[]>([])
@@ -72,6 +72,81 @@ export default function Page() {
     setIsRunning(false)
   }
 
+  async function buildItineraryFromContract(nextContractInput: LLMDataContract, rawPrompt: string, assistantReply?: string) {
+    const nextContract = normalizeContract(nextContractInput)
+    const nextIntent = intentFromContract(nextContract, rawPrompt)
+    setContract(nextContract)
+    setIntent(nextIntent)
+    setStreamDetails(prev => ({ ...prev, 0: `Đã xác nhận đủ thông tin: ${nextIntent.destination || "Huế"}, ${nextIntent.days} ngày.` }))
+    await delay(500)
+
+    setStreamDetails(prev => ({ ...prev, 1: "Đang tìm địa điểm và tối ưu lịch trình..." }))
+    const nextDraft = await generateRealItinerary(
+      rawPrompt,
+      nextIntent.days,
+      nextIntent.budget,
+      nextIntent.destination || "Huế",
+      nextIntent.interests,
+      nextContract
+    )
+
+    setActiveStep(3)
+    setStreamDetails(prev => ({ ...prev, 2: `Tối ưu: ${nextDraft.optimizationStats?.totalDistanceKm?.toFixed(1) || "?"} km` }))
+    await delay(600)
+    setStreamDetails(prev => ({ ...prev, 3: "Hoàn tất!" }))
+    await delay(400)
+
+    setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? nextContract)
+    setIntent(nextDraft.intent)
+    setStatus("live")
+    setViewMode("split")
+    setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
+    setMessages((items) => [
+      ...items,
+      ...(assistantReply ? [{ role: "assistant" as const, content: assistantReply }] : []),
+      { role: "assistant" as const, content: `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày từ hệ thống AI.` }
+    ])
+    setToastMessage("Đã tạo lịch trình thành công.")
+  }
+
+  async function regenerateDraftFromContract(nextContractInput: LLMDataContract, rawPrompt: string, assistantReply?: string) {
+    const nextContract = normalizeContract(nextContractInput)
+    const nextIntent = intentFromContract(nextContract, rawPrompt)
+    const nextDraft = await generateRealItinerary(
+      rawPrompt,
+      nextIntent.days,
+      nextIntent.budget,
+      nextIntent.destination || "Huế",
+      nextIntent.interests,
+      nextContract
+    )
+    setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? nextContract)
+    setIntent(nextDraft.intent)
+    setStatus("live")
+    setFollowUp(null)
+    if (assistantReply) {
+      setMessages((items) => [...items, { role: "assistant", content: assistantReply }, { role: "assistant", content: "Đã cập nhật lại lịch trình theo yêu cầu mới." }])
+    }
+  }
+
+  function findDraftItemByMessage(message: string, target?: string | null) {
+    if (!draft) return null
+    const haystack = normalize(`${message} ${target || ""}`)
+    for (const day of draft.days) {
+      for (const item of day.items) {
+        const poi = POI_CACHE.get(item.poiId) || getPoi(item.poiId)
+        const name = normalize(poi?.name || "")
+        const nameTokens = name.split(/\s+/).filter((token) => token.length > 2 && token !== "hue")
+        if (name && (haystack.includes(name) || (nameTokens.length > 0 && nameTokens.every((token) => haystack.includes(token))))) {
+          return { dayNumber: day.dayNumber, item }
+        }
+      }
+    }
+    return null
+  }
+
   function handleHomeSubmit() {
     const cleanPrompt = prompt.trim()
     if (!cleanPrompt || isRunning) return
@@ -86,6 +161,7 @@ export default function Page() {
     
     setScreen("builder")
     setDraft(null)
+    setContract(null)
     setIsRunning(true)
     setStatus("building")
     setActiveStep(1) // Phân tích Intent
@@ -93,28 +169,13 @@ export default function Page() {
     try {
       setStreamDetails({ 0: "Đang phân tích ý định đi du lịch..." })
 
-      const emptyContract = {
-        destination: null,
-        budget_max: null,
-        radius_km: 10.0,
-        num_days: 1,
-        tags: [],
-        locked_pois: []
-      }
-
-      const res = await chatProcess(cleanPrompt, [], emptyContract)
-
-      const updatedIntent: TripIntent = {
-        destination: res.updated_contract.destination || undefined,
-        days: res.updated_contract.num_days,
-        budget: res.updated_contract.budget_max || undefined,
-        interests: res.updated_contract.tags || [],
-        lockedPoiNames: res.updated_contract.locked_pois || [],
-        rawPrompt: cleanPrompt
-      }
+      const res = await chatProcess(cleanPrompt, [], createEmptyContract(), false)
+      const nextContract = normalizeContract(res.updated_contract)
+      const updatedIntent = intentFromContract(nextContract, cleanPrompt)
+      setContract(nextContract)
       setIntent(updatedIntent)
 
-      if (res.status === "ready") {
+      if (res.status === "ready" || res.phase === "ready") {
         setStreamDetails(prev => ({ ...prev, 0: `Đã xác nhận đầy đủ thông tin: ${updatedIntent.destination}, ${updatedIntent.days} ngày.` }))
         await delay(500)
         
@@ -124,7 +185,8 @@ export default function Page() {
           updatedIntent.days,
           updatedIntent.budget,
           updatedIntent.destination || "Huế",
-          updatedIntent.interests
+          updatedIntent.interests,
+          nextContract
         )
 
         setActiveStep(3)
@@ -134,6 +196,7 @@ export default function Page() {
         await delay(400)
 
         setDraft(nextDraft)
+        setContract(nextDraft.llmContract ?? nextContract)
         setIntent(nextDraft.intent)
         setStatus("live")
         setViewMode("split")
@@ -165,19 +228,6 @@ export default function Page() {
     const userMsg = { role: "user" as const, content: message }
     setMessages((items) => [...items, userMsg])
 
-    const normalized = normalize(message)
-    
-    if (draft && normalized.includes("them")) {
-      setIsRunning(true)
-      const results = await searchPoisBackend(message)
-      const match = results.find((poi) => !draft.days.some((day) => day.items.some((item) => item.poiId === poi.id)))
-      setIsRunning(false)
-      if (match) {
-        await handleAddPoiBackend(draft.days[0]?.dayNumber ?? 1, match)
-        return
-      }
-    }
-
     if (!draft) {
       setIsRunning(true)
       setStatus("building")
@@ -186,33 +236,21 @@ export default function Page() {
       try {
         setStreamDetails({ 0: "AI đang phân tích ý định..." })
         
-        const currentContract = {
-          destination: intent?.destination || null,
-          budget_max: intent?.budget || null,
-          radius_km: 10.0,
-          num_days: intent?.days || 1,
-          tags: intent?.interests || [],
-          locked_pois: intent?.lockedPoiNames || []
-        }
+        const currentContract = contract ?? normalizeContract(intent ?? null)
 
         const historyList = messages.map(m => ({
           role: m.role,
           content: m.content
         }))
 
-        const res = await chatProcess(message, historyList, currentContract)
-
-        const updatedIntent: TripIntent = {
-          destination: res.updated_contract.destination || undefined,
-          days: res.updated_contract.num_days,
-          budget: res.updated_contract.budget_max || undefined,
-          interests: res.updated_contract.tags || [],
-          lockedPoiNames: res.updated_contract.locked_pois || [],
-          rawPrompt: intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message
-        }
+        const res = await chatProcess(message, historyList, currentContract, false)
+        const nextContract = normalizeContract(res.updated_contract)
+        const rawPrompt = intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message
+        const updatedIntent = intentFromContract(nextContract, rawPrompt)
+        setContract(nextContract)
         setIntent(updatedIntent)
 
-        if (res.status === "ready") {
+        if (res.status === "ready" || res.phase === "ready") {
           setStreamDetails(prev => ({ ...prev, 0: `Đã đủ thông tin: ${updatedIntent.destination}, ${updatedIntent.days} ngày.` }))
           await delay(500)
           
@@ -223,7 +261,8 @@ export default function Page() {
             updatedIntent.days,
             updatedIntent.budget,
             updatedIntent.destination || "Huế",
-            updatedIntent.interests
+            updatedIntent.interests,
+            nextContract
           )
 
           setActiveStep(3)
@@ -233,6 +272,7 @@ export default function Page() {
           await delay(400)
 
           setDraft(nextDraft)
+          setContract(nextDraft.llmContract ?? nextContract)
           setIntent(nextDraft.intent)
           setStatus("live")
           setViewMode("split")
@@ -260,17 +300,43 @@ export default function Page() {
     setIsRunning(true)
     setStatus("building")
     try {
-      const nextDraft = await generateRealItinerary(
-        (intent?.rawPrompt || "") + " " + message, 
-        intent?.days, 
-        intent?.budget, 
-        intent?.destination, 
-        intent?.interests
-      )
-      setDraft(nextDraft)
-      setIntent(nextDraft.intent)
-      setStatus("live")
-      setFollowUp(null)
+      const historyList = messages.map(m => ({ role: m.role, content: m.content }))
+      const activeContract = contract ?? draft.llmContract ?? normalizeContract(intent ?? null)
+      const res = await chatProcess(message, historyList, activeContract, true)
+      const nextContract = normalizeContract(res.updated_contract)
+      const action = res.edit_intent?.action ?? "answer_question"
+      const rawPrompt = `${intent?.rawPrompt || draft.intent.rawPrompt} ${message}`.trim()
+      setContract(nextContract)
+      setIntent(intentFromContract(nextContract, rawPrompt))
+
+      if (action === "add_place") {
+        const results = await searchPoisBackend(res.edit_intent?.target || message)
+        const match = results.find((poi) => !draft.days.some((day) => day.items.some((item) => item.poiId === poi.id)))
+        if (match) {
+          await handleAddPoiBackend(selectedDay === "all" ? (draft.days[0]?.dayNumber ?? 1) : selectedDay, match)
+        } else {
+          setMessages((items) => [...items, { role: "assistant", content: "Mình chưa tìm thấy địa điểm phù hợp để thêm vào lịch hiện tại." }])
+        }
+        return
+      }
+
+      if (action === "remove_place") {
+        const match = findDraftItemByMessage(message, res.edit_intent?.target)
+        if (match) {
+          await handleRemovePlaceBackend(match.dayNumber, match.item.id)
+        } else {
+          setMessages((items) => [...items, { role: "assistant", content: "Mình chưa xác định được địa điểm cần bỏ. Bạn nói rõ tên địa điểm giúp mình nhé." }])
+        }
+        return
+      }
+
+      if (action === "answer_question") {
+        setMessages((items) => [...items, { role: "assistant", content: res.reply }])
+        setStatus("live")
+        return
+      }
+
+      await regenerateDraftFromContract(nextContract, rawPrompt, res.reply)
     } catch(e: any) {
       setToastMessage("Lỗi xử lý: " + e.message)
       setStatus("live")
@@ -435,8 +501,10 @@ export default function Page() {
     setIsRunning(true)
     setStatus("building")
     try {
-      const nextDraft = await generateRealItinerary(intent.rawPrompt, intent.days, intent.budget, intent.destination, intent.interests)
+      const activeContract = contract ?? draft?.llmContract ?? normalizeContract(intent)
+      const nextDraft = await generateRealItinerary(intent.rawPrompt, intent.days, intent.budget, intent.destination, intent.interests, activeContract)
       setDraft(nextDraft)
+      setContract(nextDraft.llmContract ?? activeContract)
       setIntent(nextDraft.intent)
       setStatus("live")
       setToastMessage("Đã tạo lại lịch trình.")
@@ -450,6 +518,7 @@ export default function Page() {
 
   function openSavedDraft(nextDraft: ItineraryDraft) {
     setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? normalizeContract(nextDraft.intent))
     setIntent(nextDraft.intent)
     setPrompt(nextDraft.intent.rawPrompt)
     setFollowUp(null)
@@ -462,6 +531,7 @@ export default function Page() {
 
   function resetDraft() {
     setDraft(null)
+    setContract(null)
     setIntent(undefined)
     setFollowUp(null)
     setMessages([])
@@ -533,5 +603,5 @@ export default function Page() {
 }
 
 function normalize(value: string): string {
-  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/d/g, "d")
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d")
 }

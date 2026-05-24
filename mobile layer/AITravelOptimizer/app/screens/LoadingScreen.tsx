@@ -1,397 +1,643 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react"
-import { View, ViewStyle, TextStyle, FlatList, Dimensions, Pressable, ScrollView } from "react-native"
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  FadeInDown,
-  Easing,
-} from "react-native-reanimated"
-
-import { Screen } from "@/components/Screen"
+﻿/**
+ * LoadingScreen - AI Processing & Plan Comparison (3 Options)
+ * Screen 2+3: Loading animation -> 3-plan comparison (Balanced/Chill/Budget)
+ */
+import React, { useEffect, useRef, useState } from "react"
+import {
+  View,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+} from "react-native"
 import { Text } from "@/components/Text"
-import type { AppStackScreenProps } from "@/navigators/navigationTypes"
-import type { TravelItinerary } from "@/navigators/navigationTypes"
-import { useTripPipeline } from "@/hooks/useTripPipeline"
+import { LinearGradient } from "expo-linear-gradient"
+import { NativeStackScreenProps } from "@react-navigation/native-stack"
+import { AppStackParamList } from "@/navigators/navigationTypes"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-// ─── Pipeline Step Definitions (re-exported from hook) ──────────────────────
-type StepStatus = "pending" | "active" | "done" | "error"
+const { width } = Dimensions.get("window")
+const CARD_WIDTH = width * 0.78
 
-interface PipelineStep {
-  id: string
-  label: string
-  detail: string
-  status: StepStatus
-}
+const PLAN_DATA = [
+  {
+    id: "balanced",
+    title: "Cân Bằng",
+    subtitle: "Balanced",
+    emoji: "⚖️",
+    color: colors.palette.royalPurple,
+    colorLight: colors.palette.royalPurpleLight,
+    fatigueIndex: 14,
+    fatigueMax: 20,
+    diversityScore: 87,
+    budget: "850.000₫",
+    stops: 8,
+    days: 3,
+    highlights: ["Đại Nội", "Lăng Tự Đức", "Phố cổ Gia Hội", "Cơm hến Đông Ba"],
+    badge: "⭐ Phổ biến nhất",
+    badgeColor: colors.palette.imperialGold,
+  },
+  {
+    id: "chill",
+    title: "Thư Thái",
+    subtitle: "Chill Mode",
+    emoji: "🌿",
+    color: colors.palette.jadeGreen,
+    colorLight: "#33C48F",
+    fatigueIndex: 8,
+    fatigueMax: 20,
+    diversityScore: 72,
+    budget: "650.000₫",
+    stops: 5,
+    days: 3,
+    highlights: ["Vườn An Hiên", "Thiền Viện", "Sông Hương hoàng hôn", "Chè Huế"],
+    badge: "💚 Nhẹ nhàng nhất",
+    badgeColor: colors.palette.jadeGreen,
+  },
+  {
+    id: "budget",
+    title: "Tiết Kiệm",
+    subtitle: "Budget",
+    emoji: "💰",
+    color: colors.palette.imperialGold,
+    colorLight: colors.palette.imperialGoldLight,
+    fatigueIndex: 16,
+    fatigueMax: 20,
+    diversityScore: 95,
+    budget: "420.000₫",
+    stops: 10,
+    days: 3,
+    highlights: ["Cầu Trường Tiền", "Cung An Định", "Chợ Đông Ba", "Bánh mì Huế"],
+    badge: "💰 Tiết kiệm nhất",
+    badgeColor: colors.palette.sunsetOrange,
+  },
+]
 
-interface LogEntry {
-  id: number
-  message: string
-  type: "info" | "success" | "error"
-  timestamp: number
-}
+const LOADING_STEPS = [
+  { text: "Phân tích ý định du lịch...", icon: "🧠" },
+  { text: "Tối ưu hóa tuyến đường OSRM...", icon: "🗺️" },
+  { text: "Kiểm tra thời tiết & nắng nóng...", icon: "☀️" },
+  { text: "Tính toán Fatigue Index...", icon: "⚡" },
+  { text: "Chèn điểm nghỉ tự động...", icon: "☕" },
+  { text: "Tạo 3 phương án lộ trình...", icon: "✨" },
+]
 
-// ─── Component ──────────────────────────────────────────────────
-interface LoadingScreenProps extends AppStackScreenProps<"Loading"> {}
+type Props = NativeStackScreenProps<AppStackParamList, "Loading">
 
-export const LoadingScreen: FC<LoadingScreenProps> = ({ route, navigation }) => {
-  const { prompt = "", hotelLat = 0, hotelLon = 0, hotelName = "", numDays = 1 } =
-    route.params ?? {}
+type PlanData = typeof PLAN_DATA[number]
 
-  // ─── Spinner + pulse animations (kept as-is) ─────────
-  const rotation = useSharedValue(0)
+export const LoadingScreen = ({ navigation, route }: Props) => {
+  const [phase, setPhase] = useState<"loading" | "plans">("loading")
+  const [loadingStep, setLoadingStep] = useState(0)
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const progressAnim = useRef(new Animated.Value(0)).current
+  const fadeAnim = useRef(new Animated.Value(1)).current
+  const rotateAnim = useRef(new Animated.Value(0)).current
+  const insets = useSafeAreaInsets()
+
+  // Spinner rotation
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 1500, easing: Easing.linear }),
-      -1,
-      false,
-    )
+    Animated.loop(
+      Animated.timing(rotateAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
+    ).start()
   }, [])
 
-  const spinnerStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }))
-
-  const pulse = useSharedValue(1)
+  // Loading steps cycle
   useEffect(() => {
-    pulse.value = withRepeat(withTiming(1.15, { duration: 800 }), -1, true)
-  }, [])
+    if (phase !== "loading") return
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => {
+        const next = prev + 1
+        if (next >= LOADING_STEPS.length) {
+          clearInterval(interval)
+          setTimeout(() => {
+            Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
+              setPhase("plans")
+              Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start()
+            })
+          }, 600)
+        }
+        return Math.min(next, LOADING_STEPS.length - 1)
+      })
+      Animated.timing(progressAnim, {
+        toValue: (loadingStep + 1) / LOADING_STEPS.length,
+        duration: 800,
+        useNativeDriver: false,
+      }).start()
+    }, 900)
+    return () => clearInterval(interval)
+  }, [phase, loadingStep])
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }))
-
-  // ─── Wire trip pipeline (mock or real backend) ────────
-  const { steps, logs, errorMsg } = useTripPipeline({
-    prompt,
-    hotelLat,
-    hotelLon,
-    hotelName,
-    numDays,
-    onItinerary: (itinerary) => navigation.replace("MapTimeline", { itinerary }),
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
   })
 
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlan(planId)
+    setTimeout(() => {
+      navigation.navigate("MapTimeline", { itinerary: { status: 'ok', num_days: 3, days: [], total_pois_visited: 0, total_pois_dropped: 0, total_entrance_fee: 0, total_travel_min: 0, total_distance_km: 0, budget_used: 0 } })
+    }, 600)
+  }
 
-  // ─── Render helpers ───────────────────────
-  const renderStep = (step: PipelineStep, index: number) => {
-    const isLast = index === steps.length - 1
-    const dotColor =
-      step.status === "done"
-        ? colors.tint
-        : step.status === "active"
-          ? colors.tint
-          : step.status === "error"
-            ? colors.error
-            : colors.palette.figmaInactive
-
-    const textColor =
-      step.status === "done" || step.status === "active"
-        ? colors.text
-        : colors.palette.figmaGrayMedium
-
+  const RadialRing = ({ value, max, color, label }: { value: number; max: number; color: string; label: string }) => {
+    const percent = (value / max) * 100
     return (
-      <View key={step.id} style={$stepRow}>
-        {/* Timeline: node + line */}
-        <View style={$timelineCol}>
-          {step.status === "active" ? (
-            <Animated.View style={pulseStyle}>
-              <View style={[$stepDot, { backgroundColor: dotColor }]}>
-                {step.status === "active" && <View style={$stepDotInner} />}
-              </View>
-            </Animated.View>
-          ) : (
-            <View style={[$stepDot, { backgroundColor: dotColor }]}>
-              {step.status === "done" && <Text text="✓" style={$checkmark} />}
+      <View style={styles.radialContainer}>
+        <View style={styles.radialOuter}>
+          <View style={[styles.radialInner, { borderColor: color + "40" }]}>
+            <View style={[styles.radialFill, { borderColor: color, borderTopColor: "transparent", transform: [{ rotate: `${(percent / 100) * 360}deg` }] }]} />
+            <View style={styles.radialCenter}>
+              <Text style={[styles.radialValue, { color }]}>{value}</Text>
+              <Text style={styles.radialMax}>/{max}</Text>
             </View>
-          )}
-          {!isLast && (
-            <View
-              style={[
-                $stepLine,
-                {
-                  backgroundColor:
-                    step.status === "done" ? colors.tint : colors.palette.figmaGrayLight,
-                },
-              ]}
-            />
-          )}
+          </View>
         </View>
+        <Text style={styles.radialLabel}>{label}</Text>
+      </View>
+    )
+  }
 
-        {/* Content */}
-        <View style={$stepContent}>
-          <Text text={step.label} style={[$stepLabel, { color: textColor }]} />
-          <Text text={step.detail} style={$stepDetail} />
+  if (phase === "loading") {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <LinearGradient
+          colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={[styles.loadingContainer, { paddingTop: insets.top + 40 }]}>
+          {/* Logo */}
+          <View style={styles.logoRow}>
+            <View style={styles.logoIconWrap}>
+              <Text style={styles.logoIconText}>📍</Text>
+            </View>
+            <Text style={styles.logoText}>TripFlow</Text>
+          </View>
+
+          {/* Spinner */}
+          <Animated.View style={[styles.spinnerOuter, { transform: [{ rotate: spin }] }]}>
+            <LinearGradient
+              colors={[colors.palette.royalPurple, colors.palette.imperialGold, colors.palette.jadeGreen]}
+              style={styles.spinnerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </Animated.View>
+          <View style={styles.spinnerInner}>
+            <Text style={styles.spinnerIcon}>🤖</Text>
+          </View>
+
+          <Text style={styles.loadingTitle}>AI đang phân tích...</Text>
+          <Text style={styles.loadingSubtitle}>"{route.params?.prompt?.slice(0, 50)}..."</Text>
+
+          {/* Steps */}
+          <View style={styles.stepsContainer}>
+            {LOADING_STEPS.map((step, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.stepRow,
+                  { opacity: i <= loadingStep ? 1 : 0.25 },
+                ]}
+              >
+                <View style={[
+                  styles.stepDot,
+                  i < loadingStep && { backgroundColor: colors.palette.jadeGreen },
+                  i === loadingStep && { backgroundColor: colors.palette.imperialGold },
+                  i > loadingStep && { backgroundColor: "rgba(255,255,255,0.15)" },
+                ]}>
+                  <Text style={{ fontSize: 10 }}>
+                    {i < loadingStep ? "✓" : step.icon}
+                  </Text>
+                </View>
+                <Text style={[
+                  styles.stepText,
+                  i === loadingStep && { color: "#FFFFFF" },
+                ]}>{step.text}</Text>
+              </Animated.View>
+            ))}
+          </View>
+
+          {/* Progress bar */}
+          <View style={styles.progressBar}>
+            <Animated.View style={[
+              styles.progressFill,
+              {
+                width: progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0%", "100%"],
+                }),
+              },
+            ]} />
+          </View>
         </View>
       </View>
     )
   }
 
-  const renderLogItem = ({ item }: { item: LogEntry }) => {
-    const logColor =
-      item.type === "success"
-        ? colors.tint
-        : item.type === "error"
-          ? colors.error
-          : colors.palette.figmaGrayDark
-
-    return (
-      <Animated.View entering={FadeInDown.duration(300)} style={$logRow}>
-        <View style={[$logDot, { backgroundColor: logColor }]} />
-        <Text text={item.message} style={[$logText, { color: logColor }]} numberOfLines={2} />
-      </Animated.View>
-    )
-  }
-
-  // ─── Main Render ──────────────────────────
+  // Plans comparison screen
   return (
-    <Screen style={$root} preset="fixed">
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={$container}>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        colors={[colors.palette.deepSlate, "#111827", "#0f0a1e"]}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <Animated.View style={[{ flex: 1, opacity: fadeAnim }, { paddingTop: insets.top + 12 }]}>
         {/* Header */}
-        <View style={$header}>
-          <Animated.View style={[$spinnerWrap, spinnerStyle]}>
-            <View style={$spinner} />
-          </Animated.View>
-
-          <Text text="Planning Your Trip" style={$heading} />
-          <Text
-            text={errorMsg || "AI is optimizing your perfect route..."}
-            style={[$subtitle, errorMsg ? { color: colors.error } : undefined]}
-          />
-        </View>
-
-        {/* Error Actions */}
-        {errorMsg && (
-          <View style={$errorActions}>
-            <Pressable style={$errorBtn} onPress={() => navigation.goBack()}>
-              <Text text="← Go Back" style={$errorBtnText} />
-            </Pressable>
-            <Pressable
-              style={[$errorBtn, $retryBtn]}
-              onPress={() => navigation.replace("Loading", route.params)}
-            >
-              <Text text="🔄 Retry" style={[$errorBtnText, { color: "#fff" }]} />
-            </Pressable>
+        <View style={styles.plansHeader}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.plansHeaderCenter}>
+            <Text style={styles.plansTitle}>3 Phương Án Lộ Trình</Text>
+            <Text style={styles.plansSub}>Vuốt để xem chi tiết từng phương án</Text>
           </View>
-        )}
-
-        {/* Pipeline Steps */}
-        <View style={$stepsCard}>{steps.map(renderStep)}</View>
-
-        {/* Live Log Stream */}
-        <View style={$logCard}>
-          <Text text="Live Progress" style={$logTitle} />
-          <FlatList
-            data={logs}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderLogItem}
-            contentContainerStyle={$logList}
-            showsVerticalScrollIndicator={false}
-            inverted={false}
-            scrollEnabled={false}
-          />
+          <View style={{ width: 40 }} />
         </View>
-      </ScrollView>
-    </Screen>
+
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.plansScroll}
+          decelerationRate="fast"
+          snapToInterval={CARD_WIDTH + 16}
+          snapToAlignment="center"
+          contentOffset={{ x: (width - CARD_WIDTH) / 2 - 8, y: 0 }}
+        >
+          {PLAN_DATA.map((plan: PlanData) => (
+            <View key={plan.id} style={styles.planCardWrap}>
+              <LinearGradient
+                colors={[plan.color + "25", "rgba(255,255,255,0.04)"]}
+                style={[styles.planCard, selectedPlan === plan.id && styles.planCardSelected]}
+              >
+                {/* Badge */}
+                <View style={[styles.planBadge, { backgroundColor: plan.badgeColor + "30" }]}>
+                  <Text style={[styles.planBadgeText, { color: plan.badgeColor }]}>{plan.badge}</Text>
+                </View>
+
+                {/* Title */}
+                <View style={styles.planTitleRow}>
+                  <Text style={styles.planEmoji}>{plan.emoji}</Text>
+                  <View>
+                    <Text style={styles.planTitle}>{plan.title}</Text>
+                    <Text style={[styles.planSubtitle, { color: plan.colorLight }]}>{plan.subtitle}</Text>
+                  </View>
+                </View>
+
+                {/* Radial rings */}
+                <View style={styles.ringsRow}>
+                  <RadialRing
+                    value={plan.fatigueIndex}
+                    max={plan.fatigueMax}
+                    color={plan.color}
+                    label="Fatigue"
+                  />
+                  <RadialRing
+                    value={plan.diversityScore}
+                    max={100}
+                    color={colors.palette.imperialGold}
+                    label="Diversity %"
+                  />
+                </View>
+
+                {/* Stats */}
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{plan.stops}</Text>
+                    <Text style={styles.statLabel}>Điểm dừng</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{plan.days}</Text>
+                    <Text style={styles.statLabel}>Ngày</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: plan.colorLight }]}>{plan.budget}</Text>
+                    <Text style={styles.statLabel}>Chi phí</Text>
+                  </View>
+                </View>
+
+                {/* Highlights */}
+                <View style={styles.highlightsContainer}>
+                  <Text style={styles.highlightsTitle}>Điểm nổi bật:</Text>
+                  {plan.highlights.map((h, i) => (
+                    <View key={i} style={styles.highlightRow}>
+                      <View style={[styles.highlightDot, { backgroundColor: plan.color }]} />
+                      <Text style={styles.highlightText}>{h}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* CTA */}
+                <TouchableOpacity
+                  style={styles.selectBtn}
+                  onPress={() => handleSelectPlan(plan.id)}
+                >
+                  <LinearGradient
+                    colors={[plan.color, plan.colorLight]}
+                    style={styles.selectBtnGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.selectBtnText}>Chọn Phương Án Này →</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Bottom tip */}
+        <View style={styles.bottomTip}>
+          <Text style={styles.bottomTipText}>
+            💡 Bạn có thể chỉnh sửa thứ tự điểm dừng sau khi chọn
+          </Text>
+        </View>
+      </Animated.View>
+    </View>
   )
 }
 
-// ─── Styles ─────────────────────────────────────────────────────
-
-const $root: ViewStyle = {
-  flex: 1,
-  backgroundColor: colors.background,
-}
-
-const $container: ViewStyle = {
-  flexGrow: 1,
-  paddingHorizontal: spacing.lg,
-  paddingTop: 60,
-  paddingBottom: 40,
-}
-
-const $header: ViewStyle = {
-  alignItems: "center",
-  marginBottom: spacing.xl,
-}
-
-const $spinnerWrap: ViewStyle = {
-  width: 64,
-  height: 64,
-  marginBottom: spacing.lg,
-  justifyContent: "center",
-  alignItems: "center",
-}
-
-const $spinner: ViewStyle = {
-  width: 56,
-  height: 56,
-  borderRadius: 28,
-  borderWidth: 4,
-  borderColor: colors.palette.figmaGrayLight,
-  borderTopColor: colors.tint,
-}
-
-const $heading: TextStyle = {
-  fontSize: 28,
-  fontFamily: typography.primary.semiBold,
-  color: colors.text,
-  marginBottom: spacing.xs,
-  textAlign: "center",
-}
-
-const $subtitle: TextStyle = {
-  fontSize: 16,
-  fontFamily: typography.primary.normal,
-  color: colors.palette.figmaPlaceholder,
-  textAlign: "center",
-}
-
-// ─── Pipeline Steps ──────────
-const $stepsCard: ViewStyle = {
-  backgroundColor: colors.palette.figmaSurface,
-  borderRadius: 24,
-  padding: spacing.lg,
-  marginBottom: spacing.lg,
-  // Figma shadow: effect_OMBK8U
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.05,
-  shadowRadius: 4,
-  elevation: 2,
-}
-
-const $stepRow: ViewStyle = {
-  flexDirection: "row",
-  minHeight: 56,
-}
-
-const $timelineCol: ViewStyle = {
-  width: 32,
-  alignItems: "center",
-}
-
-const $stepDot: ViewStyle = {
-  width: 26,
-  height: 26,
-  borderRadius: 13,
-  justifyContent: "center",
-  alignItems: "center",
-}
-
-const $stepDotInner: ViewStyle = {
-  width: 10,
-  height: 10,
-  borderRadius: 5,
-  backgroundColor: "#fff",
-}
-
-const $checkmark: TextStyle = {
-  color: "#fff",
-  fontSize: 14,
-  fontFamily: typography.primary.semiBold,
-}
-
-const $stepLine: ViewStyle = {
-  width: 2,
-  flex: 1,
-  marginVertical: 4,
-}
-
-const $stepContent: ViewStyle = {
-  flex: 1,
-  marginLeft: spacing.sm,
-  paddingBottom: spacing.md,
-}
-
-const $stepLabel: TextStyle = {
-  fontSize: 16,
-  fontFamily: typography.primary.semiBold,
-  marginBottom: 2,
-}
-
-const $stepDetail: TextStyle = {
-  fontSize: 14,
-  fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayMedium,
-}
-
-// ─── Log Stream ──────────────
-const $logCard: ViewStyle = {
-  flex: 1,
-  backgroundColor: colors.palette.figmaSurface,
-  borderRadius: 24,
-  padding: spacing.lg,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.05,
-  shadowRadius: 4,
-  elevation: 2,
-}
-
-const $logTitle: TextStyle = {
-  fontSize: 16,
-  fontFamily: typography.primary.semiBold,
-  color: colors.text,
-  marginBottom: spacing.md,
-}
-
-const $logList: ViewStyle = {
-  paddingBottom: spacing.md,
-}
-
-const $logRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "flex-start",
-  marginBottom: spacing.sm,
-}
-
-const $logDot: ViewStyle = {
-  width: 6,
-  height: 6,
-  borderRadius: 3,
-  marginTop: 7,
-  marginRight: spacing.sm,
-}
-
-const $logText: TextStyle = {
-  flex: 1,
-  fontSize: 14,
-  fontFamily: typography.primary.normal,
-  lineHeight: 20,
-}
-
-// ─── Error Actions ───────────
-const $errorActions: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "center",
-  gap: spacing.md,
-  marginBottom: spacing.lg,
-}
-
-const $errorBtn: ViewStyle = {
-  flex: 1,
-  minHeight: 48,
-  paddingVertical: 12,
-  paddingHorizontal: 24,
-  borderRadius: 16,
-  backgroundColor: colors.palette.figmaOffWhite,
-  borderWidth: 1,
-  borderColor: colors.palette.figmaGrayLight,
-  justifyContent: "center",
-  alignItems: "center",
-}
-
-const $retryBtn: ViewStyle = {
-  backgroundColor: colors.tint,
-  borderColor: colors.tint,
-}
-
-const $errorBtnText: TextStyle = {
-  fontSize: 16,
-  fontFamily: typography.primary.semiBold,
-  color: colors.text,
-}
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: spacing.xl,
+  },
+  logoRow: { flexDirection: "row", alignItems: "center", marginBottom: 40 },
+  logoIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.palette.sunsetOrange,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  logoIconText: { fontSize: 18 },
+  logoText: {
+    fontFamily: typography.primary.bold,
+    fontSize: 22,
+    color: "#FFFFFF",
+  },
+  spinnerOuter: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: "transparent",
+    position: "absolute",
+    top: 140,
+  },
+  spinnerGradient: {
+    flex: 1,
+    borderRadius: 50,
+    opacity: 0.8,
+  },
+  spinnerInner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  spinnerIcon: { fontSize: 40 },
+  loadingTitle: {
+    fontFamily: typography.primary.semiBold,
+    fontSize: 22,
+    color: "#FFFFFF",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  loadingSubtitle: {
+    fontFamily: typography.primary.normal,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 32,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  stepsContainer: { width: "100%", gap: 10, marginBottom: 32 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  stepText: {
+    fontFamily: typography.primary.normal,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.45)",
+    flex: 1,
+  },
+  progressBar: {
+    width: "100%",
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.palette.imperialGold,
+    borderRadius: 2,
+  },
+  // Plans styles
+  plansHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  backBtnText: {
+    fontSize: 20,
+    color: "#FFFFFF",
+    fontFamily: typography.primary.bold,
+  },
+  plansHeaderCenter: { flex: 1, alignItems: "center" },
+  plansTitle: {
+    fontFamily: typography.primary.bold,
+    fontSize: 18,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  plansSub: {
+    fontFamily: typography.primary.normal,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.45)",
+    marginTop: 2,
+  },
+  plansScroll: {
+    paddingHorizontal: (width - CARD_WIDTH) / 2,
+    gap: 16,
+    paddingVertical: 16,
+  },
+  planCardWrap: {
+    width: CARD_WIDTH,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  planCard: {
+    padding: spacing.lg,
+    borderRadius: 24,
+  },
+  planCardSelected: {
+    borderWidth: 2,
+    borderColor: colors.palette.imperialGold,
+  },
+  planBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: spacing.md,
+  },
+  planBadgeText: {
+    fontFamily: typography.primary.semiBold,
+    fontSize: 12,
+  },
+  planTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: spacing.lg,
+  },
+  planEmoji: { fontSize: 36 },
+  planTitle: {
+    fontFamily: typography.primary.bold,
+    fontSize: 20,
+    color: "#FFFFFF",
+  },
+  planSubtitle: {
+    fontFamily: typography.primary.normal,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  ringsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: spacing.lg,
+  },
+  radialContainer: { alignItems: "center", gap: 8 },
+  radialOuter: { width: 80, height: 80, justifyContent: "center", alignItems: "center" },
+  radialInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  radialFill: {
+    position: "absolute",
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 6,
+  },
+  radialCenter: { flexDirection: "row", alignItems: "baseline" },
+  radialValue: { fontFamily: typography.primary.bold, fontSize: 16 },
+  radialMax: { fontFamily: typography.primary.normal, fontSize: 10, color: "rgba(255,255,255,0.4)" },
+  radialLabel: { fontFamily: typography.primary.normal, fontSize: 11, color: "rgba(255,255,255,0.5)" },
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  statItem: { alignItems: "center" },
+  statValue: {
+    fontFamily: typography.primary.bold,
+    fontSize: 18,
+    color: "#FFFFFF",
+  },
+  statLabel: {
+    fontFamily: typography.primary.normal,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.45)",
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  highlightsContainer: { marginBottom: spacing.lg },
+  highlightsTitle: {
+    fontFamily: typography.primary.semiBold,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 8,
+  },
+  highlightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  highlightDot: { width: 6, height: 6, borderRadius: 3 },
+  highlightText: {
+    fontFamily: typography.primary.normal,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+  },
+  selectBtn: { borderRadius: 14, overflow: "hidden" },
+  selectBtnGradient: {
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  selectBtnText: {
+    fontFamily: typography.primary.semiBold,
+    fontSize: 15,
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+  },
+  bottomTip: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
+  bottomTipText: {
+    fontFamily: typography.primary.normal,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.35)",
+    textAlign: "center",
+  },
+})

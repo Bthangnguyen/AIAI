@@ -287,7 +287,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     day.stops.forEach((stop, idx) => {
       items.push({
         type: "stop",
-        key: `${day.day_index}-${stop.poi_id}`,
+        key: `${day.day_index}-${stop.poi_id}-${idx}`,
         stop,
         stopIndex: idx,
         dayIndex: day.day_index,
@@ -542,8 +542,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         {/* POI markers for selected day */}
         {dayStops.map((stop, idx) => (
           <MapboxGL.PointAnnotation
-            key={`poi-${stop.poi_id}`}
-            id={`poi-${stop.poi_id}`}
+            key={`poi-${stop.poi_id}-${idx}`}
+            id={`poi-${stop.poi_id}-${idx}`}
             coordinate={[stop.location.longitude, stop.location.latitude]}
             onSelected={() => handleMarkerPress(stop)}
           >

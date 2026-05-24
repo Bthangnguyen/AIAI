@@ -1,127 +1,100 @@
-/**
- * ItineraryFormScreen — Figma "Schedule page".
- * Calendar picker + query input + email toggle + Next step CTA.
+﻿/**
+ * ItineraryFormScreen - Dark Royal Hue Design
+ * Date range picker + query suggestions + hotel picker + AI Generate
  */
 import React, { useState } from "react"
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Switch,
-  Alert,
+  View, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, StatusBar, Dimensions,
 } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-
-import { colors } from "@/theme/colors"
-import { spacing } from "@/theme/spacing"
-import { typography } from "@/theme/typography"
-import { CTAButton } from "@/components/CTAButton"
+import { Text } from "@/components/Text"
 import { HotelPicker, HotelSelection } from "@/components/HotelPicker"
 import { DEFAULT_HOTEL } from "@/constants/presetHotels"
 import { AppStackParamList } from "@/navigators/navigationTypes"
+import { colors } from "@/theme/colors"
+import { spacing } from "@/theme/spacing"
+import { typography } from "@/theme/typography"
 
+const { width } = Dimensions.get("window")
 type Nav = NativeStackNavigationProp<AppStackParamList>
 
-// Simple inline calendar — weeks grid for current + next month
-const DAYS_OF_WEEK = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+const DAYS_OF_WEEK = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+const MONTH_NAMES = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"]
 
-const getDaysInMonth = (year: number, month: number) =>
-  new Date(year, month + 1, 0).getDate()
-
-const getFirstDayOfMonth = (year: number, month: number) => {
-  const d = new Date(year, month, 1).getDay()
-  return d === 0 ? 6 : d - 1 // Monday=0
-}
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
+const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate()
+const getFirstDay = (y: number, m: number) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1 }
 
 const PROMPT_SUGGESTIONS = [
-  "Đi Huế 3 ngày, thích văn hóa",
-  "2 ngày budget thấp, ưu tiên ẩm thực",
-  "Du lịch gia đình, có trẻ em"
+  "🏯 Tập trung vào di tích lịch sử UNESCO",
+  "🍜 Ẩm thực cung đình + chợ địa phương",
+  "🛵 Tour xe máy ngoại thành thư thái",
+  "👨‍👩‍👧 Phù hợp gia đình, có trẻ em",
+  "💰 Tiết kiệm tối đa, ưu tiên miễn phí",
 ]
 
 export const ItineraryFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>()
+  const insets = useSafeAreaInsets()
   const today = new Date()
   const [viewMonth, setViewMonth] = useState(today.getMonth())
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [selectedStart, setSelectedStart] = useState<Date | null>(null)
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null)
   const [query, setQuery] = useState("")
-  const [sendEmail, setSendEmail] = useState(false)
-  const [hotel, setHotel] = useState<HotelSelection>({
-    name: DEFAULT_HOTEL.name,
-    lat: DEFAULT_HOTEL.lat,
-    lon: DEFAULT_HOTEL.lon,
-  })
+  const [queryFocused, setQueryFocused] = useState(false)
+  const [hotel, setHotel] = useState<HotelSelection>({ name: DEFAULT_HOTEL.name, lat: DEFAULT_HOTEL.lat, lon: DEFAULT_HOTEL.lon })
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
-  const firstDay = getFirstDayOfMonth(viewYear, viewMonth)
-
-  // Build calendar grid
-  const calendarCells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ]
-  while (calendarCells.length % 7 !== 0) calendarCells.push(null)
+  const firstDay = getFirstDay(viewYear, viewMonth)
+  const calCells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  while (calCells.length % 7 !== 0) calCells.push(null)
 
   const handleDayPress = (day: number) => {
     const d = new Date(viewYear, viewMonth, day)
     if (!selectedStart || (selectedStart && selectedEnd)) {
-      setSelectedStart(d)
-      setSelectedEnd(null)
+      setSelectedStart(d); setSelectedEnd(null)
+    } else if (d >= selectedStart) {
+      setSelectedEnd(d)
     } else {
-      if (d < selectedStart) {
-        setSelectedEnd(selectedStart)
-        setSelectedStart(d)
-      } else {
-        setSelectedEnd(d)
-      }
+      setSelectedStart(d); setSelectedEnd(null)
     }
   }
 
+  const isStart = (day: number) => {
+    if (!selectedStart || !day) return false
+    const d = new Date(viewYear, viewMonth, day)
+    return d.toDateString() === selectedStart.toDateString()
+  }
+
+  const isEnd = (day: number) => {
+    if (!selectedEnd || !day) return false
+    const d = new Date(viewYear, viewMonth, day)
+    return d.toDateString() === selectedEnd.toDateString()
+  }
+
   const isInRange = (day: number) => {
-    if (!selectedStart || !selectedEnd) return false
+    if (!selectedStart || !selectedEnd || !day) return false
     const d = new Date(viewYear, viewMonth, day)
     return d > selectedStart && d < selectedEnd
   }
 
-  const isStart = (day: number) =>
-    selectedStart?.getFullYear() === viewYear &&
-    selectedStart?.getMonth() === viewMonth &&
-    selectedStart?.getDate() === day
+  const isPast = (day: number) => {
+    if (!day) return false
+    return new Date(viewYear, viewMonth, day) < today
+  }
 
-  const isEnd = (day: number) =>
-    selectedEnd?.getFullYear() === viewYear &&
-    selectedEnd?.getMonth() === viewMonth &&
-    selectedEnd?.getDate() === day
+  const numDays = selectedStart && selectedEnd
+    ? Math.round((selectedEnd.getTime() - selectedStart.getTime()) / 86400000) + 1
+    : 0
 
-  const numDays =
-    selectedStart && selectedEnd
-      ? Math.round((selectedEnd.getTime() - selectedStart.getTime()) / 86400000) + 1
-      : 1
-
-  const handleNext = () => {
-    if (!selectedStart || !selectedEnd) {
-      Alert.alert("Missing Dates", "Please select a start and end date for your trip.")
-      return
-    }
-    if (!query.trim()) {
-      Alert.alert("Please describe your trip", "What kind of trip are you planning?")
-      return
-    }
+  const handleGenerate = () => {
+    if (!selectedStart || !selectedEnd) return
     navigation.navigate("Loading", {
-      prompt: query,
+      prompt: query || "Lộ trình tham quan Huế",
       hotelName: hotel.name,
       hotelLat: hotel.lat,
       hotelLon: hotel.lon,
@@ -129,297 +102,283 @@ export const ItineraryFormScreen: React.FC = () => {
     })
   }
 
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1) }
-    else setViewMonth((m) => m - 1)
-  }
-
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1) }
-    else setViewMonth((m) => m + 1)
-  }
+  const formatDate = (d: Date) =>
+    `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.palette.figmaWhite} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* ─── Header ── */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>New Plan</Text>
-          <View style={{ width: 40 }} />
-        </View>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <LinearGradient colors={[colors.palette.deepSlate, "#111827", "#0f0a1e"]} style={StyleSheet.absoluteFillObject} />
 
-        {/* ─── Calendar ── */}
-        <View style={styles.calendar}>
-          {/* Month nav */}
-          <View style={styles.monthNav}>
-            <TouchableOpacity onPress={prevMonth}>
-              <Text style={styles.navArrow}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>
-              {MONTH_NAMES[viewMonth]} {viewYear}
-            </Text>
-            <TouchableOpacity onPress={nextMonth}>
-              <Text style={styles.navArrow}>›</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Lên Kế Hoạch</Text>
+        <View style={{ width: 44 }} />
+      </View>
 
-          {/* Day headers */}
-          <View style={styles.weekRow}>
-            {DAYS_OF_WEEK.map((d) => (
-              <Text key={d} style={styles.weekDay}>{d}</Text>
-            ))}
-          </View>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Calendar section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>📅 Chọn ngày đi</Text>
+          <View style={styles.calendarCard}>
+            {/* Month nav */}
+            <View style={styles.monthNav}>
+              <TouchableOpacity
+                style={styles.monthNavBtn}
+                onPress={() => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) } else setViewMonth(m => m - 1) }}
+              >
+                <Text style={styles.monthNavBtnText}>‹</Text>
+              </TouchableOpacity>
+              <Text style={styles.monthTitle}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+              <TouchableOpacity
+                style={styles.monthNavBtn}
+                onPress={() => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) } else setViewMonth(m => m + 1) }}
+              >
+                <Text style={styles.monthNavBtnText}>›</Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Day grid */}
-          <View style={styles.grid}>
-            {calendarCells.map((day, idx) => {
-              if (!day) return <View key={`empty-${idx}`} style={styles.dayCel} />
-              const start = isStart(day)
-              const end = isEnd(day)
-              const range = isInRange(day)
-              const isToday =
-                day === today.getDate() &&
-                viewMonth === today.getMonth() &&
-                viewYear === today.getFullYear()
+            {/* Day headers */}
+            <View style={styles.dayHeaders}>
+              {DAYS_OF_WEEK.map(d => (
+                <Text key={d} style={styles.dayHeader}>{d}</Text>
+              ))}
+            </View>
 
-              return (
-                <TouchableOpacity
-                  key={`d-${day}`}
-                  style={[
-                    styles.dayCel,
-                    (start || end) && styles.dayCelSelected,
-                    range && styles.dayCelRange,
-                  ]}
-                  onPress={() => handleDayPress(day)}
-                  activeOpacity={0.7}
-                >
-                  <Text
+            {/* Calendar grid */}
+            <View style={styles.calGrid}>
+              {calCells.map((day, i) => {
+                const start = day ? isStart(day) : false
+                const end = day ? isEnd(day) : false
+                const inRange = day ? isInRange(day) : false
+                const past = day ? isPast(day) : false
+                return (
+                  <TouchableOpacity
+                    key={i}
                     style={[
-                      styles.dayText,
-                      (start || end) && styles.dayTextSelected,
-                      isToday && styles.dayTextToday,
+                      styles.dayCell,
+                      inRange && styles.dayCellInRange,
+                      (start || end) && styles.dayCellSelected,
+                      past && styles.dayCellPast,
+                      !day && styles.dayCellEmpty,
                     ]}
+                    onPress={() => day && !past && handleDayPress(day)}
+                    disabled={!day || past}
                   >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
+                    {(start || end) ? (
+                      <LinearGradient
+                        colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
+                        style={styles.dayCellSelectedGradient}
+                      >
+                        <Text style={styles.dayCellTextSelected}>{day}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <Text style={[
+                        styles.dayCellText,
+                        inRange && styles.dayCellTextInRange,
+                        past && styles.dayCellTextPast,
+                        !day && { opacity: 0 },
+                      ]}>{day ?? " "}</Text>
+                    )}
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            {/* Date range summary */}
+            {selectedStart && (
+              <View style={styles.dateRangeRow}>
+                <View style={styles.dateTag}>
+                  <Text style={styles.dateTagLabel}>Ngày đi</Text>
+                  <Text style={styles.dateTagValue}>{formatDate(selectedStart)}</Text>
+                </View>
+                {selectedEnd && (
+                  <>
+                    <Text style={styles.dateArrow}>→</Text>
+                    <View style={styles.dateTag}>
+                      <Text style={styles.dateTagLabel}>Ngày về</Text>
+                      <Text style={styles.dateTagValue}>{formatDate(selectedEnd)}</Text>
+                    </View>
+                    <View style={styles.numDaysBadge}>
+                      <Text style={styles.numDaysText}>{numDays} ngày</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
-        {/* ─── Duration label ── */}
-        {selectedStart && (
-          <Text style={styles.durationLabel}>
-            {selectedEnd
-              ? `${numDays} days selected · ${selectedStart.toLocaleDateString()} → ${selectedEnd.toLocaleDateString()}`
-              : `Start: ${selectedStart.toLocaleDateString()} (select end date)`}
-          </Text>
-        )}
+        {/* Hotel picker */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>🏨 Khách sạn lưu trú</Text>
+          <HotelPicker value={hotel} onChange={setHotel} />
+        </View>
 
-        {/* ─── Hotel Picker ── */}
-        <HotelPicker value={hotel} onChange={setHotel} />
+        {/* Query / intent */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>💬 Mong muốn của bạn</Text>
+          <View style={[styles.queryBox, queryFocused && styles.queryBoxFocused]}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="VD: Tôi muốn thăm lăng tẩm, ăn bún bò, tránh nắng..."
+              placeholderTextColor="rgba(255,255,255,0.25)"
+              style={styles.queryInput}
+              multiline
+              numberOfLines={3}
+              onFocus={() => setQueryFocused(true)}
+              onBlur={() => setQueryFocused(false)}
+            />
+          </View>
 
-        {/* ─── Query Input ── */}
-        <View style={styles.inputBlock}>
-          <Text style={styles.inputLabel}>Query journey</Text>
-          <TextInput
-            style={styles.textArea}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="e.g. 3 days in Huế, cultural sites and local food..."
-            placeholderTextColor={colors.palette.figmaGrayMedium}
-            multiline
-            maxLength={200}
-            numberOfLines={3}
-          />
-          <Text style={styles.charCount}>{query.length}/200</Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionChips}>
-            {PROMPT_SUGGESTIONS.map((suggestion, idx) => (
-              <TouchableOpacity key={idx} style={styles.chip} onPress={() => setQuery(suggestion)}>
-                <Text style={styles.chipText}>{suggestion}</Text>
+          {/* Suggestions */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionsScroll}>
+            {PROMPT_SUGGESTIONS.map((s, i) => (
+              <TouchableOpacity key={i} style={styles.suggestionChip} onPress={() => setQuery(s.replace(/^[^\s]+\s/, ""))}>
+                <Text style={styles.suggestionText}>{s}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* ─── Email toggle ── */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Send itinerary to my email</Text>
-          <Switch
-            value={sendEmail}
-            onValueChange={setSendEmail}
-            trackColor={{ false: colors.palette.figmaGrayLight, true: colors.palette.figmaBlue }}
-            thumbColor={colors.palette.figmaWhite}
-          />
+        {/* Generate CTA */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.generateBtn, (!selectedStart || !selectedEnd) && styles.generateBtnDisabled]}
+            onPress={handleGenerate}
+            disabled={!selectedStart || !selectedEnd}
+          >
+            <LinearGradient
+              colors={selectedStart && selectedEnd
+                ? [colors.palette.royalPurple, colors.palette.royalPurpleLight]
+                : ["rgba(255,255,255,0.06)", "rgba(255,255,255,0.04)"]}
+              style={styles.generateBtnGradient}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={[styles.generateBtnText, (!selectedStart || !selectedEnd) && { color: "rgba(255,255,255,0.3)" }]}>
+                {selectedStart && selectedEnd
+                  ? `🤖 Tạo Lộ Trình ${numDays} Ngày với AI ✨`
+                  : "Chọn ngày đi để tiếp tục"}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <Text style={styles.generateHint}>AI sẽ tối ưu theo sức bền, thời tiết và sở thích của bạn</Text>
         </View>
-
-        {/* ─── CTA ── */}
-        <CTAButton
-          label="Next step →"
-          onPress={handleNext}
-          style={styles.cta}
-          testID="next-step-btn"
-        />
-
-        <View style={{ height: spacing.xxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }
 
+const CELL_SIZE = (width - spacing.lg * 2 - 32) / 7
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.palette.figmaWhite },
-  scroll: { paddingHorizontal: spacing.lg },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+  root: { flex: 1 },
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: spacing.lg, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)",
   },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  backArrow: { fontSize: 22, color: colors.palette.figmaBlack },
-  title: {
-    fontFamily: typography.primary.bold,
-    fontSize: 20,
-    color: colors.palette.figmaBlack,
+  backBtn: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
-  calendar: {
-    backgroundColor: colors.palette.figmaOffWhite,
-    borderRadius: 20,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  monthNav: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  navArrow: {
-    fontSize: 28,
-    color: colors.palette.figmaBlack,
-    paddingHorizontal: spacing.sm,
-  },
-  monthTitle: {
-    fontFamily: typography.primary.semiBold,
-    fontSize: 16,
-    color: colors.palette.figmaBlack,
-  },
-  weekRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: spacing.xs,
-  },
-  weekDay: {
-    width: 36,
-    textAlign: "center",
-    fontFamily: typography.primary.medium,
-    fontSize: 12,
-    color: colors.palette.figmaGrayMedium,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  dayCel: {
-    width: "14.28%",
-    aspectRatio: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-  },
-  dayCelSelected: {
-    backgroundColor: colors.palette.figmaPrimaryBlack,
-  },
-  dayCelRange: {
-    backgroundColor: colors.palette.figmaGrayLight,
-  },
-  dayText: {
-    fontFamily: typography.primary.normal,
-    fontSize: 14,
-    color: colors.palette.figmaGrayDark,
-  },
-  dayTextSelected: {
-    color: colors.palette.figmaWhite,
-    fontFamily: typography.primary.semiBold,
-  },
-  dayTextToday: {
-    color: colors.palette.figmaBlue,
-    fontFamily: typography.primary.bold,
-  },
-  durationLabel: {
-    fontFamily: typography.primary.medium,
-    fontSize: 13,
-    color: colors.palette.figmaBlue,
-    textAlign: "center",
-    marginBottom: spacing.md,
-  },
-  inputBlock: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  inputLabel: {
-    fontFamily: typography.primary.semiBold,
-    fontSize: 14,
-    color: colors.palette.figmaPrimaryBlack,
+  backBtnText: { fontSize: 20, color: "#FFFFFF", fontFamily: typography.primary.bold },
+  headerTitle: { fontFamily: typography.primary.bold, fontSize: 20, color: "#FFFFFF" },
+  scroll: { padding: spacing.lg, gap: 0 },
+  section: { marginBottom: spacing.xl },
+  sectionLabel: {
+    fontFamily: typography.primary.semiBold, fontSize: 15, color: "#FFFFFF",
     marginBottom: spacing.sm,
   },
-  textArea: {
-    backgroundColor: colors.palette.figmaOffWhite,
-    borderRadius: 16,
-    padding: spacing.md,
-    fontFamily: typography.primary.normal,
-    fontSize: 14,
-    color: colors.palette.figmaPrimaryBlack,
-    textAlignVertical: "top",
-    minHeight: 100,
-    borderWidth: 1,
-    borderColor: colors.palette.figmaGrayLight,
-  },
-  charCount: {
-    fontFamily: typography.primary.normal,
-    fontSize: 12,
-    color: colors.palette.figmaGrayMedium,
-    textAlign: "right",
-    marginTop: 4,
-  },
-  suggestionChips: {
-    paddingVertical: spacing.sm,
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: colors.palette.figmaOffWhite,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.palette.figmaGrayLight,
-  },
-  chipText: {
-    fontFamily: typography.primary.normal,
-    fontSize: 12,
-    color: colors.palette.figmaPrimaryBlack,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.lg,
-    backgroundColor: colors.palette.figmaOffWhite,
-    borderRadius: 15,
+  calendarCard: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
     padding: spacing.md,
   },
-  toggleLabel: {
-    fontFamily: typography.primary.medium,
-    fontSize: 14,
-    color: colors.palette.figmaGrayDark,
+  monthNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  monthNavBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    justifyContent: "center", alignItems: "center",
   },
-  cta: {},
+  monthNavBtnText: { fontSize: 22, color: "#FFFFFF", fontFamily: typography.primary.bold },
+  monthTitle: { fontFamily: typography.primary.semiBold, fontSize: 16, color: "#FFFFFF" },
+  dayHeaders: { flexDirection: "row", marginBottom: spacing.sm },
+  dayHeader: {
+    width: CELL_SIZE, textAlign: "center",
+    fontFamily: typography.primary.semiBold, fontSize: 11,
+    color: "rgba(255,255,255,0.4)", textTransform: "uppercase",
+  },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  dayCell: {
+    width: CELL_SIZE, height: CELL_SIZE,
+    justifyContent: "center", alignItems: "center",
+    marginBottom: 2,
+  },
+  dayCellEmpty: { opacity: 0 },
+  dayCellPast: { opacity: 0.25 },
+  dayCellInRange: { backgroundColor: colors.palette.royalPurple + "20" },
+  dayCellSelected: {},
+  dayCellSelectedGradient: {
+    width: CELL_SIZE - 4, height: CELL_SIZE - 4,
+    borderRadius: (CELL_SIZE - 4) / 2,
+    justifyContent: "center", alignItems: "center",
+  },
+  dayCellText: { fontFamily: typography.primary.medium, fontSize: 14, color: "rgba(255,255,255,0.85)" },
+  dayCellTextSelected: { fontFamily: typography.primary.bold, fontSize: 14, color: "#FFFFFF" },
+  dayCellTextInRange: { color: colors.palette.royalPurpleLight },
+  dayCellTextPast: { color: "rgba(255,255,255,0.25)" },
+  dateRangeRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    marginTop: spacing.md, gap: spacing.sm, flexWrap: "wrap",
+  },
+  dateTag: {
+    backgroundColor: colors.palette.royalPurple + "30",
+    borderRadius: 12, padding: spacing.sm, alignItems: "center",
+    borderWidth: 1, borderColor: colors.palette.royalPurple + "60",
+  },
+  dateTagLabel: { fontFamily: typography.primary.normal, fontSize: 10, color: colors.palette.royalPurpleLight },
+  dateTagValue: { fontFamily: typography.primary.semiBold, fontSize: 14, color: "#FFFFFF" },
+  dateArrow: { fontSize: 18, color: "rgba(255,255,255,0.4)" },
+  numDaysBadge: {
+    backgroundColor: colors.palette.imperialGold + "30",
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: colors.palette.imperialGold + "60",
+  },
+  numDaysText: { fontFamily: typography.primary.semiBold, fontSize: 13, color: colors.palette.imperialGold },
+  queryBox: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    padding: spacing.md, marginBottom: spacing.sm,
+  },
+  queryBoxFocused: { borderColor: colors.palette.royalPurple },
+  queryInput: {
+    fontFamily: typography.primary.normal, fontSize: 14,
+    color: "#FFFFFF", minHeight: 70, textAlignVertical: "top",
+  },
+  suggestionsScroll: { flexDirection: "row", gap: 8 },
+  suggestionChip: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  },
+  suggestionText: { fontFamily: typography.primary.normal, fontSize: 13, color: "rgba(255,255,255,0.7)" },
+  generateBtn: { borderRadius: 18, overflow: "hidden", marginBottom: spacing.sm },
+  generateBtnDisabled: { opacity: 0.7 },
+  generateBtnGradient: { paddingVertical: 18, alignItems: "center" },
+  generateBtnText: { fontFamily: typography.primary.semiBold, fontSize: 16, color: "#FFFFFF", letterSpacing: 0.3 },
+  generateHint: {
+    fontFamily: typography.primary.normal, fontSize: 12,
+    color: "rgba(255,255,255,0.35)", textAlign: "center",
+  },
 })

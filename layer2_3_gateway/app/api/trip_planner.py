@@ -71,7 +71,7 @@ async def _run_pipeline(
             from sqlalchemy import select
             from geoalchemy2.functions import ST_AsGeoJSON
             from app.models.poi import PointOfInterest
-            import json as json_lib
+            # json_lib is imported globally
             
             POI = PointOfInterest
             # Dùng category là "Khách sạn" hoặc tên có chữ hotel
@@ -121,6 +121,11 @@ async def plan_trip(request: Request, body: TripPlanRequest):
     locked_count = sum(1 for p in pois if p.is_locked)
     l4_result = await layer4_client.plan(pois=pois, contract=contract)
 
+    if l4_result and l4_result.get("status") == "success":
+        from app.services.narrative_generator import NarrativeGenerator
+        narrative_service = NarrativeGenerator()
+        l4_result = narrative_service.generate(l4_result)
+
     return TripPlanResponse(
         status="success" if l4_result else "partial",
         llm_contract=contract, pois=pois,
@@ -132,25 +137,110 @@ async def plan_trip(request: Request, body: TripPlanRequest):
 @router.post("/plan_trip_stream")
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 async def plan_trip_stream(request: Request, body: TripPlanRequest):
-    """SSE streaming: pushes route chunks to Mobile App in real-time."""
+    """SSE streaming: pushes route chunks to Mobile App in real-time with granular stages."""
     logger.info(f"📡 SSE REQUEST RECEIVED: plan_trip_stream from {request.client.host}")
-    contract, pois = await _run_pipeline(body)
 
     async def event_generator():
-        yield f"data: {json_lib.dumps({'step': 'l2_done', 'tags': contract.tags, 'locked': contract.locked_pois})}\n\n"
-
-        if not pois:
-            yield f"data: {json_lib.dumps({'step': 'error', 'message': 'No POIs found'})}\n\n"
-            yield "data: [DONE]\n\n"
-            return
-
-        yield f"data: {json_lib.dumps({'step': 'l3_done', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked)})}\n\n"
+        # 1. intent_extraction_started
+        yield f"data: {json_lib.dumps({'stage': 'intent_extraction_started'})}\n\n"
 
         try:
-            async for chunk in layer4_client.plan_stream(pois=pois, contract=contract):
-                yield chunk
+            # Run L2
+            contract = await llm_service.extract_intent(
+                user_prompt=body.user_prompt,
+                hotel_lat=body.hotel_lat,
+                hotel_lon=body.hotel_lon,
+                hotel_name=body.hotel_name,
+                num_days=body.num_days or 1,
+            )
+            # 2. intent_extraction_completed
+            yield f"data: {json_lib.dumps({'stage': 'intent_extraction_completed', 'contract': contract.model_dump()})}\n\n"
+
+            # 3. poi_search_started
+            yield f"data: {json_lib.dumps({'stage': 'poi_search_started'})}\n\n"
+
+            # Resolve hotel and run L3
+            query_vector = None
+            if contract.tags:
+                tag_text = embed_service.build_poi_text(
+                    name="query", category="preference",
+                    tags=contract.tags, description="",
+                )
+                try:
+                    query_vector = await embed_service.aembed_text(tag_text)
+                except Exception as e:
+                    logger.warning(f"Embedding failed, falling back to priority_score: {e}")
+
+            async with AsyncSessionFactory() as db_session:
+                if contract.hotel_lat is None or contract.hotel_lon is None:
+                    from sqlalchemy import select
+                    from geoalchemy2.functions import ST_AsGeoJSON
+                    from app.models.poi import PointOfInterest
+                    # json_lib is imported globally
+                    
+                    POI = PointOfInterest
+                    stmt = select(POI.name, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
+                        POI.category.ilike("%Khách sạn%")
+                    )
+                    if contract.budget_max:
+                        stmt = stmt.where(POI.price <= contract.budget_max * 0.3)
+                    stmt = stmt.order_by(POI.priority_score.desc()).limit(1)
+                    
+                    result = await db_session.execute(stmt)
+                    row = result.first()
+                    if row:
+                        contract.hotel_name = row.name
+                        geojson = json_lib.loads(row.geojson)
+                        contract.hotel_lon = geojson["coordinates"][0]
+                        contract.hotel_lat = geojson["coordinates"][1]
+                    else:
+                        contract.hotel_name = "Hue Default Hotel"
+                        contract.hotel_lat = 16.4637
+                        contract.hotel_lon = 107.5905
+
+                pois = await spatial_service.get_optimized_pois(
+                    contract=contract,
+                    db_session=db_session,
+                    query_vector=query_vector,
+                )
+
+            # 4. poi_search_completed
+            yield f"data: {json_lib.dumps({'stage': 'poi_search_completed', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked)})}\n\n"
+
+            if not pois:
+                yield f"data: {json_lib.dumps({'stage': 'error', 'message': 'No POIs found'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # 5. optimization_started
+            yield f"data: {json_lib.dumps({'stage': 'optimization_started'})}\n\n"
+
+            # Run L4
+            l4_result = await layer4_client.plan(pois=pois, contract=contract)
+
+            if not l4_result or l4_result.get("status") == "error":
+                yield f"data: {json_lib.dumps({'stage': 'error', 'message': l4_result.get('message') if l4_result else 'Layer 4 solver unavailable'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # 6. optimization_completed
+            yield f"data: {json_lib.dumps({'stage': 'optimization_completed'})}\n\n"
+
+            # 7. validation_completed
+            validation_notes = l4_result.get("validation_notes", [])
+            yield f"data: {json_lib.dumps({'stage': 'validation_completed', 'validation_notes': validation_notes})}\n\n"
+
+            # 8. narrative_completed
+            from app.services.narrative_generator import NarrativeGenerator
+            narrative_service = NarrativeGenerator()
+            final_itinerary = narrative_service.generate(l4_result)
+
+            yield f"data: {json_lib.dumps({'stage': 'narrative_completed', 'result': final_itinerary})}\n\n"
+            yield "data: [DONE]\n\n"
+
         except Exception as e:
-            yield f"data: {json_lib.dumps({'step': 'error', 'message': str(e)})}\n\n"
+            logger.error(f"Error in plan_trip_stream: {e}", exc_info=True)
+            yield f"data: {json_lib.dumps({'stage': 'error', 'message': str(e)})}\n\n"
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -158,6 +248,7 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
 
 
 @router.post("/chat_process", response_model=ChatProcessResponse)
@@ -192,7 +283,7 @@ async def search_pois_endpoint(request: Request, query: str, limit: int = 5):
     from sqlalchemy import select
     from app.models.poi import PointOfInterest
     from geoalchemy2.functions import ST_AsGeoJSON
-    import json as json_lib
+    # json_lib is imported globally
     
     POI = PointOfInterest
     stmt = select(

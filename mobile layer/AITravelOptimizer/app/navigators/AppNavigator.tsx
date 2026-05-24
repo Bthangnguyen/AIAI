@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The app navigator (formerly "AppNavigator" and "MainNavigator") is used for the primary
  * navigation flows of your app.
  * Generally speaking, it will contain an auth flow (registration, login, forgot password)
@@ -48,17 +48,17 @@ const AppStack = () => {
         headerShown: false,
         navigationBarColor: colors.background,
         contentStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: '#0B0F19',
         },
       }}
       initialRouteName={isAuthenticated ? "MainTabs" : "Onboarding"}
     >
       {isAuthenticated ? (
         <>
-          {/* ─── Main Tab Navigator (Home / Wallet / Guide / Profile) */}
+          {/* â”€â”€â”€ Main Tab Navigator (Home / Wallet / Guide / Profile) */}
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
 
-          {/* ─── Push Screens (accessible from any tab) */}
+          {/* â”€â”€â”€ Push Screens (accessible from any tab) */}
           <Stack.Screen name="Loading" component={LoadingScreen} />
           <Stack.Screen name="MapTimeline" component={MapTimelineScreen} />
           <Stack.Screen name="POIDetail" component={POIDetailScreen} />
@@ -74,7 +74,7 @@ const AppStack = () => {
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-          {/** 🔥 Your screens go here */}
+          {/** ðŸ”¥ Your screens go here */}
           {/* IGNITE_GENERATOR_ANCHOR_APP_STACK_SCREENS */}
         </>
       )}

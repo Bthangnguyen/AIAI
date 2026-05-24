@@ -1,8 +1,6 @@
-/**
- * MainTabNavigator — Bottom Tab Navigator matching Figma tab bar.
- * 4 tabs: Home (Explore) / Wallet (MyTrip) / Guide (History) / Chart (Profile)
- *
- * Design: white bg, rounded top corners, shadow, custom tab icons.
+﻿/**
+ * MainTabNavigator - Dark Royal Hue Tab Bar
+ * Design: Glassmorphism dark + Royal Purple accent
  */
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
@@ -13,13 +11,13 @@ import { HomeScreen } from "@/screens/HomeScreen"
 import { TripHistoryScreen } from "@/screens/TripHistoryScreen"
 import { ProfileScreen } from "@/screens/ProfileScreen"
 import { TripSummaryPlaceholder } from "@/screens/TripSummaryPlaceholder"
+import { ActiveTripScreen } from "@/screens/ActiveTripScreen"
 import { colors } from "@/theme/colors"
 import { typography } from "@/theme/typography"
 import { spacing } from "@/theme/spacing"
 
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
-// ─── Custom Tab Icon ──────────────────────────────────────────────────────────
 interface TabIconProps {
   icon: string
   label: string
@@ -28,36 +26,42 @@ interface TabIconProps {
 
 const TabIcon: React.FC<TabIconProps> = ({ icon, label, focused }) => (
   <View style={tabStyles.iconContainer}>
-    <Text style={[tabStyles.icon, focused && tabStyles.iconFocused]}>{icon}</Text>
+    <Text style={[tabStyles.icon]}>{icon}</Text>
     <Text style={[tabStyles.label, focused && tabStyles.labelFocused]}>{label}</Text>
+    {focused && <View style={tabStyles.activeDot} />}
   </View>
 )
 
 const tabStyles = StyleSheet.create({
   iconContainer: {
     alignItems: "center",
-    paddingTop: spacing.xxs,
+    paddingTop: 4,
+    position: "relative",
   },
   icon: {
     fontSize: 22,
     marginBottom: 2,
   },
-  iconFocused: {
-    // Emoji gets a slight scale hint via label weight below
-  },
   label: {
     fontFamily: typography.primary.normal,
     fontSize: 10,
-    color: colors.palette.figmaGrayMedium,
+    color: "rgba(255,255,255,0.4)",
     letterSpacing: 0.2,
   },
   labelFocused: {
     fontFamily: typography.primary.semiBold,
-    color: colors.palette.figmaPrimaryBlack,
+    color: colors.palette.imperialGold,
+  },
+  activeDot: {
+    position: "absolute",
+    bottom: -6,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.palette.imperialGold,
   },
 })
 
-// ─── Navigator ────────────────────────────────────────────────────────────────
 export const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
@@ -65,9 +69,12 @@ export const MainTabNavigator: React.FC = () => {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.palette.figmaPrimaryBlack,
-        tabBarInactiveTintColor: colors.palette.figmaGrayMedium,
+        tabBarActiveTintColor: colors.palette.imperialGold,
+        tabBarInactiveTintColor: "rgba(255,255,255,0.3)",
         tabBarItemStyle: { paddingVertical: 4 },
+        tabBarBackground: () => (
+          <View style={styles.tabBarBackground} />
+        ),
       }}
     >
       <Tab.Screen
@@ -75,16 +82,16 @@ export const MainTabNavigator: React.FC = () => {
         component={HomeScreen as any}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🏠" label="Home" focused={focused} />
+            <TabIcon icon="🏠" label="Trang chủ" focused={focused} />
           ),
         }}
       />
       <Tab.Screen
         name="MyTrip"
-        component={TripSummaryPlaceholder}
+        component={ActiveTripScreen as any}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="💼" label="Wallet" focused={focused} />
+            <TabIcon icon="🗺️" label="Lộ trình" focused={focused} />
           ),
         }}
       />
@@ -93,7 +100,7 @@ export const MainTabNavigator: React.FC = () => {
         component={TripHistoryScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📖" label="Guide" focused={focused} />
+            <TabIcon icon="📖" label="Lịch sử" focused={focused} />
           ),
         }}
       />
@@ -102,7 +109,7 @@ export const MainTabNavigator: React.FC = () => {
         component={ProfileScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👤" label="Profile" focused={focused} />
+            <TabIcon icon="👤" label="Tài khoản" focused={focused} />
           ),
         }}
       />
@@ -112,16 +119,20 @@ export const MainTabNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: colors.palette.figmaWhite,
-    borderTopWidth: 0,
+    backgroundColor: "rgba(11,15,25,0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
     height: Platform.OS === "ios" ? 84 : 64,
     paddingBottom: Platform.OS === "ios" ? 24 : 8,
     paddingTop: spacing.xs,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
-    overflow: "visible",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  tabBarBackground: {
+    flex: 1,
+    backgroundColor: "rgba(11,15,25,0.97)",
   },
 })

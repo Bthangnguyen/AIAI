@@ -124,7 +124,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
                   "Bạn có muốn AI tính toán lại lịch trình không?",
                   [
                     { text: "Bỏ qua", style: "cancel" },
-                    { text: "Có", onPress: () => setShowAddModal(true) }
+                    { text: "Có", onPress: () => handleReRouteConfirm() }
                   ]
                 );
               }
@@ -199,10 +199,6 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       console.warn("Could not get location", e)
     }
   }
-
-  const handleReRoutePress = useCallback(() => {
-    setShowAddModal(true)
-  }, [])
 
   const handleReRouteConfirm = useCallback(async (userState?: ReRoutePayload['user_state']) => {
     setIsReRouting(true)
@@ -468,14 +464,16 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               style={[$stopCard, isSelected && $stopCardActive]}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ItineraryCard
-                  emoji={emoji}
-                  title={stop.poi_name}
-                  timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
-                  visitDurationMin={stop.visit_duration_min}
-                  entranceFee={stop.entrance_fee}
-                  travelTimeMin={stop.travel_time_from_prev_min}
-                />
+                <View style={{ flex: 1 }}>
+                  <ItineraryCard
+                    emoji={emoji}
+                    title={stop.poi_name}
+                    timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
+                    visitDurationMin={stop.visit_duration_min}
+                    entranceFee={stop.entrance_fee}
+                    travelTimeMin={stop.travel_time_from_prev_min}
+                  />
+                </View>
                 <Pressable onPress={() => handleDelete(stop)} style={{ padding: 10 }}>
                   <Text text="Xóa" style={{ color: 'red' }} />
                 </Pressable>
@@ -687,7 +685,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         />
         <View style={{ padding: 16 }}>
           {!isLocked && (
-            <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={handleReRoutePress}>
+            <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
               <Text text="🪄 Tính toán lại lịch trình (AI)" />
             </Pressable>
           )}
@@ -741,7 +739,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {/* Re-route FAB */}
       {FeatureFlags.ENABLE_REROUTE && (
         <ReRouteButton
-          onPress={handleReRoutePress}
+          onPress={() => setShowAddModal(true)}
           loading={isReRouting}
           disabled={isReRouting}
         />
@@ -1081,12 +1079,12 @@ const $stopCard: ViewStyle = {
   borderRadius: 20,
   padding: spacing.md,
   marginLeft: spacing.sm,
-  marginBottom: spacing.sm,
-  // Figma shadow: effect_OMBK8U
+  borderWidth: 1,
+  borderColor: colors.palette.figmaGrayLight,
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
+  shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.05,
-  shadowRadius: 4,
+  shadowRadius: 8,
   elevation: 2,
 }
 

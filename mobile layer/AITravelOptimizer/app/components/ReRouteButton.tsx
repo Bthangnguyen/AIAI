@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ReRouteButton - Royal Hue gradient FAB
  */
 import React from "react"
@@ -49,7 +49,7 @@ export const ReRouteButton: React.FC<ReRouteButtonProps> = ({
 }
 
 const styles = StyleSheet.create({
-  container: { position: "absolute", bottom: 24, right: 16, zIndex: 100 },
+  container: { position: "absolute", bottom: 85, right: 16, zIndex: 100 },
   button: { borderRadius: 30, overflow: "hidden", shadowColor: colors.palette.royalPurple, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
   gradient: { flexDirection: "row", alignItems: "center", paddingHorizontal: 18, paddingVertical: 14, gap: 8 },
   disabled: { opacity: 0.5 },

@@ -200,11 +200,22 @@ export const TripService = {
         }
       }
       else {
-        // Generic fallback: Drop the last stop to save time
+        // Generic fallback: Swap the next stop with an alternative place
         if (modifiedDay.stops.length > 0) {
-          modifiedDay.stops.pop();
-          modifiedDay.total_distance_km = Math.max(0, modifiedDay.total_distance_km - 2.5);
-          modifiedDay.total_visit_min = Math.max(0, modifiedDay.total_visit_min - 60);
+          const oldStop = modifiedDay.stops[0];
+          const alternativeStop = {
+            poi_id: "mock_alt_1",
+            poi_name: "Hồ Hoàn Kiếm (Đề xuất thay thế)",
+            location: { latitude: 21.0285, longitude: 105.8522 },
+            arrival_time_min: oldStop.arrival_time_min,
+            departure_time_min: oldStop.arrival_time_min + 60,
+            visit_duration_min: 60,
+            travel_time_from_prev_min: oldStop.travel_time_from_prev_min,
+            entrance_fee: 0,
+          };
+          modifiedDay.total_entrance_fee -= oldStop.entrance_fee;
+          modifiedDay.total_visit_min = modifiedDay.total_visit_min - oldStop.visit_duration_min + alternativeStop.visit_duration_min;
+          modifiedDay.stops[0] = alternativeStop;
         }
       }
 

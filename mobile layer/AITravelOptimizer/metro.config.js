@@ -22,7 +22,7 @@ config.transformer.getTransformOptions = async () => ({
 // https://github.com/axios/axios/issues/6899
 // The solution was taken from the following issue:
 // https://github.com/facebook/metro/issues/1272
-config.resolver.unstable_conditionNames = ["require", "default", "browser"]
+config.resolver.unstable_conditionNames = ["require", "import", "react-native", "default", "browser"]
 
 // This helps support certain popular third-party libraries
 // such as Firebase that use the extension cjs.

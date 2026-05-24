@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ItineraryCard - Dark Royal Hue Design
  * Used in MapTimelineScreen bottom sheet
  */
@@ -74,7 +74,7 @@ const $cardHeaderCompleted: { [key: string]: any } = {
 
 const $emojiWrap: { [key: string]: any } = {
   width: 44, height: 44, borderRadius: 14,
-  backgroundColor: "rgba(255,255,255,0.06)",
+  backgroundColor: "#f0f0f0",
   justifyContent: "center" as const, alignItems: "center" as const,
 }
 
@@ -90,18 +90,18 @@ const $cardTextWrap: { [key: string]: any } = { flex: 1 }
 const $cardTitle: { [key: string]: any } = {
   fontSize: 15,
   fontFamily: typography.primary.semiBold,
-  color: "#FFFFFF",
+  color: "#1a1a1a",
 }
 
 const $cardTitleCompleted: { [key: string]: any } = {
   textDecorationLine: "line-through" as const,
-  color: "rgba(255,255,255,0.4)",
+  color: "#a0a0a0",
 }
 
 const $cardSubtitle: { [key: string]: any } = {
   fontSize: 13,
   fontFamily: typography.primary.normal,
-  color: "rgba(255,255,255,0.45)",
+  color: "#666666",
   marginTop: 2,
 }
 
@@ -122,13 +122,13 @@ const $cardTags: { [key: string]: any } = {
 }
 
 const $tag: { [key: string]: any } = {
-  backgroundColor: "rgba(255,255,255,0.06)",
+  backgroundColor: "#f5f5f5",
   borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-  borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  borderWidth: 1, borderColor: "#eaeaea",
 }
 
 const $tagText: { [key: string]: any } = {
   fontSize: 11,
   fontFamily: typography.primary.medium,
-  color: "rgba(255,255,255,0.5)",
+  color: "#666666",
 }

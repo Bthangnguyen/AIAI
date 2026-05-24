@@ -10,7 +10,7 @@ import {
   Dimensions,
   TouchableOpacity,
   ScrollView,
-  StatusBar,12
+  StatusBar,
 } from "react-native"
 import { Text } from "@/components/Text"
 import { LinearGradient } from "expo-linear-gradient"

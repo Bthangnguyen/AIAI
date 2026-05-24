@@ -25,10 +25,10 @@ export const TripService = {
 
   planTripStream(
     prompt: string,
-    hotelLat: number,
-    hotelLon: number,
-    hotelName: string,
-    numDays: number,
+    hotelLat: number | undefined,
+    hotelLon: number | undefined,
+    hotelName: string | undefined,
+    numDays: number | undefined,
     onMessage: (data: any) => void,
     onError: (error: any) => void,
     onDone: () => void,

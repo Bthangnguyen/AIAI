@@ -1,4 +1,9 @@
 import asyncio
+import sys
+
+# Setup Windows asyncio policy for psycopg compatibility
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from alembic import context
 from geoalchemy2 import alembic_helpers

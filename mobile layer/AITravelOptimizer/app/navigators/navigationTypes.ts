@@ -35,6 +35,10 @@ export type TravelItineraryDay = {
   date: string
   hotel_name: string
   hotel_location: { latitude: number; longitude: number }
+  start_hotel_name?: string
+  start_hotel_location?: { latitude: number; longitude: number }
+  end_hotel_name?: string
+  end_hotel_location?: { latitude: number; longitude: number }
   stops: TravelItineraryStop[]
   total_travel_min: number
   total_visit_min: number
@@ -118,26 +122,26 @@ export type AppStackParamList = {
   // Modal / push screens (accessible from anywhere)
   Loading: {
     prompt: string
-    hotelName: string
-    hotelLat: number
-    hotelLon: number
-    numDays: number
+    hotelName?: string
+    hotelLat?: number
+    hotelLon?: number
+    numDays?: number
   }
   MapTimeline: {
     itinerary: TravelItinerary
   }
   POIDetail: {
     poiId: string
-    poiName: string
-    photoUrl: string
-    rating: number
-    reviewCount: number
-    description: string
-    entranceFee: number
-    openTime: string
-    closeTime: string
-    lat: number
-    lon: number
+    poiName?: string
+    photoUrl?: string
+    rating?: number
+    reviewCount?: number
+    description?: string
+    entranceFee?: number
+    openTime?: string
+    closeTime?: string
+    lat?: number
+    lon?: number
   }
   ItineraryForm: undefined
   TripSummary: { itinerary: TravelItinerary }

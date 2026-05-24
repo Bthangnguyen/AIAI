@@ -1,9 +1,13 @@
-import { View, TextStyle, ViewStyle } from "react-native"
-
-import { Text } from "../components/Text"
-import { colors } from "../theme/colors"
-import { spacing } from "../theme/spacing"
-import { typography } from "../theme/typography"
+﻿/**
+ * ItineraryCard - Dark Royal Hue Design
+ * Used in MapTimelineScreen bottom sheet
+ */
+import React from "react"
+import { View, StyleSheet } from "react-native"
+import { Text } from "@/components/Text"
+import { colors } from "@/theme/colors"
+import { spacing } from "@/theme/spacing"
+import { typography } from "@/theme/typography"
 
 export interface ItineraryCardProps {
   timeString: string
@@ -12,31 +16,38 @@ export interface ItineraryCardProps {
   visitDurationMin: number
   entranceFee: number
   travelTimeMin: number
+  isActive?: boolean
+  isCompleted?: boolean
 }
 
 export const ItineraryCard = ({
-  timeString,
-  title,
-  emoji,
-  visitDurationMin,
-  entranceFee,
-  travelTimeMin,
+  timeString, title, emoji,
+  visitDurationMin, entranceFee, travelTimeMin,
+  isActive = false, isCompleted = false,
 }: ItineraryCardProps) => (
   <>
-    <View style={$cardHeader}>
-      <Text text={emoji} style={$cardEmoji} />
+    <View style={[$cardHeader, isActive && $cardHeaderActive, isCompleted && $cardHeaderCompleted]}>
+      <View style={[$emojiWrap, isActive && $emojiWrapActive]}>
+        <Text text={emoji} style={$cardEmoji} />
+      </View>
       <View style={$cardTextWrap}>
-        <Text text={title} style={$cardTitle} numberOfLines={1} />
+        <Text
+          text={title}
+          style={[$cardTitle, isCompleted && $cardTitleCompleted]}
+          numberOfLines={1}
+        />
         <Text text={timeString} style={$cardSubtitle} />
       </View>
+      {isActive && <View style={$activeDot} />}
+      {isCompleted && <Text style={$checkMark}>✓</Text>}
     </View>
     <View style={$cardTags}>
       <View style={$tag}>
-        <Text text={`⏱ ${visitDurationMin}m`} style={$tagText} />
+        <Text text={`⏱️ ${visitDurationMin}m`} style={$tagText} />
       </View>
       {entranceFee > 0 && (
         <View style={$tag}>
-          <Text text={`💰 ${(entranceFee / 1000).toFixed(0)}k`} style={$tagText} />
+          <Text text={`🎫 ${(entranceFee / 1000).toFixed(0)}k`} style={$tagText} />
         </View>
       )}
       {travelTimeMin > 0 && (
@@ -48,50 +59,76 @@ export const ItineraryCard = ({
   </>
 )
 
-const $cardHeader: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
+const $cardHeader: { [key: string]: any } = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
   marginBottom: spacing.xs,
+  gap: spacing.sm,
 }
 
-const $cardEmoji: TextStyle = {
-  fontSize: 28,
-  marginRight: spacing.sm,
+const $cardHeaderActive: { [key: string]: any } = {}
+
+const $cardHeaderCompleted: { [key: string]: any } = {
+  opacity: 0.6,
 }
 
-const $cardTextWrap: ViewStyle = {
-  flex: 1,
+const $emojiWrap: { [key: string]: any } = {
+  width: 44, height: 44, borderRadius: 14,
+  backgroundColor: "rgba(255,255,255,0.06)",
+  justifyContent: "center" as const, alignItems: "center" as const,
 }
 
-const $cardTitle: TextStyle = {
-  fontSize: 16,
+const $emojiWrapActive: { [key: string]: any } = {
+  backgroundColor: colors.palette.imperialGold + "25",
+  borderWidth: 1, borderColor: colors.palette.imperialGold + "50",
+}
+
+const $cardEmoji: { [key: string]: any } = { fontSize: 22 }
+
+const $cardTextWrap: { [key: string]: any } = { flex: 1 }
+
+const $cardTitle: { [key: string]: any } = {
+  fontSize: 15,
   fontFamily: typography.primary.semiBold,
-  color: colors.text,
+  color: "#FFFFFF",
 }
 
-const $cardSubtitle: TextStyle = {
-  fontSize: 14,
+const $cardTitleCompleted: { [key: string]: any } = {
+  textDecorationLine: "line-through" as const,
+  color: "rgba(255,255,255,0.4)",
+}
+
+const $cardSubtitle: { [key: string]: any } = {
+  fontSize: 13,
   fontFamily: typography.primary.normal,
-  color: colors.palette.figmaGrayMedium,
+  color: "rgba(255,255,255,0.45)",
   marginTop: 2,
 }
 
-const $cardTags: ViewStyle = {
-  flexDirection: "row",
-  flexWrap: "wrap",
+const $activeDot: { [key: string]: any } = {
+  width: 10, height: 10, borderRadius: 5,
+  backgroundColor: colors.palette.imperialGold,
+}
+
+const $checkMark: { [key: string]: any } = {
+  fontSize: 16, color: colors.palette.jadeGreen,
+  fontFamily: typography.primary.bold,
+}
+
+const $cardTags: { [key: string]: any } = {
+  flexDirection: "row" as const,
+  flexWrap: "wrap" as const,
   gap: 6,
-  marginTop: spacing.xs,
 }
 
-const $tag: ViewStyle = {
-  backgroundColor: colors.palette.figmaSurface,
-  borderRadius: 8,
-  paddingHorizontal: 10,
-  paddingVertical: 4,
+const $tag: { [key: string]: any } = {
+  backgroundColor: "rgba(255,255,255,0.06)",
+  borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+  borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
 }
 
-const $tagText: TextStyle = {
-  fontSize: 12,
+const $tagText: { [key: string]: any } = {
+  fontSize: 11,
   fontFamily: typography.primary.medium,
-  color: colors.palette.figmaGrayDark,
+  color: "rgba(255,255,255,0.5)",
 }

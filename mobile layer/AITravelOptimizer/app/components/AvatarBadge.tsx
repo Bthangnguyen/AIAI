@@ -1,5 +1,5 @@
-/**
- * AvatarBadge — Circular avatar with optional online indicator dot.
+﻿/**
+ * AvatarBadge â€” Circular avatar with optional online indicator dot.
  * Matches Figma avatar circles (profile, greeting header).
  */
 import React from "react"
@@ -63,6 +63,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: colors.palette.figmaSuccess,
     borderWidth: 2,
-    borderColor: colors.palette.figmaWhite,
+    borderColor: colors.palette.deepSlate,
   },
 })

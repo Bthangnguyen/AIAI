@@ -10,7 +10,9 @@ import { ReRouteButton } from "@/components/ReRouteButton"
 import { ReRouteConfirmSheet } from "@/components/ReRouteConfirmSheet"
 import { Text } from "@/components/Text"
 import { WebMap } from "@/components/WebMap"
-import { AddPlaceModal } from "@/components/AddPlaceModal"
+import { AIChatRerouteModal } from "@/components/AIChatRerouteModal"
+import { InfeasibleRerouteModal } from "@/components/InfeasibleRerouteModal"
+import { RerouteComparisonModal } from "@/components/RerouteComparisonModal"
 import { FeatureFlags } from "@/config/features"
 import { MOCK_ITINERARY } from "@/constants/mockItinerary"
 import type { AppStackScreenProps, TravelItineraryStop } from "@/navigators/navigationTypes"
@@ -19,6 +21,9 @@ import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { getRemainingPOIIds, mergeReRoutedDay, getCurrentTimeMin } from "@/utils/itineraryHelpers"
+import { AppState, AppStateStatus } from "react-native"
+import { RerouteService } from "@/services/api/rerouteService"
+import { ReRoutePayload, TravelItineraryDay } from "@/navigators/navigationTypes"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -70,13 +75,74 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [selectedStop, setSelectedStop] = useState<TravelItineraryStop | null>(null)
   const [isReRouting, setIsReRouting] = useState(false)
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0)
-  const [currentDayIndex, setCurrentDayIndex] = useState(0)
+  const [selectedDayIndex, setSelectedDayIndex] = useState(initialItinerary.days[0]?.day_index || 0)
+  const [currentDayIndex, setCurrentDayIndex] = useState(initialItinerary.days[0]?.day_index || 0)
   const [visitedPOIIds] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [isLocked, setIsLocked] = useState(false)
   const [showSnackbar, setShowSnackbar] = useState(false)
   const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
+  
+  const [newProposedDay, setNewProposedDay] = useState<TravelItineraryDay | undefined>(undefined)
+  const [showComparison, setShowComparison] = useState(false)
+  const [showInfeasibleModal, setShowInfeasibleModal] = useState(false)
+  
+  const appState = useRef(AppState.currentState)
+  const lastCheckedTime = useRef<number>(0)
+  const isCheckingRoute = useRef(false)
+
+  // ─── Foreground Tracking (JIT Rerouting App 3) ────────────────
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+      const isComingToForeground = appState.current.match(/inactive|background/) && nextAppState === 'active'
+      appState.current = nextAppState;
+      
+      if (isComingToForeground) {
+        // Throttle check to once every 1 minute to prevent infinite loops from Alerts
+        const now = Date.now()
+        if (now - lastCheckedTime.current < 60000 || isCheckingRoute.current) return
+        
+        console.log("App has come to the foreground! Checking route tolerance...");
+        isCheckingRoute.current = true
+        lastCheckedTime.current = now
+
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const day = itinerary.days.find((d) => d.day_index === currentDayIndex);
+            if (day && day.stops.length > 0) {
+              const nextPoi = day.stops[0]; // simplistic approximation
+              const isOffRoute = RerouteService.checkOffRouteTolerance(
+                loc.coords.latitude, loc.coords.longitude,
+                nextPoi.location.latitude, nextPoi.location.longitude,
+                getCurrentTimeMin(), nextPoi.arrival_time_min
+              );
+              if (isOffRoute) {
+                Alert.alert(
+                  "Bạn có vẻ đang đi chệch hướng?", 
+                  "Bạn có muốn AI tính toán lại lịch trình không?",
+                  [
+                    { text: "Bỏ qua", style: "cancel" },
+                    { text: "Có", onPress: () => setShowAddModal(true) }
+                  ]
+                );
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Foreground tracking error", e);
+        } finally {
+          // Allow re-checking after 5 seconds but lastCheckedTime prevents it for 1 minute anyway
+          setTimeout(() => { isCheckingRoute.current = false }, 5000);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [itinerary, currentDayIndex]);
 
   const handleDelete = useCallback((stop: TravelItineraryStop) => {
     setDeletedItem(stop)
@@ -134,17 +200,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     }
   }
 
-  // ─── Re-route handler ──────────────────────────────
   const handleReRoutePress = useCallback(() => {
-    reRouteSheetRef.current?.snapToIndex(0)
+    setShowAddModal(true)
   }, [])
 
-  const handleReRouteConfirm = useCallback(async (excludedIds: string[]) => {
-    reRouteSheetRef.current?.close()
+  const handleReRouteConfirm = useCallback(async (userState?: ReRoutePayload['user_state']) => {
     setIsReRouting(true)
 
     try {
-      // Get current GPS position
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== "granted") {
         Alert.alert("Location required", "Please enable location to re-route.")
@@ -153,29 +216,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
-      const remainingIds = getRemainingPOIIds(itinerary, currentDayIndex, visitedPOIIds)
-        .filter((id) => !excludedIds.includes(id))
+      const payload = RerouteService.buildReroutePayload(
+        loc.coords.latitude, loc.coords.longitude,
+        itinerary, currentDayIndex, visitedPOIIds, userState
+      )
 
-      if (remainingIds.length === 0) {
+      if (payload.remaining_poi_ids.length === 0) {
         Alert.alert("No stops", "No remaining stops to re-route.")
         setIsReRouting(false)
         return
       }
 
-      const result = await TripService.reRoute({
-        current_lat: loc.coords.latitude,
-        current_lon: loc.coords.longitude,
-        current_time_min: getCurrentTimeMin(),
-        remaining_poi_ids: remainingIds,
-        excluded_poi_ids: excludedIds.length > 0 ? excludedIds : undefined,
-        day_index: currentDayIndex,
-        original_itinerary: itinerary,
-      })
+      const result = await TripService.reRoute(payload)
 
       if (result.status === "success" && result.day) {
-        setItinerary((prev) => mergeReRoutedDay(prev, result.day!))
+        setNewProposedDay(result.day)
+        setShowComparison(true)
       } else {
-        Alert.alert("Re-route failed", result.message || "Could not re-optimize the route.")
+        setShowInfeasibleModal(true)
       }
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Re-route request failed")
@@ -183,6 +241,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       setIsReRouting(false)
     }
   }, [itinerary, currentDayIndex, visitedPOIIds])
+
+  const handleApplyReroute = useCallback(() => {
+    if (newProposedDay) {
+      setItinerary((prev) => mergeReRoutedDay(prev, newProposedDay))
+    }
+    setShowComparison(false)
+    setNewProposedDay(undefined)
+  }, [newProposedDay])
 
   const handleMyLocation = useCallback(async () => {
     try {
@@ -279,7 +345,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
       for (let dayIdx = 0; dayIdx < itinerary.days.length; dayIdx++) {
         const day = itinerary.days[dayIdx]
-        const hotelLoc = day.start_hotel_location || day.hotel_location
+        const hotelLoc = day.hotel_location
         if (!hotelLoc) continue
         const coords = [
           [hotelLoc.longitude, hotelLoc.latitude],
@@ -321,7 +387,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     if (!day) return null
 
-    const hotelLoc = day.start_hotel_location || day.hotel_location
+    const hotelLoc = day.hotel_location
     if (!hotelLoc) return null
     const hotelCoord = [hotelLoc.longitude, hotelLoc.latitude]
     const stopCoords = day.stops.map((s) => [s.location.longitude, s.location.latitude])
@@ -458,7 +524,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
         {/* Hotel marker for selected day */}
         {itinerary.days.filter((d) => d.day_index === selectedDayIndex).map((day) => {
-          const hotelLoc = day.start_hotel_location || day.hotel_location
+          const hotelLoc = day.hotel_location
           if (!hotelLoc) return null
           return (
             <MapboxGL.PointAnnotation
@@ -498,7 +564,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <WebMap
           dayStops={dayStops}
           hotelLocations={itinerary.days.map((d) => {
-            const loc = d.start_hotel_location || d.hotel_location
+            const loc = d.hotel_location
             return {
               dayIndex: d.day_index,
               location: loc ? { latitude: loc.latitude, longitude: loc.longitude } : { latitude: 0, longitude: 0 },
@@ -548,7 +614,19 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               <Text text="✕" style={$poiPopupClose} />
             </Pressable>
           </View>
-          <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", { poiId: selectedStop.poi_id })}>
+          <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", {
+            poiId: selectedStop.poi_id,
+            poiName: selectedStop.poi_name,
+            photoUrl: "",
+            rating: 4.5,
+            reviewCount: 100,
+            description: "No description available",
+            entranceFee: selectedStop.entrance_fee,
+            openTime: "08:00",
+            closeTime: "22:00",
+            lat: selectedStop.location.latitude,
+            lon: selectedStop.location.longitude
+          })}>
             <Text text="View Details" style={$poiPopupBtnText} />
           </Pressable>
         </Animated.View>
@@ -609,8 +687,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         />
         <View style={{ padding: 16 }}>
           {!isLocked && (
-            <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
-              <Text text="+ Thêm địa điểm (AI Chat)" />
+            <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={handleReRoutePress}>
+              <Text text="🪄 Tính toán lại lịch trình (AI)" />
             </Pressable>
           )}
         </View>
@@ -636,8 +714,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         </View>
       )}
 
-      {/* Add Place Modal */}
-      <AddPlaceModal visible={showAddModal} onClose={() => setShowAddModal(false)} onAddPlaces={handleAddPlaces} />
+      {/* Add Place Modal -> AI Chat Reroute Modal */}
+      <AIChatRerouteModal visible={showAddModal} onClose={() => setShowAddModal(false)} onConfirmReroute={handleReRouteConfirm} />
+
+      {/* Infeasible Reroute Modal */}
+      <InfeasibleRerouteModal 
+        visible={showInfeasibleModal} 
+        onClose={() => setShowInfeasibleModal(false)} 
+        onSelectOption={handleReRouteConfirm} 
+      />
+
+      {/* Reroute Comparison Modal */}
+      <RerouteComparisonModal 
+        visible={showComparison}
+        oldDay={itinerary.days.find(d => d.day_index === currentDayIndex)}
+        newDay={newProposedDay}
+        onCancel={() => setShowComparison(false)}
+        onConfirm={handleApplyReroute}
+      />
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>
@@ -653,15 +747,6 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         />
       )}
 
-      {/* Re-route Confirmation Sheet */}
-      {FeatureFlags.ENABLE_REROUTE && (
-        <ReRouteConfirmSheet
-          bottomSheetRef={reRouteSheetRef}
-          remainingStops={remainingStops}
-          onConfirm={handleReRouteConfirm}
-          onClose={() => reRouteSheetRef.current?.close()}
-        />
-      )}
     </View>
   )
 }

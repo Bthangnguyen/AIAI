@@ -26,7 +26,7 @@ export const SettingsScreen: React.FC = () => {
   const { logout } = useAuth()
   const [notifications, setNotifications] = useState(true)
   const [emailAlerts, setEmailAlerts] = useState(false)
-  const [apiUrl, setApiUrl] = useState("http://localhost:8001")
+  const [apiUrl, setApiUrl] = useState(process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8001")
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -71,7 +71,7 @@ export const SettingsScreen: React.FC = () => {
             style={styles.apiInput}
             value={apiUrl}
             onChangeText={setApiUrl}
-            placeholder="http://localhost:8001"
+            placeholder="http://10.0.2.2:8001"
             placeholderTextColor={colors.palette.figmaGrayMedium}
             autoCapitalize="none"
           />

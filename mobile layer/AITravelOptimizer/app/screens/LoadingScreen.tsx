@@ -148,7 +148,7 @@ export const LoadingScreen: FC<LoadingScreenProps> = ({ route, navigation }) => 
 
   // ─── Main Render ──────────────────────────
   return (
-    <Screen style={$root} preset="fixed">
+    <Screen style={$root} preset="fixed" contentContainerStyle={{ flex: 1 }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={$container}>
         {/* Header */}
         <View style={$header}>

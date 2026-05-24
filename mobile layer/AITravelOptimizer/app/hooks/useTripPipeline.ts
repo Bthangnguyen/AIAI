@@ -94,9 +94,11 @@ export const useTripPipeline = ({
 
   const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
     logIdRef.current += 1
+    const currentId = logIdRef.current
+    const timestamp = Date.now()
     setLogs((prev) => [
       ...prev,
-      { id: logIdRef.current, message, type, timestamp: Date.now() },
+      { id: currentId, message, type, timestamp },
     ])
   }, [])
 

@@ -23,13 +23,10 @@ import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { LinearGradient } from "expo-linear-gradient"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { LLMDataContract, ChatMessage } from "@/types/api"
+import { TripService } from "@/services/api/tripService"
 
 const { width } = Dimensions.get("window")
-
-interface ChatMessage {
-  sender: "user" | "ai"
-  text: string
-}
 
 const CONTEXTUAL_CHIPS = [
   "🏯 Đại Nội Huế 1 ngày",
@@ -51,7 +48,19 @@ interface HomeScreenProps extends AppStackScreenProps<"MainTabs"> {}
 export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
   const [prompt, setPrompt] = useState("")
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [currentContract, setCurrentContract] = useState<LLMDataContract>({
+    destination: undefined,
+    budget_max: undefined,
+    radius_km: 10,
+    num_days: 1,
+    tags: [],
+    locked_pois: [],
+    hotel_name: "Pilgrimage Village",
+    hotel_lat: 16.4637,
+    hotel_lon: 107.5909,
+  })
   const [isTyping, setIsTyping] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const [micActive, setMicActive] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
   const micScale = useRef(new Animated.Value(1)).current
@@ -70,27 +79,43 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     }
   }, [micActive])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = prompt.trim()
     if (!trimmed) return
-    setChatHistory((prev) => [...prev, { sender: "user", text: trimmed }])
+
+    // 1. Ghi nhận tin nhắn người dùng nhập vào khung chat
+    const userMsg: ChatMessage = { role: "user", content: trimmed }
+    setChatHistory((prev) => [...prev, userMsg])
     setPrompt("")
     setIsTyping(true)
 
-    setTimeout(() => {
-      const aiText = AI_SUGGESTIONS[Math.floor(Math.random() * AI_SUGGESTIONS.length)]
+    try {
+      // 2. Gửi yêu cầu đàm thoại làm rõ hợp đồng du lịch lên Gateway
+      const response = await TripService.processChat(
+        trimmed,
+        chatHistory,
+        currentContract
+      )
+
       setIsTyping(false)
-      setChatHistory((prev) => [...prev, { sender: "ai", text: aiText }])
-      setTimeout(() => {
-        navigation.navigate("Loading", {
-          prompt: trimmed,
-          hotelName: "Pilgrimage Village",
-          hotelLat: 16.4637,
-          hotelLon: 107.5909,
-          numDays: 3,
-        })
-      }, 1200)
-    }, 1500)
+      
+      // 3. Cập nhật hợp đồng đã gộp trên Backend và thêm bong bóng trả lời của AI
+      setCurrentContract(response.updated_contract)
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "assistant", content: response.reply },
+      ])
+
+      // 4. Nếu đàm thoại đạt trạng thái sẵn sàng (status === "ready"), tạm thời lưu lại state isReady (Task 3 sẽ dùng hiển thị nút bấm)
+      if (response.status === "ready") {
+        setIsReady(true)
+      } else {
+        setIsReady(false)
+      }
+    } catch (err) {
+      setIsTyping(false)
+      console.error("Chat API error:", err)
+    }
   }
 
   const currentHour = new Date().getHours()
@@ -174,22 +199,22 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
             </View>
           )}
           {chatHistory.map((msg, idx) => (
-            <View key={idx} style={[styles.messageRow, msg.sender === "user" ? styles.messageRowUser : styles.messageRowAi]}>
-              {msg.sender === "ai" && (
+            <View key={idx} style={[styles.messageRow, msg.role === "user" ? styles.messageRowUser : styles.messageRowAi]}>
+              {msg.role === "assistant" && (
                 <View style={styles.aiAvatarSmall}><Text style={{ fontSize: 16 }}>🤖</Text></View>
               )}
-              <View style={msg.sender === "user" ? styles.userBubble : styles.aiBubble}>
-                {msg.sender === "user" ? (
+              <View style={msg.role === "user" ? styles.userBubble : styles.aiBubble}>
+                {msg.role === "user" ? (
                   <LinearGradient
                     colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
                     style={styles.userBubbleGradient}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.userBubbleText}>{msg.text}</Text>
+                    <Text style={styles.userBubbleText}>{msg.content}</Text>
                   </LinearGradient>
                 ) : (
                   <View style={styles.aiBubbleInner}>
-                    <Text style={styles.aiBubbleText}>{msg.text}</Text>
+                    <Text style={styles.aiBubbleText}>{msg.content}</Text>
                   </View>
                 )}
               </View>

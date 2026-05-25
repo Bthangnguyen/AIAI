@@ -1,6 +1,7 @@
 import EventSource from "react-native-sse"
 
 import type { ReRoutePayload, ReRouteResponse } from "@/navigators/navigationTypes"
+import type { ChatMessage, ChatProcessResponse } from "../../types/api"
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001"
 
@@ -98,6 +99,42 @@ export const TripService = {
       return {
         status: "error",
         message: e?.message || "Re-route request failed",
+      }
+    }
+  },
+
+  async processChat(
+    message: string,
+    history: ChatMessage[],
+    currentContract: any
+  ): Promise<ChatProcessResponse> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/v1/trip/chat_process`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "ngrok-skip-browser-warning": "1",
+        },
+        body: JSON.stringify({
+          message,
+          history,
+          current_contract: currentContract,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error(`Server returned code ${res.status}`)
+      }
+
+      const data = await res.json()
+      return data
+    } catch (e: any) {
+      console.error("Lỗi đàm thoại chat_process:", e)
+      return {
+        status: "clarifying",
+        reply: "Dạ mạng nhà em đang gặp chút trục trặc nhỏ. Anh/chị có thể nói rõ hơn số ngày đi và ngân sách mong muốn không ạ?",
+        updated_contract: currentContract,
       }
     }
   },

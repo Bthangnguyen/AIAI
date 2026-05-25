@@ -77,3 +77,15 @@ export type SSEStage =
   | 'narrative_completed'
   | 'completed'
   | 'error';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatProcessResponse {
+  status: 'ready' | 'clarifying';
+  reply: string;
+  updated_contract: LLMDataContract;
+}
+

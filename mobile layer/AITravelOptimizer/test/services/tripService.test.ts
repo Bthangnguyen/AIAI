@@ -88,7 +88,10 @@ describe("TripService", () => {
         expect.stringContaining("/v1/trip/plan_trip_stream"),
         expect.objectContaining({
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "1",
+          },
           body: JSON.stringify({
             user_prompt: "3 days in Hue",
             hotel_lat: 16.46,
@@ -115,6 +118,44 @@ describe("TripService", () => {
 
       expect(mockInstance.addEventListener).toHaveBeenCalledWith("message", expect.any(Function))
       expect(mockInstance.addEventListener).toHaveBeenCalledWith("error", expect.any(Function))
+    })
+  })
+
+  describe("processChat", () => {
+    it("calls /chat_process with message, history, contract and returns updated data", async () => {
+      const mockResponse = {
+        status: "clarifying",
+        reply: "Dạ mình muốn đi Huế mấy ngày ạ?",
+        updated_contract: { destination: "Huế", num_days: 1, tags: [] },
+      }
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      }) as any
+
+      const history = [{ role: "user", content: "Hi" }]
+      const contract = { destination: "Huế", num_days: 1, tags: [] }
+
+      const result = await TripService.processChat("Tôi muốn đi Huế", history as any, contract)
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/v1/trip/chat_process"),
+        expect.objectContaining({
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "1",
+          },
+          body: JSON.stringify({
+            message: "Tôi muốn đi Huế",
+            history,
+            current_contract: contract,
+          }),
+        })
+      )
+      expect(result).toEqual(mockResponse)
     })
   })
 })

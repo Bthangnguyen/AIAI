@@ -2,13 +2,27 @@ import { expect, type Page } from "@playwright/test"
 
 export async function submitHomePrompt(page: Page, prompt: string) {
   await page.goto("/")
-  await page.getByPlaceholder(/Tôi muốn đi Huế/).fill(prompt)
-  await page.getByRole("button", { name: "Build trip" }).click()
+  const input = page.getByPlaceholder(/Tôi muốn đi Huế/)
+  await input.fill(prompt)
+  const buildBtn = page.getByRole("button", { name: "Build trip" })
+  await expect(buildBtn).toBeEnabled({ timeout: 15_000 })
+  await buildBtn.click()
   await page.getByRole("button", { name: "Login và tiếp tục" }).click()
 }
 
 export async function waitForItinerary(page: Page) {
   await expect(page.getByText("Updated itinerary")).toBeVisible({ timeout: 60_000 })
+}
+
+export async function openCompareTab(page: Page) {
+  await page.getByRole("button", { name: "⚡ Compare" }).click()
+  await expect(page.getByRole("heading", { name: "So sánh 3 phương án lộ trình" })).toBeVisible({
+    timeout: 30_000,
+  })
+}
+
+export async function countTimelinePlaces(page: Page) {
+  return page.locator("article h4").count()
 }
 
 export async function answerBudgetFollowUp(page: Page, budget = "1 triệu") {

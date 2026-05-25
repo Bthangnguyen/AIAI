@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { BuilderWorkspace } from "@/components/BuilderWorkspace"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { HomePage } from "@/components/HomePage"
@@ -15,7 +15,12 @@ import { searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api
 import { processReRouteResult } from "@/lib/reRouteFlow"
 import { getSavedDrafts, saveDraft } from "@/lib/storage"
 import type { AIMessage } from "@/components/AITripChatPanel"
+import { fetchPlanAlternatives } from "@/lib/planAlternatives"
+import { applyPlanVariant, planStyleLabel } from "@/lib/applyPlanVariant"
+import { applyManualReorderToDraft, clearDayManual, poiIdsInDayOrder } from "@/lib/reorderDayItems"
+import type { MoveDirection } from "@/lib/reorderDayItems"
 import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, POI, PreviewMode, TripIntent } from "@/types/trip"
+import type { PlanVariant } from "@/types/plan"
 
 type Screen = "home" | "builder" | "saved" | "mobile"
 
@@ -61,10 +66,60 @@ export default function Page() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [undoState, setUndoState] = useState<UndoState | null>(null)
   const [streamDetails, setStreamDetails] = useState<Record<number, string>>({})
+  const [planVariants, setPlanVariants] = useState<PlanVariant[] | null>(null)
+  const [planVariantsLoading, setPlanVariantsLoading] = useState(false)
+  const [planVariantsError, setPlanVariantsError] = useState<string | null>(null)
+  const alternativesFetchedForDraftId = useRef<string | null>(null)
 
   useEffect(() => {
     setSavedDrafts(getSavedDrafts())
   }, [])
+
+  useEffect(() => {
+    if (!draft || status !== "live") {
+      setPlanVariants(null)
+      setPlanVariantsError(null)
+      alternativesFetchedForDraftId.current = null
+      return
+    }
+
+    if (alternativesFetchedForDraftId.current === draft.id) {
+      return
+    }
+
+    let cancelled = false
+    setPlanVariantsLoading(true)
+    setPlanVariantsError(null)
+
+    void fetchPlanAlternatives(draft)
+      .then((result) => {
+        if (cancelled) return
+        setPlanVariants(result.plans)
+        alternativesFetchedForDraftId.current = draft.id
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setPlanVariants(null)
+        setPlanVariantsError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!cancelled) setPlanVariantsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [draft, status])
+
+  function handleApplyPlanVariant(variant: PlanVariant) {
+    if (!draft) return
+    const next = applyPlanVariant(draft, variant)
+    setDraft(next)
+    setViewMode("split")
+    setSelectedPoiId(next.days[0]?.items[0]?.poiId ?? null)
+    setFitSignal((value) => value + 1)
+    showToast(`Đã áp dụng lộ trình ${planStyleLabel(variant.style)}.`, "success")
+  }
 
   useEffect(() => {
     if (!toastMessage) return
@@ -365,11 +420,60 @@ export default function Page() {
 
       const newDays = [...draft.days]
       newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
-      setDraft({ ...draft, days: newDays })
+      setDraft(clearDayManual({ ...draft, days: newDays, updatedAt: new Date().toISOString() }, dayNumber))
       setMessages((items) => [...items, { role: "assistant", content: `Đã tối ưu lại ngày ${dayNumber}.` }])
       showToast(reroute.message, reroute.toastVariant)
     } catch (e) {
       showToast("Lỗi re-route: " + (e instanceof Error ? e.message : String(e)), "error")
+    } finally {
+      setIsRunning(false)
+      setStatus("live")
+    }
+  }
+
+  function handleMovePlace(dayNumber: number, itemId: string, direction: MoveDirection) {
+    if (!draft) return
+    const next = applyManualReorderToDraft(draft, dayNumber, itemId, direction)
+    setDraft(next)
+    setFitSignal((value) => value + 1)
+  }
+
+  async function handleApplyManualOrder(dayNumber: number) {
+    if (!draft) return
+    const dayIndex = dayNumber - 1
+    const day = draft.days[dayIndex]
+    if (!day?.items.length) return
+
+    const orderedIds = poiIdsInDayOrder(day)
+    setIsRunning(true)
+    setStatus("resolving")
+    try {
+      const reroute = await runReRouteForDay(dayIndex, orderedIds)
+      if (!reroute) return
+
+      const newDays = [...draft.days]
+      newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
+      const resultOrder = reroute.items.map((item) => item.poiId)
+      const orderPreserved = orderedIds.length === resultOrder.length && orderedIds.every((id, index) => id === resultOrder[index])
+
+      let nextDraft: ItineraryDraft = {
+        ...draft,
+        days: newDays,
+        updatedAt: new Date().toISOString(),
+      }
+      if (orderPreserved) {
+        nextDraft = clearDayManual(nextDraft, dayNumber)
+      }
+      setDraft(nextDraft)
+      setFitSignal((value) => value + 1)
+      showToast(
+        orderPreserved
+          ? "Đã cập nhật lộ trình theo thứ tự thủ công."
+          : "Đã cập nhật giờ — solver có thể đã điều chỉnh thứ tự.",
+        orderPreserved ? "success" : "warning",
+      )
+    } catch (e) {
+      showToast("Lỗi cập nhật lộ trình: " + (e instanceof Error ? e.message : String(e)), "error")
     } finally {
       setIsRunning(false)
       setStatus("live")
@@ -458,6 +562,10 @@ export default function Page() {
             onSuggestFix={handleSuggestFix}
             osrmDegraded={osrmDegraded}
             onOsrmDegradedChange={setOsrmDegraded}
+            planVariants={planVariants}
+            planVariantsLoading={planVariantsLoading}
+            planVariantsError={planVariantsError}
+            onApplyPlanVariant={handleApplyPlanVariant}
             onModeChange={setMode}
             onViewModeChange={setViewMode}
             onBack={backHome}
@@ -476,6 +584,8 @@ export default function Page() {
             onFitMap={() => setFitSignal((value) => value + 1)}
             onAddPoi={handleAddPoiBackend}
             onRemovePlace={handleRemovePlaceBackend}
+            onMovePlace={handleMovePlace}
+            onApplyManualOrder={handleApplyManualOrder}
             onOptimizeDay={handleOptimizeDay}
             streamDetails={streamDetails}
           />

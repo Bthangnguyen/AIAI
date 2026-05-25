@@ -1,7 +1,7 @@
 
 import pytest
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from psycopg_pool import AsyncConnectionPool
 
 from app.config import settings as global_settings
@@ -13,7 +13,7 @@ from app.models.base import Base
 @pytest.fixture(
     scope="session",
     params=[
-        pytest.param(("asyncio", {"use_uvloop": True}), id="asyncio+uvloop"),
+        pytest.param(("asyncio", {"use_uvloop": False}), id="asyncio"),
     ],
 )
 def anyio_backend(request):
@@ -33,7 +33,7 @@ async def start_db():
 @pytest.fixture(scope="session")
 async def client(start_db) -> AsyncClient:
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://testserver/v1",
         headers={"Content-Type": "application/json"},
     ) as test_client:

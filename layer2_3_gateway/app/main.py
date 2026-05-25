@@ -22,6 +22,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.api.trip_planner import router as trip_router, limiter
+from app.api.admin_pois import router as admin_router
 from app.config import settings
 
 app = FastAPI(
@@ -47,3 +48,4 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(trip_router)
+app.include_router(admin_router)

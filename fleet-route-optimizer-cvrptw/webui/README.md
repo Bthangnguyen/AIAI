@@ -48,7 +48,20 @@ NEXT_PUBLIC_GATEWAY_URL=http://localhost:8001
 npm run typecheck
 npm run lint
 npm run build
+npm run test          # vitest — 45 tests
+npm run test:e2e      # playwright mock — 24 specs (starts mock gateway + dev server)
 ```
+
+### Validated on `feature/web1-e2e-integration` (mock workflow)
+
+| Check | Status |
+|-------|--------|
+| typecheck / build / lint | Pass |
+| vitest | 45/45 |
+| playwright mock E2E | 24/24 |
+| live E2E (`test:e2e:live`) | **Not verified** — needs Docker + `travel.env` |
+
+Teammate handoff: [`docs/TEAMMATE_HANDOFF.md`](../../docs/TEAMMATE_HANDOFF.md)
 
 ## API integration
 

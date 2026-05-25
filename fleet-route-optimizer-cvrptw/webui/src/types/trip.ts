@@ -1,4 +1,5 @@
 import type { OptimizationStats } from "./stats"
+import type { PlanStyle } from "./plan"
 
 export type TravelStyle = "relaxed" | "balanced" | "dense"
 export type DraftStatus = "draft"
@@ -65,6 +66,8 @@ export interface ItineraryDraft {
   validationNotes?: ValidationNote[]
   droppedPoiCount?: number
   budgetUsed?: number
+  selectedPlanStyle?: PlanStyle
+  manualDayNumbers?: number[]
 }
 
 export interface FollowUpQuestion {

@@ -7,11 +7,17 @@ import { ItineraryArtifact } from "@/components/ItineraryArtifact"
 import { ItineraryMapPanel } from "@/components/ItineraryMapPanel"
 import { RouteComparisonPanel } from "@/components/RouteComparisonPanel"
 import type { BuildStatus, ItineraryDraft, PreviewMode } from "@/types/trip"
+import type { PlanVariant } from "@/types/plan"
+import type { MoveDirection } from "@/lib/reorderDayItems"
 
 interface ItineraryPreviewPanelProps {
   draft: ItineraryDraft | null
   status: BuildStatus
   viewMode: PreviewMode
+  planVariants: PlanVariant[] | null
+  planVariantsLoading: boolean
+  planVariantsError?: string | null
+  onApplyPlanVariant?: (variant: PlanVariant) => void
   selectedPoiId: string | null
   hoveredPoiId: string | null
   selectedDay: number | "all"
@@ -24,6 +30,8 @@ interface ItineraryPreviewPanelProps {
   onSaveDraft: () => void
   onAddPlace: (dayNumber: number) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
+  onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onApplyManualOrder?: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
   buildErrorMessage?: string | null
   onRetryBuild?: () => void
@@ -32,7 +40,7 @@ interface ItineraryPreviewPanelProps {
   onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
-export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
+export function ItineraryPreviewPanel({ draft, status, viewMode, planVariants, planVariantsLoading, planVariantsError, onApplyPlanVariant, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
   return (
     <div className="flex h-full min-w-0 flex-col bg-orange-50">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-orange-200 px-4">
@@ -74,18 +82,26 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
         ) : null}
         {draft && viewMode === "split" ? (
           <div className="relative z-10 grid min-h-full w-full gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(420px,1.05fr)]">
-            <ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onOptimizeDay={onOptimizeDay} />
+            <ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onMovePlace={onMovePlace} onApplyManualOrder={onApplyManualOrder} onOptimizeDay={onOptimizeDay} />
             <ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} />
           </div>
         ) : null}
         {draft && viewMode === "timeline" ? (
-          <div className="relative z-10 w-full"><ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onOptimizeDay={onOptimizeDay} /></div>
+          <div className="relative z-10 w-full"><ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onMovePlace={onMovePlace} onApplyManualOrder={onApplyManualOrder} onOptimizeDay={onOptimizeDay} /></div>
         ) : null}
         {draft && viewMode === "map" ? (
           <div className="relative z-10 h-full min-h-[560px] w-full"><ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} /></div>
         ) : null}
         {draft && viewMode === "compare" ? (
-          <div className="relative z-10 w-full"><RouteComparisonPanel draft={draft} /></div>
+          <div className="relative z-10 w-full">
+            <RouteComparisonPanel
+              variants={planVariants}
+              loading={planVariantsLoading}
+              error={planVariantsError}
+              selectedPlanStyle={draft.selectedPlanStyle}
+              onApply={onApplyPlanVariant}
+            />
+          </div>
         ) : null}
       </div>
     </div>

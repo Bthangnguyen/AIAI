@@ -1,17 +1,30 @@
-import { Clock3, Star, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Clock3, Star, Trash2 } from "lucide-react"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryItem } from "@/types/trip"
+import type { MoveDirection } from "@/lib/reorderDayItems"
 
 interface TimelinePlaceCardProps {
   item: ItineraryItem
   selected: boolean
+  canMoveUp: boolean
+  canMoveDown: boolean
   onSelect: () => void
   onHover: (hovered: boolean) => void
   onRemove: () => void
+  onMove: (direction: MoveDirection) => void
 }
 
-export function TimelinePlaceCard({ item, selected, onSelect, onHover, onRemove }: TimelinePlaceCardProps) {
+export function TimelinePlaceCard({
+  item,
+  selected,
+  canMoveUp,
+  canMoveDown,
+  onSelect,
+  onHover,
+  onRemove,
+  onMove,
+}: TimelinePlaceCardProps) {
   const poi = getPoi(item.poiId)
   if (!poi) return null
 
@@ -28,9 +41,31 @@ export function TimelinePlaceCard({ item, selected, onSelect, onHover, onRemove 
           <h4 className="mt-2 text-sm font-black text-orange-950">{poi.name}</h4>
           <p className="mt-1 text-xs leading-5 text-orange-950/60">{poi.description}</p>
         </div>
-        <button type="button" onClick={(event) => { event.stopPropagation(); onRemove() }} className="rounded-lg p-1.5 text-orange-400 transition hover:bg-orange-100 hover:text-travel" title="Xóa">
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 flex-col gap-1">
+          <button
+            type="button"
+            disabled={!canMoveUp}
+            onClick={(event) => { event.stopPropagation(); onMove("up") }}
+            className="rounded-lg p-1 text-orange-500 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-30"
+            title="Di chuyển lên"
+            aria-label="Di chuyển lên"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            disabled={!canMoveDown}
+            onClick={(event) => { event.stopPropagation(); onMove("down") }}
+            className="rounded-lg p-1 text-orange-500 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-30"
+            title="Di chuyển xuống"
+            aria-label="Di chuyển xuống"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={(event) => { event.stopPropagation(); onRemove() }} className="rounded-lg p-1 text-orange-400 transition hover:bg-orange-100 hover:text-travel" title="Xóa">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-orange-950/70">{item.note}</p>
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-orange-950/60">
@@ -41,4 +76,3 @@ export function TimelinePlaceCard({ item, selected, onSelect, onHover, onRemove 
     </article>
   )
 }
-

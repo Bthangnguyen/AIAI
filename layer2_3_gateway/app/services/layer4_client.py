@@ -128,6 +128,28 @@ class Layer4Client:
         yield f"data: {json_lib.dumps(result)}\n\n"
         yield "data: [DONE]\n\n"
 
+    async def plan_alternatives(
+        self,
+        pois: List[POIResponse],
+        contract: LLMDataContract,
+        time_limit: int = 30,
+    ) -> Optional[Dict]:
+        """Send assembled payload to Layer 4 POST /plan-multi."""
+        payload = self._build_payload(pois, contract)
+
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.post(
+                    f"{self.base_url}/plan-multi",
+                    json=payload,
+                    params={"time_limit": time_limit},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Layer 4 plan-multi failed: {e}")
+            return None
+
     async def re_route(
         self,
         current_lat: float,

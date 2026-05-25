@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  travel-db:
+    container_name: travel-db
+    build:
+      context: ./layer2_3_gateway/db
+      dockerfile: Dockerfile
+    command: ["postgres", "-c", "max_connections=500", "-c", "shared_buffers=1GB", "-c", "shared_preload_libraries=pg_cron", "-c", "cron.database_name=travel"]
+    volumes:
+      - travel_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=travel
+      - POSTGRES_PASSWORD=travel_secret
+      - POSTGRES_DB=travel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d travel -U travel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - travel-network
+
+  routing-osrm-hue:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.0
+    container_name: routing_osrm_hue
+    restart: always
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./Hue_OSRM_Data:/data:ro
+    command: "osrm-routed --algorithm ch --max-table-size 100 /data/hue.osrm"
+    networks:
+      - travel-network
+
+  cvrptw-solver:
+    container_name: cvrptw-solver
+    build:
+      context: ./fleet-route-optimizer-cvrptw
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fleet-route-optimizer-cvrptw/results:/app/results
+      - ./fleet-route-optimizer-cvrptw/distance_cache.db:/app/src/distance_cache.db
+      - ./fleet-route-optimizer-cvrptw/inputs:/app/inputs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OSRM_BASE_URL=http://routing-osrm-hue:5000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      - routing-osrm-hue
+    networks:
+      - travel-network
+
+  travel-gateway:
+    container_name: travel-gateway
+    build:
+      context: ./layer2_3_gateway
+      dockerfile: Dockerfile
+    env_file:
+      - ./layer2_3_gateway/travel.env
+    environment:
+      - SQL_HOST=travel-db
+      - LAYER4_BASE_URL=http://cvrptw-solver:8000
+    command: bash -c "
+      gunicorn app.main:app
+      -w 4 -k uvicorn.workers.UvicornWorker
+      --bind 0.0.0.0:8080
+      --timeout 120
+      --graceful-timeout 30
+      "
+    volumes:
+      - ./layer2_3_gateway/app:/home/code/app
+      - ./layer2_3_gateway/tests:/home/code/tests
+      - ./layer2_3_gateway/alembic:/home/code/alembic
+      - ./layer2_3_gateway/ingestion:/home/code/ingestion
+      - ./layer2_3_gateway/firebase-service-account.json:/home/code/firebase-service-account.json
+    ports:
+      - "8001:8080"
+    depends_on:
+      travel-db:
+        condition: service_healthy
+      cvrptw-solver:
+        condition: service_healthy
+    networks:
+      - travel-network
+
+volumes:
+  travel_data: {}
+
+networks:
+  travel-network:
+    name: travel-network
+    driver: bridge

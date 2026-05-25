@@ -1,0 +1,137 @@
+[
+  {
+    "id": "P01",
+    "name": "Đại Nội Huế",
+    "lat": 16.468450,
+    "lng": 107.579002,
+    "duration_minutes": 120,
+    "time_window_minutes": [480, 1020],
+    "note": "Giờ mở cửa: 08:00 - 17:00. Trung tâm, mất nhiều thời gian tham quan."
+  },
+  {
+    "id": "P02",
+    "name": "Chợ Đông Ba",
+    "lat": 16.474661,
+    "lng": 107.588820,
+    "duration_minutes": 60,
+    "time_window_minutes": [360, 1080],
+    "note": "Giờ mở cửa: 06:00 - 18:00. Rất gần Đại Nội, test đường một chiều."
+  },
+  {
+    "id": "P03",
+    "name": "Chùa Thiên Mụ",
+    "lat": 16.453472,
+    "lng": 107.544861,
+    "duration_minutes": 45,
+    "time_window_minutes": [480, 1080],
+    "note": "Nằm ven sông Hương, cách xa trung tâm một chút."
+  },
+  {
+    "id": "P04",
+    "name": "Lăng Tự Đức",
+    "lat": 16.433105,
+    "lng": 107.567086,
+    "duration_minutes": 90,
+    "time_window_minutes": [450, 1020],
+    "note": "Giờ mở cửa: 07:30 - 17:00."
+  },
+  {
+    "id": "P05",
+    "name": "Lăng Khải Định",
+    "lat": 16.399228,
+    "lng": 107.584672,
+    "duration_minutes": 60,
+    "time_window_minutes": [450, 1020],
+    "note": "Nằm trên núi, xa trung tâm nhất, test khả năng Snap to Road của OSRM."
+  },
+  {
+    "id": "P06",
+    "name": "Lăng Minh Mạng",
+    "lat": 16.388851,
+    "lng": 107.572412,
+    "duration_minutes": 90,
+    "time_window_minutes": [450, 1020],
+    "note": "Cực Nam của thành phố, đi qua nhiều đường nhỏ."
+  },
+  {
+    "id": "P07",
+    "name": "Cầu Tràng Tiền",
+    "lat": 16.471649,
+    "lng": 107.590057,
+    "duration_minutes": 30,
+    "time_window_minutes": [0, 1440],
+    "note": "Mở cửa 24/24. Điểm check-in nhanh."
+  },
+  {
+    "id": "P08",
+    "name": "Trường Quốc Học Huế",
+    "lat": 16.466488,
+    "lng": 107.581291,
+    "duration_minutes": 45,
+    "time_window_minutes": [420, 1020],
+    "note": "Nằm ngay trục đường chính Lê Lợi."
+  },
+  {
+    "id": "P09",
+    "name": "Đàn Nam Giao",
+    "lat": 16.443912,
+    "lng": 107.577234,
+    "duration_minutes": 45,
+    "time_window_minutes": [480, 1020],
+    "note": "Giữa tuyến đường từ Trung tâm đi Lăng Tự Đức."
+  },
+  {
+    "id": "P10",
+    "name": "Làng Hương Thủy Xuân",
+    "lat": 16.440265,
+    "lng": 107.568322,
+    "duration_minutes": 45,
+    "time_window_minutes": [480, 1020],
+    "note": "Trên trục đường Huyền Trân Công Chúa, gần Lăng Tự Đức."
+  },
+  {
+    "id": "P11",
+    "name": "Cung An Định",
+    "lat": 16.460831,
+    "lng": 107.594754,
+    "duration_minutes": 60,
+    "time_window_minutes": [420, 1020],
+    "note": "Nằm trong trung tâm phố thị."
+  },
+  {
+    "id": "P12",
+    "name": "Nhà vườn An Hiên",
+    "lat": 16.456633,
+    "lng": 107.554011,
+    "duration_minutes": 45,
+    "time_window_minutes": [480, 1020],
+    "note": "Gần Chùa Thiên Mụ, test logic gom cụm (Clustering) của OR-Tools."
+  },
+  {
+    "id": "P13",
+    "name": "Đồi Vọng Cảnh",
+    "lat": 16.434077,
+    "lng": 107.555021,
+    "duration_minutes": 45,
+    "time_window_minutes": [360, 1080],
+    "note": "Điểm ngắm hoàng hôn, đường đồi dốc."
+  },
+  {
+    "id": "P14",
+    "name": "Bảo tàng Mỹ thuật Cung đình",
+    "lat": 16.472911,
+    "lng": 107.582433,
+    "duration_minutes": 60,
+    "time_window_minutes": [480, 1020],
+    "note": "Nằm ngay sát Đại Nội."
+  },
+  {
+    "id": "P15",
+    "name": "Ga Huế",
+    "lat": 16.458315,
+    "lng": 107.575916,
+    "duration_minutes": 15,
+    "time_window_minutes": [0, 1440],
+    "note": "Điểm xuất phát/kết thúc (Depot) lý tưởng cho kịch bản test."
+  }
+]

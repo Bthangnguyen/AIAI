@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -28,9 +28,9 @@ ENV/
 env/
 .venv
 pyvenv.cfg
-Scripts/
+/Scripts/
 Include/
-Lib/
+/Lib/
 pip-selfcheck.json
 
 # PyCharm

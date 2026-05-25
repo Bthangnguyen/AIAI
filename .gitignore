@@ -53,3 +53,8 @@ poetry.lock
 
 # Agents (local dev tools)
 .agents/
+
+# Local task tracking & agent implementation plans (not committed)
+.local/
+docs/superpowers/plans/
+docs/superpowers/specs/

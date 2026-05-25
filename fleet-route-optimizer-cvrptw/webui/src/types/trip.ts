@@ -5,7 +5,13 @@ export type DraftStatus = "draft"
 export type MissingIntentField = "destination" | "days" | "budget"
 export type BuilderMode = "plan" | "build"
 export type PreviewMode = "timeline" | "map" | "split" | "compare"
-export type BuildStatus = "empty" | "building" | "resolving" | "live"
+export type BuildStatus = "empty" | "building" | "resolving" | "live" | "error"
+
+export interface ValidationNote {
+  severity: "error" | "warning" | "info"
+  message: string
+  suggestedFix?: string
+}
 
 export interface POI {
   id: string
@@ -56,6 +62,9 @@ export interface ItineraryDraft {
   status: DraftStatus
   intent: TripIntent
   optimizationStats?: OptimizationStats
+  validationNotes?: ValidationNote[]
+  droppedPoiCount?: number
+  budgetUsed?: number
 }
 
 export interface FollowUpQuestion {

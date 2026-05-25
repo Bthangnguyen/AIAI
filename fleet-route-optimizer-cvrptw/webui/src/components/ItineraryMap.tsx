@@ -19,21 +19,34 @@ interface ItineraryMapProps {
   isJourneyPlaying?: boolean
   onJourneyStepChange?: (poiId: string, stepIndex: number) => void
   onJourneyFinish?: () => void
+  onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
 const dayColors = ["#ff385c", "#60a5fa", "#22c55e", "#f59e0b", "#a78bfa"]
 
-export function ItineraryMap({ itineraryDraft, selectedPoiId, hoveredPoiId, onSelectPoi, selectedDay, showRouteLines, onFitBoundsRequest, isJourneyPlaying, onJourneyStepChange, onJourneyFinish }: ItineraryMapProps) {
+export function ItineraryMap({ itineraryDraft, selectedPoiId, hoveredPoiId, onSelectPoi, selectedDay, showRouteLines, onFitBoundsRequest, isJourneyPlaying, onJourneyStepChange, onJourneyFinish, onOsrmDegradedChange }: ItineraryMapProps) {
+  const [osrmFailures, setOsrmFailures] = useState(0)
   const visibleDays = useMemo(() => itineraryDraft.days.filter((day) => selectedDay === "all" || day.dayNumber === selectedDay), [itineraryDraft.days, selectedDay])
   const markers = useMemo(() => flattenMarkers(visibleDays), [visibleDays])
   const center: [number, number] = markers[0] ? [markers[0].poi.lat, markers[0].poi.lng] : [16.4667, 107.5900]
+
+  useEffect(() => {
+    setOsrmFailures(0)
+    onOsrmDegradedChange?.(false)
+  }, [itineraryDraft.id, onOsrmDegradedChange])
+
+  useEffect(() => {
+    onOsrmDegradedChange?.(osrmFailures > 0)
+  }, [osrmFailures, onOsrmDegradedChange])
+
+  const reportOsrmFailure = () => setOsrmFailures((value) => value + 1)
 
   return (
     <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <FitBounds markers={markers} signal={onFitBoundsRequest} />
       <PanToSelected markers={markers} selectedPoiId={selectedPoiId} />
-      {showRouteLines ? <DayRouteLayer days={visibleDays} /> : null}
+      {showRouteLines ? <DayRouteLayer days={visibleDays} onOsrmFailure={reportOsrmFailure} /> : null}
       {markers.map((marker, index) => {
         const selected = marker.poi.id === selectedPoiId
         const hovered = marker.poi.id === hoveredPoiId
@@ -69,9 +82,10 @@ interface DayRoadRoutePolylineProps {
   dayNumber: number
   color: string
   positions: [number, number][]
+  onOsrmFailure?: () => void
 }
 
-function DayRoadRoutePolyline({ dayNumber, color, positions }: DayRoadRoutePolylineProps) {
+function DayRoadRoutePolyline({ dayNumber, color, positions, onOsrmFailure }: DayRoadRoutePolylineProps) {
   const [routePositions, setRoutePositions] = useState<[number, number][]>(positions)
 
   useEffect(() => {
@@ -111,12 +125,13 @@ function DayRoadRoutePolyline({ dayNumber, color, positions }: DayRoadRoutePolyl
       })
       .catch((err) => {
         console.warn("OSRM routing failed, using straight-line fallback:", err)
+        onOsrmFailure?.()
       })
 
     return () => {
       isMounted = false
     }
-  }, [positions, dayNumber])
+  }, [positions, dayNumber, onOsrmFailure])
 
   return (
     <Polyline
@@ -130,7 +145,7 @@ function DayRoadRoutePolyline({ dayNumber, color, positions }: DayRoadRoutePolyl
   )
 }
 
-function DayRouteLayer({ days }: { days: ItineraryDay[] }) {
+function DayRouteLayer({ days, onOsrmFailure }: { days: ItineraryDay[]; onOsrmFailure?: () => void }) {
   return (
     <>
       {days.map((day, index) => {
@@ -145,6 +160,7 @@ function DayRouteLayer({ days }: { days: ItineraryDay[] }) {
             dayNumber={day.dayNumber}
             color={dayColors[index % dayColors.length]}
             positions={positions}
+            onOsrmFailure={onOsrmFailure}
           />
         )
       })}

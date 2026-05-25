@@ -4,7 +4,7 @@
  */
 export const FeatureFlags = {
   /** When true, all API calls return mock data (no network required). */
-  USE_MOCK_BACKEND: true,
+  USE_MOCK_BACKEND: false,
   /** Enable/disable local push notifications during demo flow. */
   ENABLE_PUSH_NOTIFICATIONS: true,
   /** Enable share trip sheet. */

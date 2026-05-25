@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MainTabNavigator - Dark Royal Hue Tab Bar
  * Design: Glassmorphism dark + Royal Purple accent
  */
@@ -61,13 +61,23 @@ const tabStyles = StyleSheet.create({
     backgroundColor: colors.palette.imperialGold,
   },
 })
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+
 
 export const MainTabNavigator: React.FC = () => {
+  const insets = useSafeAreaInsets()
+  const safeBottom = insets.bottom > 0 ? insets.bottom : 8
+  const dynamicTabBarStyle = {
+    ...styles.tabBar,
+    height: 56 + safeBottom,
+    paddingBottom: safeBottom,
+  }
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: dynamicTabBarStyle,
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.palette.imperialGold,
         tabBarInactiveTintColor: "rgba(255,255,255,0.3)",

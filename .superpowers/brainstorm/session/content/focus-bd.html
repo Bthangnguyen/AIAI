@@ -1,0 +1,57 @@
+<h2>Lộ Trình Cải Tiến Bản Đồ (B) & Định Vị Đi Tour (D)</h2>
+<p class="subtitle">Dưới đây là các tính năng cụ thể để nâng cấp UX Bản Đồ và tính năng Định Vị GPS thực tế:</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">📍 Nhóm B: UX Bản Đồ & Rerouting JIT</div>
+    <div class="mockup-body">
+      <h3>Cải tiến đề xuất:</h3>
+      <ol style="margin-left: 1.25rem; font-size: 0.9rem; color: var(--text-secondary); gap: 0.5rem; display: flex; flex-direction: column;">
+        <li><strong>Kéo thả sắp xếp (Drag-to-Reorder):</strong> Chuyển BottomSheet FlatList thành <code>DraggableFlatList</code> để người dùng tự điều chỉnh thứ tự điểm đi thủ công.</li>
+        <li><strong>Bỏ qua điểm thông minh (Smart Skip):</strong> Nhấn nút "Skip" sẽ đánh dấu POI vào danh sách loại trừ và tự động gọi API <code>re_route</code> để Solver tính lại đường tối ưu nhất.</li>
+        <li><strong>Tối ưu hóa đường đi Mapbox:</strong> Hiển thị các tuyến đường vẽ bằng Mapbox Polyline đẹp mắt, phân biệt màu sắc giữa các ngày và cập nhật động khi reroute.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">📡 Nhóm D: Active Trip & Theo Dõi GPS</div>
+    <div class="mockup-body">
+      <h3>Cải tiến đề xuất:</h3>
+      <ol style="margin-left: 1.25rem; font-size: 0.9rem; color: var(--text-secondary); gap: 0.5rem; display: flex; flex-direction: column;">
+        <li><strong>Lưu trạng thái Visited (Zustand):</strong> Đưa <code>visitedIds</code> từ React state cục bộ vào Zustand Store để lưu vết vĩnh viễn (qua MMKV) khi tắt app.</li>
+        <li><strong>GPS Chạy nền (Background Tracking):</strong> Tích hợp <code>expo-task-manager</code> để liên tục nhận tọa độ người dùng kể cả khi tắt màn hình điện thoại.</li>
+        <li><strong>Thông báo tiệm cận (Proximity Alerts):</strong> Tự động tính khoảng cách giữa GPS hiện tại và POI tiếp theo. Khi cách &lt; 100m, gửi Push Notification nhắc nhở Check-in.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>Lựa Chọn Cách Tiếp Cận</h3>
+  <div class="options">
+    <div class="option" data-choice="step-by-step" onclick="toggleSelect(this)">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>Xây dựng Từng Tính Năng Tuần Tự (Khuyến nghị)</h3>
+        <p>Chúng ta sẽ nâng cấp phần trạng thái (Zustand Visited) trước để làm móng, tiếp theo là UX Kéo thả / Rerouting trên Map, và cuối cùng là GPS chạy nền + Proximity Alerts.</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="map-first" onclick="toggleSelect(this)">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>Tập trung hoàn thiện Nhóm B (Map & Rerouting) Trước</h3>
+        <p>Tập trung hoàn toàn vào UX Bản đồ, nút Skip POI, JIT Rerouting kết nối Backend trước để người dùng có trải nghiệm lập kế hoạch mượt mà nhất.</p>
+      </div>
+    </div>
+
+    <div class="option" data-choice="gps-first" onclick="toggleSelect(this)">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>Tập trung hoàn thiện Nhóm D (GPS & Active Tour) Trước</h3>
+        <p>Phát triển GPS nền, lưu vết check-in và gửi Local Notification tiệm cận để chứng minh tính năng thực chiến (Live) khi đi du lịch thực tế.</p>
+      </div>
+    </div>
+  </div>
+</div>

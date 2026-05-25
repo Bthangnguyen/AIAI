@@ -1,0 +1,51 @@
+<h2>AIAI Travel Optimizer — Phân tích Kiến Trúc Mobile Layer</h2>
+<p class="subtitle">Chào mừng bạn đến với phiên thảo luận chuyên sâu về ứng dụng di động React Native. Dựa trên phân tích mã nguồn, đây là hiện trạng và các vấn đề cốt lõi của Mobile Layer:</p>
+
+<div class="section">
+  <h3>Tổng Quan Kiến Trúc Hiện Tại</h3>
+  <ul>
+    <li><strong>Công nghệ cốt lõi:</strong> React Native (0.83.6), Expo SDK 55, TypeScript, Zustand (Quản lý State).</li>
+    <li><strong>Map & Địa lý:</strong> Sử dụng Mapbox GL (<code>@rnmapbox/maps</code>) cho Native và Leaflet cho môi trường web. Tích hợp định vị thời gian thực (<code>expo-location</code>).</li>
+    <li><strong>Đồng bộ hóa:</strong> Kết nối qua SSE Stream (<code>react-native-sse</code>) để hiển thị tiến độ 3 giai đoạn tối ưu hóa (L2 Intent, L3 Spatial Search, L4 OR-Tools solver).</li>
+    <li><strong>Just-In-Time (JIT) Rerouting:</strong> Cung cấp tính năng tính toán lại lịch trình linh hoạt khi hành khách thay đổi ý định hoặc bỏ qua địa điểm.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>Chọn Trọng Tâm Phân Tích & Nâng Cấp</h3>
+  <p class="subtitle">Vui lòng chọn chủ đề bạn muốn tập trung thảo luận hoặc nâng cấp ngay bây giờ. Bạn có thể nhấn trực tiếp vào tùy chọn trên trình duyệt:</p>
+
+  <div class="options">
+    <div class="option" data-choice="sse-loading" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>SSE & Giao tiếp API Giai Đoạn Tải Lịch Trình (Loading Screens)</h3>
+        <p>Phân tích sâu cơ chế Stream SSE, tối ưu hóa giao tiếp với Layer 2 & 3 Gateway, xử lý lỗi mất kết nối nửa chừng, timeout (2 phút) và lưu trữ trạng thái trung gian trong Zustand.</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="map-ux" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Tối ưu UX Bản đồ & Dòng Điều Tuyến JIT (Map Timeline & Rerouting)</h3>
+        <p>Thảo luận về cách đồng bộ bản đồ Mapbox, xử lý kéo thả thay đổi thứ tự POI (Draggable FlatList), hành động Skip POI và cơ chế gọi API Rerouting (<code>/v1/trip/re_route</code>) để cập nhật lịch trình tức thời.</p>
+      </div>
+    </div>
+
+    <div class="option" data-choice="offline-cache" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Bộ Nhớ Đệm & Chế Độ Ngoại Tuyến (Offline Persistence & Caching)</h3>
+        <p>Quản lý cache lịch trình bằng MMKV và Zustand, lưu vết lịch trình cũ (Trip History), đảm bảo app tải mượt mà không cần gọi API nhiều lần khi không có internet.</p>
+      </div>
+    </div>
+
+    <div class="option" data-choice="active-trip" onclick="toggleSelect(this)">
+      <div class="letter">D</div>
+      <div class="content">
+        <h3>Hành Trình Thực Tế & Định Vị Từng Bước (Active Trip & GPS Tracking)</h3>
+        <p>Xử lý màn hình đi tour thực tế (Active Trip Screen), tính khoảng cách địa lý thời gian thực, nhắc nhở bằng thông báo đẩy (Push Notifications) và theo dõi GPS chạy nền.</p>
+      </div>
+    </div>
+  </div>
+</div>

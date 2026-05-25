@@ -86,7 +86,7 @@ export type ReRouteResponse = {
 // ─── Main Tab Navigator ───────────────────────────────────────────────────────
 export type MainTabParamList = {
   Explore: undefined
-  MyTrip: { itinerary?: TravelItinerary }
+  MyTrip: undefined
   History: undefined
   Profile: undefined
 }

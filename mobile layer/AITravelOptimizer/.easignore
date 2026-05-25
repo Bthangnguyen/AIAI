@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+android/app/build/
+android/.gradle/
+dist/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+expo-web.log
+eslint-report.json
+lint_output.txt
+
+# Test
+__tests__/
+*.test.ts
+*.test.tsx
+test/
+.maestro/
+jest.config.js
+
+# Docs
+docs/
+README.md
+
+# Dev tools
+.dependency-cruiser.js
+.prettierrc
+.prettierignore
+.eslintrc.js
+.eslintignore

@@ -75,10 +75,15 @@ export function App() {
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
 
   useEffect(() => {
-    // Initialize Mapbox inside useEffect so native module is ready
-    MapboxGL.setAccessToken(
-      process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "",
-    )
+    try {
+      if (MapboxGL && typeof MapboxGL.setAccessToken === "function") {
+        MapboxGL.setAccessToken(
+          process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "",
+        )
+      }
+    } catch (e) {
+      console.warn("MapboxGL is not supported in this environment:", e)
+    }
 
     initI18n()
       .then(() => setIsI18nInitialized(true))

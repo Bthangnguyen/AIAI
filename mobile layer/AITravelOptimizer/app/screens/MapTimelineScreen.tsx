@@ -1,5 +1,5 @@
 import { FC, useCallback, useMemo, useRef, useState, useEffect } from "react"
-import { View, ViewStyle, TextStyle, Pressable, Dimensions, StyleSheet, Alert, Platform } from "react-native"
+import { View, ViewStyle, TextStyle, Pressable, Dimensions, StyleSheet, Alert, Platform, UIManager } from "react-native"
 import BottomSheet, { BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import MapboxGL from "@rnmapbox/maps"
 import Animated, { FadeInUp } from "react-native-reanimated"
@@ -23,6 +23,18 @@ import { useTripStore } from "@/store/useTripStore"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
+const isMapboxAvailable = () => {
+  if (Platform.OS === "web") return false
+  try {
+    return (
+      UIManager.getViewManagerConfig("RNMBGLMapView") != null ||
+      UIManager.getViewManagerConfig("RNMapboxMapView") != null
+    )
+  } catch {
+    return false
+  }
+}
+
 const CAMERA_BOUNDS_PADDING = {
   paddingTop: 80,
   paddingBottom: SCREEN_HEIGHT * 0.3,
@@ -43,21 +55,21 @@ interface FlatListItem {
 
 interface MapTimelineScreenProps extends AppStackScreenProps<"MapTimeline"> {}
 
-// â”€â”€â”€ Category Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——————————————————————————————————————————————————————————————————————————
 const CATEGORY_EMOJI: Record<string, string> = {
-  museum: "ðŸ›ï¸",
-  temple: "â›©ï¸",
-  park: "ðŸŒ³",
-  market: "ðŸ›’",
-  restaurant: "ðŸœ",
-  cafe: "â˜•",
-  beach: "ðŸ–ï¸",
-  waterfall: "ðŸ’§",
-  pagoda: "ðŸ›•",
-  default: "ðŸ“",
+  museum: "🏛️",
+  temple: "🕌",
+  park: "🌳",
+  market: "🛒",
+  restaurant: "🍛",
+  cafe: "☕",
+  beach: "🏖️",
+  waterfall: "💧",
+  pagoda: "🏮",
+  default: "📍",
 }
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——————————————————————————————————————————————————————————————————————————
 export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigation }) => {
   // Use real itinerary from navigation params; fallback to mock for standalone testing
   const initialItinerary = route?.params?.itinerary ?? MOCK_ITINERARY
@@ -84,14 +96,59 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [currentDayIndex, setCurrentDayIndex] = useState(0)
   const [visitedPOIIds] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
-  const [isLocked, setIsLocked] = useState(false)
   const [showSnackbar, setShowSnackbar] = useState(false)
   const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
+  const [isReSolving, setIsReSolving] = useState(false)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Wire isLocked to Zustand store (persist across sessions)
+  const isLocked = useTripStore((state) => state.isLocked)
+  const setIsLocked = useTripStore((state) => state.setIsLocked)
+
+  // ─── Backend re-solve after delete (optimistic update) ──────────────────
+  const reAfterDelete = useCallback(async (removedPoiId: string) => {
+    const day = itinerary.days.find(d => d.day_index === selectedDayIndex)
+    if (!day) return
+
+    const remainingIds = day.stops
+      .filter(s => s.poi_id !== removedPoiId)
+      .map(s => s.poi_id)
+
+    if (remainingIds.length === 0) return
+
+    const hotel = day.start_hotel_location || day.hotel_location
+    if (!hotel) return
+
+    setIsReSolving(true)
+    try {
+      const result = await TripService.reRoute({
+        current_lat: hotel.latitude,
+        current_lon: hotel.longitude,
+        current_time_min: day.stops[0]?.arrival_time_min ?? 480,
+        remaining_poi_ids: remainingIds,
+        excluded_poi_ids: [removedPoiId],
+        day_index: selectedDayIndex,
+        original_itinerary: itinerary,
+      })
+
+      if (result.status === "success" && result.day) {
+        setItinerary(prev => mergeReRoutedDay(prev, result.day!))
+      }
+    } catch (e) {
+      console.warn("Re-solve after delete failed", e)
+    } finally {
+      setIsReSolving(false)
+    }
+  }, [itinerary, selectedDayIndex])
 
   const handleDelete = useCallback((stop: TravelItineraryStop) => {
+    // Cancel any pending re-solve from previous delete
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+
     setDeletedItem(stop)
     setShowSnackbar(true)
-    // Remove from UI immediately (mocking it)
+
+    // Optimistic: remove from UI immediately
     setItinerary(prev => ({
       ...prev,
       days: prev.days.map(d => 
@@ -100,11 +157,22 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         : d
       )
     }))
-    setTimeout(() => setShowSnackbar(false), 3000)
-  }, [selectedDayIndex])
+
+    // After 3s undo window: trigger backend re-solve
+    undoTimerRef.current = setTimeout(() => {
+      setShowSnackbar(false)
+      setDeletedItem(null)
+      reAfterDelete(stop.poi_id)
+    }, 3000)
+  }, [selectedDayIndex, reAfterDelete])
 
   const handleUndo = useCallback(() => {
     if (!deletedItem) return
+    // Cancel pending backend re-solve
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
     setShowSnackbar(false)
     setItinerary(prev => {
       const day = prev.days.find(d => d.day_index === selectedDayIndex)
@@ -121,23 +189,53 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     setDeletedItem(null)
   }, [deletedItem, selectedDayIndex])
 
-  const handleAddPlaces = useCallback((placeIds: string[]) => {
-    // Mock addition
-    console.log("Adding places", placeIds)
-    setShowSnackbar(true)
-    setTimeout(() => setShowSnackbar(false), 2000)
-  }, [])
+  // ─── Add places: use dropped_pois from itinerary or re-solve ────────────
+  const handleAddPlaces = useCallback(async (placeIds: string[]) => {
+    if (placeIds.length === 0) return
+
+    const day = itinerary.days.find(d => d.day_index === selectedDayIndex)
+    if (!day) return
+
+    const hotel = day.start_hotel_location || day.hotel_location
+    if (!hotel) return
+
+    // Combine existing POIs + new POIs for re-solve
+    const allPoiIds = [
+      ...day.stops.map(s => s.poi_id),
+      ...placeIds,
+    ]
+
+    setIsReSolving(true)
+    try {
+      const result = await TripService.reRoute({
+        current_lat: hotel.latitude,
+        current_lon: hotel.longitude,
+        current_time_min: day.stops[0]?.arrival_time_min ?? 480,
+        remaining_poi_ids: allPoiIds,
+        day_index: selectedDayIndex,
+        original_itinerary: itinerary,
+      })
+
+      if (result.status === "success" && result.day) {
+        setItinerary(prev => mergeReRoutedDay(prev, result.day!))
+      }
+    } catch (e) {
+      console.warn("Re-solve after add failed", e)
+    } finally {
+      setIsReSolving(false)
+    }
+  }, [itinerary, selectedDayIndex])
 
   const handleSkipStop = async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Lá»—i', 'Cáº§n quyá»n truy cáº­p vá»‹ trÃ­ Ä‘á»ƒ Ä‘iá»u hÆ°á»›ng')
+        Alert.alert('Lỗi', 'Cần quyền truy cập vị trí để điều hướng')
         return
       }
       let loc = await Location.getCurrentPositionAsync({})
-      console.log('Bá» qua Ä‘iá»ƒm hiá»‡n táº¡i, Ä‘ang Re-route tá»« vá»‹ trÃ­:', loc.coords)
-      Alert.alert('ThÃ nh cÃ´ng', 'Äang tÃ­nh toÃ¡n láº¡i lá»™ trÃ¬nh tá»« vá»‹ trÃ­ hiá»‡n táº¡i...')
+      console.log('Bỏ qua điểm hiện tại, đang Re-route từ vị trí:', loc.coords)
+      Alert.alert('Thành công', 'Đang tính toán lại lộ trình từ vị trí hiện tại...')
       // Call Backend API to Reroute with keep_depot_fixed=True
     } catch(e) {
       console.warn("Could not get location", e)
@@ -436,7 +534,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   return (
     <View style={$root}>
       {/* Mapbox Map - Only render on native platforms */}
-      {Platform.OS !== "web" ? (
+      {isMapboxAvailable() ? (
         <MapboxGL.MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -477,7 +575,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               coordinate={[hotelLoc.longitude, hotelLoc.latitude]}
             >
               <View style={$hotelMarker}>
-                <Text text="ðŸ¨" style={$markerEmoji} />
+                <Text text="🏨" style={$markerEmoji} />
               </View>
             </MapboxGL.PointAnnotation>
           )
@@ -549,7 +647,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {selectedStop && (
         <Animated.View entering={FadeInUp.duration(300)} style={$poiPopupCard}>
           <View style={$poiPopupHeader}>
-            <Text text={"ðŸ“"} style={$poiPopupEmoji} />
+            <Text text={"📍"} style={$poiPopupEmoji} />
             <View style={{ flex: 1, marginLeft: 8 }}>
               <Text text={selectedStop.poi_name} style={$poiPopupTitle} numberOfLines={1} />
               <Text text={`${selectedStop.visit_duration_min} min â€¢ ${selectedStop.entrance_fee > 0 ? (selectedStop.entrance_fee / 1000).toFixed(0) + "kâ‚«" : "Free"}`} style={$poiPopupSubtitle} />
@@ -630,15 +728,44 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
             </Pressable>
           )}
         </View>
-        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.08)" }}>
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 16, gap: 10, backgroundColor: "rgba(14,19,32,0.95)" }}>
           {isLocked ? (
-            <Pressable style={{ padding: 12, backgroundColor: "red", borderRadius: 8, flex: 1, alignItems: 'center' }} onPress={handleSkipStop}>
-              <Text text="Bá» qua Ä‘iá»ƒm nÃ y" style={{ color: "rgba(255,255,255,0.08)", fontWeight: "bold" }} />
+            <Pressable
+              style={{ padding: 14, backgroundColor: colors.palette.royalPurple, borderRadius: 14, flex: 1, alignItems: 'center' }}
+              onPress={() => {
+                // Navigate to ActiveTrip tab — itinerary is already in Zustand store
+                navigation.navigate("MainTabs", { screen: "MyTrip" })
+              }}
+            >
+              <Text text="🚀 Bắt đầu chuyến đi" style={{ color: "#FFFFFF", fontFamily: typography.primary.semiBold, fontSize: 15 }} />
             </Pressable>
           ) : (
             <>
-              <Pressable style={{ padding: 12, backgroundColor: "#eee", borderRadius: 8 }}><Text text="LÆ°u NhÃ¡p" /></Pressable>
-              <Pressable style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 8 }} onPress={() => setIsLocked(true)}><Text text="Chá»‘t Lá»‹ch TrÃ¬nh" style={{ color: "rgba(255,255,255,0.08)" }} /></Pressable>
+              <Pressable style={{ padding: 14, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 14, flex: 1, alignItems: 'center', borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}>
+                <Text text="💾 Lưu Nháp" style={{ color: "rgba(255,255,255,0.7)", fontFamily: typography.primary.medium, fontSize: 14 }} />
+              </Pressable>
+              <Pressable
+                style={{ padding: 14, backgroundColor: colors.palette.imperialGold, borderRadius: 14, flex: 1.5, alignItems: 'center' }}
+                onPress={() => {
+                  Alert.alert(
+                    "🔒 Khóa lộ trình",
+                    "Sau khi khóa, bạn sẽ chuyển sang chế độ Active Trip. Bạn vẫn có thể tái định tuyến bằng GPS.",
+                    [
+                      { text: "Hủy", style: "cancel" },
+                      {
+                        text: "Khóa & Bắt đầu",
+                        onPress: () => {
+                          setIsLocked(true) // Persisted to Zustand/MMKV
+                          // Itinerary already synced to Zustand via useEffect
+                          navigation.navigate("MainTabs", { screen: "MyTrip" })
+                        },
+                      },
+                    ]
+                  )
+                }}
+              >
+                <Text text="🔒 Khóa lộ trình" style={{ color: "#0e1320", fontFamily: typography.primary.bold, fontSize: 15 }} />
+              </Pressable>
             </>
           )}
         </View>
@@ -647,8 +774,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {/* Undo Snackbar */}
       {showSnackbar && (
         <View style={{ position: "absolute", bottom: 100, left: 20, right: 20, backgroundColor: "#333", padding: 15, borderRadius: 8, flexDirection: "row", justifyContent: "space-between", zIndex: 999 }}>
-          <Text text="ÄÃ£ xÃ³a Ä‘á»‹a Ä‘iá»ƒm" style={{ color: "white" }} />
-          <Pressable onPress={handleUndo}><Text text="HoÃ n tÃ¡c" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
+          <Text text="Đã xóa địa điểm" style={{ color: "white" }} />
+          <Pressable onPress={handleUndo}><Text text="Hoàn tác" style={{ color: "#4facfe", fontWeight: "bold" }} /></Pressable>
         </View>
       )}
 
@@ -657,7 +784,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>
-        <Text text="ðŸ“" style={$myLocationIcon} />
+        <Text text="📍" style={$myLocationIcon} />
       </Pressable>
 
       {/* Re-route FAB */}

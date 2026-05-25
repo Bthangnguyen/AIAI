@@ -89,3 +89,26 @@ export function getCurrentTimeMin(): number {
   const now = new Date()
   return now.getHours() * 60 + now.getMinutes()
 }
+
+/**
+ * Calculate trip time delta — how far ahead or behind schedule.
+ *
+ * @param nextStop    The next unvisited stop in the itinerary
+ * @param currentTimeMin  Current time in minutes from midnight
+ * @param travelTimeEstimate  Estimated travel time to next stop (minutes)
+ * @returns  deltaMin (always positive) + status label
+ */
+export function getTripTimeDelta(
+  nextStop: TravelItineraryStop,
+  currentTimeMin: number,
+  travelTimeEstimate: number = 0,
+): { deltaMin: number; status: "early" | "on-time" | "late" } {
+  const expectedArrival = nextStop.arrival_time_min
+  const estimatedArrival = currentTimeMin + travelTimeEstimate
+  const delta = estimatedArrival - expectedArrival
+
+  if (delta <= -10) return { deltaMin: Math.abs(delta), status: "early" }
+  if (delta >= 10) return { deltaMin: delta, status: "late" }
+  return { deltaMin: 0, status: "on-time" }
+}
+

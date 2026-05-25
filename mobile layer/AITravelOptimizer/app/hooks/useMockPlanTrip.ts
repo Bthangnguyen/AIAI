@@ -52,7 +52,7 @@ export const useMockPlanTrip = () => {
             ]
           }
         ]
-      });
+      } as any);
     }, 9500);
   };
 

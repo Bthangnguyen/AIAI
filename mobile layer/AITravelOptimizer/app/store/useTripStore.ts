@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, StateStorage, createJSONStorage } from 'zustand/middleware';
 import { MMKV } from 'react-native-mmkv';
 import { LLMDataContract, SSEStage } from '../types/api';
+import type { TravelItinerary } from '../navigators/navigationTypes';
 
 // Khởi tạo MMKV instance
 const storage = new MMKV({
@@ -33,12 +34,22 @@ interface TripState {
 
   // 3. Dữ liệu Lộ trình & Reroute
   extractedConstraints: LLMDataContract | null;
-  currentItinerary: any | null; // Có thể thay bằng kiểu cụ thể sau khi API hoàn thiện
+  currentItinerary: TravelItinerary | null;
   currentLocation: { lat: number; lon: number } | null;
+  
+  // 4. Trip mode: Draft (chưa khóa) vs Live (đã khóa)
+  isLocked: boolean;
+  setIsLocked: (locked: boolean) => void;
+
+  // 5. Visited POIs — persisted across app restarts
+  visitedPOIIds: string[];
+  markVisited: (poiId: string) => void;
+  unmarkVisited: (poiId: string) => void;
+  clearVisited: () => void;
   
   // Các hàm cập nhật
   setExtractedConstraints: (constraints: LLMDataContract) => void;
-  setCurrentItinerary: (itinerary: any) => void;
+  setCurrentItinerary: (itinerary: TravelItinerary) => void;
   updateCurrentLocation: (lat: number, lon: number) => void;
   
   // Hàm reset
@@ -47,7 +58,7 @@ interface TripState {
 
 export const useTripStore = create<TripState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       originalPrompt: '',
       setOriginalPrompt: (prompt) => set({ originalPrompt: prompt }),
       
@@ -63,21 +74,43 @@ export const useTripStore = create<TripState>()(
       currentLocation: null,
       updateCurrentLocation: (lat, lon) => set({ currentLocation: { lat, lon } }),
 
+      // Trip mode
+      isLocked: false,
+      setIsLocked: (locked) => set({ isLocked: locked }),
+
+      // Visited POIs (persisted via MMKV)
+      visitedPOIIds: [],
+      markVisited: (poiId) => {
+        const current = get().visitedPOIIds;
+        if (!current.includes(poiId)) {
+          set({ visitedPOIIds: [...current, poiId] });
+        }
+      },
+      unmarkVisited: (poiId) => {
+        set({ visitedPOIIds: get().visitedPOIIds.filter(id => id !== poiId) });
+      },
+      clearVisited: () => set({ visitedPOIIds: [] }),
+
       resetTrip: () => set({
         originalPrompt: '',
         sseStage: 'idle',
         extractedConstraints: null,
-        currentItinerary: null
+        currentItinerary: null,
+        isLocked: false,
+        visitedPOIIds: [],
       })
     }),
     {
       name: 'ai-travel-trip-storage',
       storage: createJSONStorage(() => zustandStorage),
-      // Bỏ qua không lưu sseStage (vì trạng thái loading chỉ có ý nghĩa trong một phiên làm việc)
+      // Persist: prompt, constraints, itinerary, lock state, visited POIs
+      // Skip: sseStage, currentLocation (transient)
       partialize: (state) => ({ 
         originalPrompt: state.originalPrompt,
         extractedConstraints: state.extractedConstraints,
-        currentItinerary: state.currentItinerary
+        currentItinerary: state.currentItinerary,
+        isLocked: state.isLocked,
+        visitedPOIIds: state.visitedPOIIds,
       })
     }
   )

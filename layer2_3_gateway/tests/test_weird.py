@@ -2,11 +2,13 @@ import asyncio
 import os
 import sys
 import json
+import pytest
 from httpx import AsyncClient
 
 # Add parent dir to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+@pytest.mark.anyio
 async def test_weird_scenario():
     print("🧪 Testing Vector Similarity for: 'đá gà', 'chèo thuyền'...")
     

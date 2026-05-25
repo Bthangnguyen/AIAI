@@ -64,6 +64,7 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
   const [micActive, setMicActive] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
   const micScale = useRef(new Animated.Value(1)).current
+  const ctaAnim = useRef(new Animated.Value(0)).current
   const insets = useSafeAreaInsets()
 
   useEffect(() => {
@@ -78,6 +79,15 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
       micScale.setValue(1)
     }
   }, [micActive])
+
+  useEffect(() => {
+    Animated.spring(ctaAnim, {
+      toValue: isReady ? 1 : 0,
+      tension: 50,
+      friction: 8,
+      useNativeDriver: true,
+    }).start()
+  }, [isReady])
 
   const handleSend = async () => {
     const trimmed = prompt.trim()
@@ -116,6 +126,33 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
       setIsTyping(false)
       console.error("Chat API error:", err)
     }
+  }
+
+  const handleLaunchRouteSolver = () => {
+    const parts: string[] = []
+    parts.push(`Lập kế hoạch du lịch tại ${currentContract.destination || "Huế"}`)
+    parts.push(`trong ${currentContract.num_days} ngày`)
+    if (currentContract.budget_max) {
+      parts.push(`với ngân sách tối đa là ${currentContract.budget_max.toLocaleString()} VND.`)
+    } else {
+      parts.push(`với ngân sách thoải mái.`)
+    }
+    if (currentContract.locked_pois && currentContract.locked_pois.length > 0) {
+      parts.push(`Địa điểm bắt buộc ghé thăm: ${currentContract.locked_pois.join(", ")}.`)
+    }
+    if (currentContract.tags && currentContract.tags.length > 0) {
+      parts.push(`Sở thích: ${currentContract.tags.join(", ")}.`)
+    }
+
+    const unifiedPrompt = parts.join(" ")
+
+    navigation.navigate("Loading", {
+      prompt: unifiedPrompt,
+      hotelName: currentContract.hotel_name || "Pilgrimage Village",
+      hotelLat: currentContract.hotel_lat || 16.4637,
+      hotelLon: currentContract.hotel_lon || 107.5909,
+      numDays: currentContract.num_days || 1,
+    })
   }
 
   const currentHour = new Date().getHours()
@@ -235,6 +272,37 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
             </View>
           )}
         </ScrollView>
+
+        {/* Nút bấm Royal CTA xuất hiện mượt mà khi isReady === true */}
+        {isReady && (
+          <Animated.View
+            style={[
+              styles.ctaWrapper,
+              {
+                opacity: ctaAnim,
+                transform: [
+                  {
+                    translateY: ctaAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity style={styles.ctaButton} onPress={handleLaunchRouteSolver}>
+              <LinearGradient
+                colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
+                style={styles.ctaGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.ctaButtonText}>🤖 Tạo Lộ Trình Tối Ưu Ngay ✨</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Input glass card */}
         <View style={[styles.inputCard, { paddingBottom: insets.bottom + 12 }]}>
@@ -380,4 +448,30 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.5 },
   sendBtnGradient: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
   sendBtnText: { fontSize: 20, color: "#FFFFFF", fontFamily: typography.primary.bold },
+  ctaWrapper: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 4,
+    width: "100%",
+  },
+  ctaButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.palette.royalPurple,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  ctaGradient: {
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaButtonText: {
+    fontFamily: typography.primary.bold,
+    fontSize: 15,
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
 })

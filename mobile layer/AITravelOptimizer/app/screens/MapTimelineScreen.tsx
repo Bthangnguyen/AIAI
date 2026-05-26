@@ -10,7 +10,9 @@ import { ReRouteButton } from "@/components/ReRouteButton"
 import { ReRouteConfirmSheet } from "@/components/ReRouteConfirmSheet"
 import { Text } from "@/components/Text"
 import { WebMap } from "@/components/WebMap"
-import { AddPlaceModal } from "@/components/AddPlaceModal"
+import { AIChatRerouteModal } from "@/components/AIChatRerouteModal"
+import { InfeasibleRerouteModal } from "@/components/InfeasibleRerouteModal"
+import { RerouteComparisonModal } from "@/components/RerouteComparisonModal"
 import { FeatureFlags } from "@/config/features"
 import { MOCK_ITINERARY } from "@/constants/mockItinerary"
 import type { AppStackScreenProps, TravelItineraryStop } from "@/navigators/navigationTypes"
@@ -19,7 +21,9 @@ import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { getRemainingPOIIds, mergeReRoutedDay, getCurrentTimeMin } from "@/utils/itineraryHelpers"
-import { useTripStore } from "@/store/useTripStore"
+import { AppState, AppStateStatus } from "react-native"
+import { RerouteService } from "@/services/api/rerouteService"
+import { ReRoutePayload, TravelItineraryDay } from "@/navigators/navigationTypes"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -42,7 +46,7 @@ const CAMERA_BOUNDS_PADDING = {
   paddingRight: 40,
 }
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ──────────────────────────────────────────────────────
 interface FlatListItem {
   type: "header" | "stop"
   key: string
@@ -74,15 +78,6 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   // Use real itinerary from navigation params; fallback to mock for standalone testing
   const initialItinerary = route?.params?.itinerary ?? MOCK_ITINERARY
   const [itinerary, setItinerary] = useState(initialItinerary)
-  const setCurrentItinerary = useTripStore((state) => state.setCurrentItinerary)
-
-  // Sync manual edits and re-routed results to Zustand store (offline MMKV draft)
-  useEffect(() => {
-    if (itinerary) {
-      setCurrentItinerary(itinerary)
-    }
-  }, [itinerary, setCurrentItinerary])
-
   const bottomSheetRef = useRef<BottomSheet>(null)
   const reRouteSheetRef = useRef<BottomSheet>(null)
   const mapRef = useRef<MapboxGL.MapView>(null)
@@ -92,8 +87,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [selectedStop, setSelectedStop] = useState<TravelItineraryStop | null>(null)
   const [isReRouting, setIsReRouting] = useState(false)
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0)
-  const [currentDayIndex, setCurrentDayIndex] = useState(0)
+  const [selectedDayIndex, setSelectedDayIndex] = useState(initialItinerary.days[0]?.day_index || 0)
+  const [currentDayIndex, setCurrentDayIndex] = useState(initialItinerary.days[0]?.day_index || 0)
   const [visitedPOIIds] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showSnackbar, setShowSnackbar] = useState(false)
@@ -242,17 +237,10 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     }
   }
 
-  // â”€â”€â”€ Re-route handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const handleReRoutePress = useCallback(() => {
-    reRouteSheetRef.current?.snapToIndex(0)
-  }, [])
-
-  const handleReRouteConfirm = useCallback(async (excludedIds: string[]) => {
-    reRouteSheetRef.current?.close()
+  const handleReRouteConfirm = useCallback(async (userState?: ReRoutePayload['user_state']) => {
     setIsReRouting(true)
 
     try {
-      // Get current GPS position
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== "granted") {
         Alert.alert("Location required", "Please enable location to re-route.")
@@ -261,29 +249,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
-      const remainingIds = getRemainingPOIIds(itinerary, currentDayIndex, visitedPOIIds)
-        .filter((id) => !excludedIds.includes(id))
+      const payload = RerouteService.buildReroutePayload(
+        loc.coords.latitude, loc.coords.longitude,
+        itinerary, currentDayIndex, visitedPOIIds, userState
+      )
 
-      if (remainingIds.length === 0) {
+      if (payload.remaining_poi_ids.length === 0) {
         Alert.alert("No stops", "No remaining stops to re-route.")
         setIsReRouting(false)
         return
       }
 
-      const result = await TripService.reRoute({
-        current_lat: loc.coords.latitude,
-        current_lon: loc.coords.longitude,
-        current_time_min: getCurrentTimeMin(),
-        remaining_poi_ids: remainingIds,
-        excluded_poi_ids: excludedIds.length > 0 ? excludedIds : undefined,
-        day_index: currentDayIndex,
-        original_itinerary: itinerary,
-      })
+      const result = await TripService.reRoute(payload)
 
       if (result.status === "success" && result.day) {
-        setItinerary((prev) => mergeReRoutedDay(prev, result.day!))
+        setNewProposedDay(result.day)
+        setShowComparison(true)
       } else {
-        Alert.alert("Re-route failed", result.message || "Could not re-optimize the route.")
+        setShowInfeasibleModal(true)
       }
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Re-route request failed")
@@ -291,6 +274,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       setIsReRouting(false)
     }
   }, [itinerary, currentDayIndex, visitedPOIIds])
+
+  const handleApplyReroute = useCallback(() => {
+    if (newProposedDay) {
+      setItinerary((prev) => mergeReRoutedDay(prev, newProposedDay))
+    }
+    setShowComparison(false)
+    setNewProposedDay(undefined)
+  }, [newProposedDay])
 
   const handleMyLocation = useCallback(async () => {
     try {
@@ -315,7 +306,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     return day.stops.filter((s) => !visited.has(s.poi_id))
   }, [itinerary, currentDayIndex, visitedPOIIds])
 
-  // â”€â”€â”€ Flatten itinerary data for FlatList (filtered by selected day) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Flatten itinerary data for FlatList (filtered by selected day) ──────────
   const filteredFlatListData = useMemo<FlatListItem[]>(() => {
     const items: FlatListItem[] = []
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
@@ -329,7 +320,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     day.stops.forEach((stop, idx) => {
       items.push({
         type: "stop",
-        key: `${day.day_index}-${stop.poi_id}`,
+        key: `${day.day_index}-${stop.poi_id}-${idx}`,
         stop,
         stopIndex: idx,
         dayIndex: day.day_index,
@@ -339,32 +330,32 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     return items
   }, [itinerary, selectedDayIndex])
 
-  // â”€â”€â”€ Total estimated cost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Total estimated cost ─────────────────────────
   const totalCost = useMemo(() => {
     return itinerary.days.reduce((sum, day) => {
       return sum + day.stops.reduce((daySum, stop) => daySum + (stop.entrance_fee || 0), 0)
     }, 0)
   }, [itinerary])
 
-  // â”€â”€â”€ Per-day cost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Per-day cost ─────────────────────────────────
   const dayCost = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     if (!day) return 0
     return day.stops.reduce((sum, stop) => sum + (stop.entrance_fee || 0), 0)
   }, [itinerary, selectedDayIndex])
 
-  // â”€â”€â”€ Stops for current selected day (map markers) â”€
+  // ─── Stops for current selected day (map markers) ─
   const dayStops = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     return day ? day.stops : []
   }, [itinerary, selectedDayIndex])
 
-  // â”€â”€â”€ All stops with coordinates for map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── All stops with coordinates for map ───────────
   const allStops = useMemo(() => {
     return itinerary.days.flatMap((day) => day.stops)
   }, [itinerary])
 
-  // â”€â”€â”€ Route line GeoJSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Route line GeoJSON ───────────────────────────
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null)
   
   const filteredRouteGeoJSON = useMemo(() => {
@@ -377,7 +368,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
   useEffect(() => {
     const fetchRoutes = async () => {
-      // Use env variable for Mapbox token â€” NEVER hardcode tokens in source
+      // Use env variable for Mapbox token — NEVER hardcode tokens in source
       const accessToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN
       if (!accessToken) {
         console.error("EXPO_PUBLIC_MAPBOX_TOKEN not set in .env")
@@ -387,7 +378,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
       for (let dayIdx = 0; dayIdx < itinerary.days.length; dayIdx++) {
         const day = itinerary.days[dayIdx]
-        const hotelLoc = day.start_hotel_location || day.hotel_location
+        const hotelLoc = day.hotel_location
         if (!hotelLoc) continue
         const coords = [
           [hotelLoc.longitude, hotelLoc.latitude],
@@ -424,12 +415,12 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     fetchRoutes()
   }, [itinerary])
 
-  // â”€â”€â”€ Camera bounds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Camera bounds ────────────────────────────────
   const cameraBounds = useMemo(() => {
     const day = itinerary.days.find((d) => d.day_index === selectedDayIndex)
     if (!day) return null
 
-    const hotelLoc = day.start_hotel_location || day.hotel_location
+    const hotelLoc = day.hotel_location
     if (!hotelLoc) return null
     const hotelCoord = [hotelLoc.longitude, hotelLoc.latitude]
     const stopCoords = day.stops.map((s) => [s.location.longitude, s.location.latitude])
@@ -443,7 +434,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     }
   }, [itinerary, selectedDayIndex])
 
-  // â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Handlers ─────────────────────────────────────
   const handleMarkerPress = useCallback((stop: TravelItineraryStop) => {
     setSelectedStopId(stop.poi_id)
     setSelectedStop(stop)
@@ -463,14 +454,14 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     })
   }, [])
 
-  // â”€â”€â”€ Time formatting helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Time formatting helper ───────────────────────
   const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60)
     const m = minutes % 60
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
   }
 
-  // â”€â”€â”€ Render FlatList item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render FlatList item ─────────────────────────
   const renderItem = useCallback(
     ({ item }: { item: FlatListItem }) => {
       if (item.type === "header") {
@@ -510,16 +501,18 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               style={[$stopCard, isSelected && $stopCardActive]}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ItineraryCard
-                  emoji={emoji}
-                  title={stop.poi_name}
-                  timeString={`${formatTime(stop.arrival_time_min)} â€” ${formatTime(stop.departure_time_min)}`}
-                  visitDurationMin={stop.visit_duration_min}
-                  entranceFee={stop.entrance_fee}
-                  travelTimeMin={stop.travel_time_from_prev_min}
-                />
+                <View style={{ flex: 1 }}>
+                  <ItineraryCard
+                    emoji={emoji}
+                    title={stop.poi_name}
+                    timeString={`${formatTime(stop.arrival_time_min)} — ${formatTime(stop.departure_time_min)}`}
+                    visitDurationMin={stop.visit_duration_min}
+                    entranceFee={stop.entrance_fee}
+                    travelTimeMin={stop.travel_time_from_prev_min}
+                  />
+                </View>
                 <Pressable onPress={() => handleDelete(stop)} style={{ padding: 10 }}>
-                  <Text text="XÃ³a" style={{ color: 'red' }} />
+                  <Text text="Xóa" style={{ color: 'red' }} />
                 </Pressable>
               </View>
             </Animated.View>
@@ -530,7 +523,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
     [selectedStopId, handleCardPress],
   )
 
-  // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Main Render ──────────────────────────────────
   return (
     <View style={$root}>
       {/* Mapbox Map - Only render on native platforms */}
@@ -566,7 +559,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
         {/* Hotel marker for selected day */}
         {itinerary.days.filter((d) => d.day_index === selectedDayIndex).map((day) => {
-          const hotelLoc = day.start_hotel_location || day.hotel_location
+          const hotelLoc = day.hotel_location
           if (!hotelLoc) return null
           return (
             <MapboxGL.PointAnnotation
@@ -584,8 +577,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         {/* POI markers for selected day */}
         {dayStops.map((stop, idx) => (
           <MapboxGL.PointAnnotation
-            key={`poi-${stop.poi_id}`}
-            id={`poi-${stop.poi_id}`}
+            key={`poi-${stop.poi_id}-${idx}`}
+            id={`poi-${stop.poi_id}-${idx}`}
             coordinate={[stop.location.longitude, stop.location.latitude]}
             onSelected={() => handleMarkerPress(stop)}
           >
@@ -606,7 +599,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <WebMap
           dayStops={dayStops}
           hotelLocations={itinerary.days.map((d) => {
-            const loc = d.start_hotel_location || d.hotel_location
+            const loc = d.hotel_location
             return {
               dayIndex: d.day_index,
               location: loc ? { latitude: loc.latitude, longitude: loc.longitude } : { latitude: 0, longitude: 0 },
@@ -638,7 +631,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         </View>
         <View style={$summaryDivider} />
         <View style={$summaryItem}>
-          <Text text={`${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "kâ‚«" : "Free"}`} style={$summaryValue} />
+          <Text text={`${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "k₫" : "Free"}`} style={$summaryValue} />
           <Text text="Est. Cost" style={$summaryLabel} />
         </View>
       </View>
@@ -650,18 +643,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
             <Text text={"📍"} style={$poiPopupEmoji} />
             <View style={{ flex: 1, marginLeft: 8 }}>
               <Text text={selectedStop.poi_name} style={$poiPopupTitle} numberOfLines={1} />
-              <Text text={`${selectedStop.visit_duration_min} min â€¢ ${selectedStop.entrance_fee > 0 ? (selectedStop.entrance_fee / 1000).toFixed(0) + "kâ‚«" : "Free"}`} style={$poiPopupSubtitle} />
+              <Text text={`${selectedStop.visit_duration_min} min • ${selectedStop.entrance_fee > 0 ? (selectedStop.entrance_fee / 1000).toFixed(0) + "k₫" : "Free"}`} style={$poiPopupSubtitle} />
             </View>
             <Pressable onPress={() => { setSelectedStopId(null); setSelectedStop(null) }} style={{ padding: 4 }}>
-              <Text text="âœ•" style={$poiPopupClose} />
+              <Text text="✕" style={$poiPopupClose} />
             </Pressable>
           </View>
           <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", {
             poiId: selectedStop.poi_id,
             poiName: selectedStop.poi_name,
+            photoUrl: "",
+            rating: 4.5,
+            reviewCount: 100,
+            description: "No description available",
             entranceFee: selectedStop.entrance_fee,
+            openTime: "08:00",
+            closeTime: "22:00",
             lat: selectedStop.location.latitude,
-            lon: selectedStop.location.longitude,
+            lon: selectedStop.location.longitude
           })}>
             <Text text="View Details" style={$poiPopupBtnText} />
           </Pressable>
@@ -680,7 +679,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <View style={$sheetHeader}>
           <Text text="Itinerary" style={$sheetTitle} />
           <Text
-            text={`${itinerary.total_pois_visited} stops Â· ${itinerary.total_distance_km.toFixed(1)} km Â· ${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "kâ‚«" : "Free"}`}
+            text={`${itinerary.total_pois_visited} stops · ${itinerary.total_distance_km.toFixed(1)} km · ${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "k₫" : "Free"}`}
             style={$sheetSubtitle}
           />
         </View>
@@ -701,11 +700,11 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
                 style={[$dayTab, isActive && $dayTabActive]}
               >
                 <Text
-                  text={`NgÃ y ${day.day_index + 1}`}
+                  text={`Ngày ${day.day_index + 1}`}
                   style={[$dayTabText, isActive && $dayTabTextActive]}
                 />
                 <Text
-                  text={`${day.stops.length} Ä‘iá»ƒm Â· ${cost > 0 ? (cost / 1000).toFixed(0) + "kâ‚«" : "Free"}`}
+                  text={`${day.stops.length} điểm · ${cost > 0 ? (cost / 1000).toFixed(0) + "k₫" : "Free"}`}
                   style={[$dayTabSub, isActive && $dayTabSubActive]}
                 />
               </Pressable>
@@ -724,7 +723,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         <View style={{ padding: 16 }}>
           {!isLocked && (
             <Pressable style={{ padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, alignItems: "center", marginBottom: 10 }} onPress={() => setShowAddModal(true)}>
-              <Text text="+ ThÃªm Ä‘á»‹a Ä‘iá»ƒm (AI Chat)" />
+              <Text text="🪄 Tính toán lại lịch trình (AI)" />
             </Pressable>
           )}
         </View>
@@ -779,8 +778,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
         </View>
       )}
 
-      {/* Add Place Modal */}
-      <AddPlaceModal visible={showAddModal} onClose={() => setShowAddModal(false)} onAddPlaces={handleAddPlaces} />
+      {/* Add Place Modal -> AI Chat Reroute Modal */}
+      <AIChatRerouteModal visible={showAddModal} onClose={() => setShowAddModal(false)} onConfirmReroute={handleReRouteConfirm} />
+
+      {/* Infeasible Reroute Modal */}
+      <InfeasibleRerouteModal 
+        visible={showInfeasibleModal} 
+        onClose={() => setShowInfeasibleModal(false)} 
+        onSelectOption={handleReRouteConfirm} 
+      />
+
+      {/* Reroute Comparison Modal */}
+      <RerouteComparisonModal 
+        visible={showComparison}
+        oldDay={itinerary.days.find(d => d.day_index === currentDayIndex)}
+        newDay={newProposedDay}
+        onCancel={() => setShowComparison(false)}
+        onConfirm={handleApplyReroute}
+      />
 
       {/* My Location FAB */}
       <Pressable style={$myLocationBtn} onPress={handleMyLocation}>
@@ -790,33 +805,24 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
       {/* Re-route FAB */}
       {FeatureFlags.ENABLE_REROUTE && (
         <ReRouteButton
-          onPress={handleReRoutePress}
+          onPress={() => setShowAddModal(true)}
           loading={isReRouting}
           disabled={isReRouting}
         />
       )}
 
-      {/* Re-route Confirmation Sheet */}
-      {FeatureFlags.ENABLE_REROUTE && (
-        <ReRouteConfirmSheet
-          bottomSheetRef={reRouteSheetRef}
-          remainingStops={remainingStops}
-          onConfirm={handleReRouteConfirm}
-          onClose={() => reRouteSheetRef.current?.close()}
-        />
-      )}
     </View>
   )
 }
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Styles ─────────────────────────────────────────────────────
 
 const $root: ViewStyle = {
   flex: 1,
   backgroundColor: colors.background,
 }
 
-// â”€â”€â”€ Summary Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Summary Bar ─────────────
 const $summaryBar: ViewStyle = {
   position: "absolute",
   top: 56,
@@ -844,28 +850,28 @@ const $summaryItem: ViewStyle = {
 const $summaryValue: TextStyle = {
   fontSize: 18,
   fontFamily: typography.primary.semiBold,
-  color: '#FFFFFF',
+  color: colors.text,
 }
 
 const $summaryLabel: TextStyle = {
   fontSize: 12,
   fontFamily: typography.primary.normal,
-  color: 'rgba(255,255,255,0.75)',
+  color: colors.palette.figmaGrayDark,
   marginTop: 2,
 }
 
 const $summaryDivider: ViewStyle = {
   width: 1,
   height: 28,
-  backgroundColor: 'rgba(255,255,255,0.08)',
+  backgroundColor: colors.palette.figmaGrayLight,
 }
 
-// â”€â”€â”€ Map Markers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Map Markers ─────────────
 const $hotelMarker: ViewStyle = {
   width: 36,
   height: 36,
   borderRadius: 18,
-  backgroundColor: "rgba(255,255,255,0.08)",
+  backgroundColor: "#fff",
   justifyContent: "center",
   alignItems: "center",
   shadowColor: "#000",
@@ -887,7 +893,7 @@ const $poiMarker: ViewStyle = {
   justifyContent: "center",
   alignItems: "center",
   borderWidth: 2,
-  borderColor: "rgba(255,255,255,0.08)",
+  borderColor: "#fff",
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.2,
@@ -903,12 +909,12 @@ const $poiMarkerActive: ViewStyle = {
 }
 
 const $markerNumber: TextStyle = {
-  color: "rgba(255,255,255,0.08)",
+  color: "#fff",
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
 }
 
-// â”€â”€â”€ Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Bottom Sheet ────────────
 const $myLocationBtn: ViewStyle = {
   position: "absolute",
   bottom: 120,
@@ -916,7 +922,7 @@ const $myLocationBtn: ViewStyle = {
   width: 48,
   height: 48,
   borderRadius: 24,
-  backgroundColor: colors.palette.deepSlate,
+  backgroundColor: colors.palette.figmaWhite,
   justifyContent: "center",
   alignItems: "center",
   zIndex: 100,
@@ -932,13 +938,13 @@ const $myLocationIcon: TextStyle = {
   fontSize: 20,
 }
 
-// â”€â”€â”€ POI Popup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── POI Popup ───────────────
 const $poiPopupCard: ViewStyle = {
   position: "absolute",
   top: 130,
   left: spacing.lg,
   right: spacing.lg,
-  backgroundColor: colors.palette.deepSlate,
+  backgroundColor: colors.palette.figmaWhite,
   borderRadius: 16,
   padding: spacing.md,
   // Figma shadow
@@ -963,31 +969,31 @@ const $poiPopupEmoji: TextStyle = {
 const $poiPopupTitle: TextStyle = {
   fontFamily: typography.primary.bold,
   fontSize: 16,
-  color: '#FFFFFF',
+  color: colors.palette.figmaPrimaryBlack,
 }
 
 const $poiPopupSubtitle: TextStyle = {
   fontFamily: typography.primary.normal,
   fontSize: 13,
-  color: 'rgba(255,255,255,0.75)',
+  color: colors.palette.figmaGrayDark,
   marginTop: 2,
 }
 
 const $poiPopupClose: TextStyle = {
   fontSize: 18,
-  color: 'rgba(255,255,255,0.45)',
+  color: colors.palette.figmaGrayMedium,
   fontFamily: typography.primary.bold,
 }
 
 const $poiPopupBtn: ViewStyle = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: colors.palette.figmaPrimaryBlack,
   borderRadius: 8,
   paddingVertical: 10,
   alignItems: "center",
 }
 
 const $poiPopupBtnText: TextStyle = {
-  color: '#FFFFFF',
+  color: colors.palette.figmaWhite,
   fontFamily: typography.primary.semiBold,
   fontSize: 14,
 }
@@ -1001,7 +1007,7 @@ const $sheetBackground: ViewStyle = {
 const $sheetHandle: ViewStyle = {
   width: 45,
   height: 5,
-  backgroundColor: 'rgba(255,255,255,0.08)',
+  backgroundColor: colors.palette.figmaGrayLight,
   borderRadius: 3,
 }
 
@@ -1013,17 +1019,17 @@ const $sheetHeader: ViewStyle = {
 const $sheetTitle: TextStyle = {
   fontSize: 20,
   fontFamily: typography.primary.semiBold,
-  color: '#FFFFFF',
+  color: colors.text,
 }
 
 const $sheetSubtitle: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.normal,
-  color: 'rgba(255,255,255,0.75)',
+  color: colors.palette.figmaGrayDark,
   marginTop: 4,
 }
 
-// â”€â”€â”€ Day Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Day Tabs ────────────────
 const $dayTabsRow: ViewStyle = {
   flexDirection: "row",
   paddingHorizontal: spacing.lg,
@@ -1035,7 +1041,7 @@ const $dayTab: ViewStyle = {
   paddingHorizontal: 16,
   paddingVertical: 10,
   borderRadius: 14,
-  backgroundColor: 'rgba(255,255,255,0.06)',
+  backgroundColor: colors.palette.figmaOffWhite,
   borderWidth: 1.5,
   borderColor: "transparent",
   minWidth: 100,
@@ -1050,17 +1056,17 @@ const $dayTabActive: ViewStyle = {
 const $dayTabText: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
-  color: 'rgba(255,255,255,0.75)',
+  color: colors.palette.figmaGrayDark,
 }
 
 const $dayTabTextActive: TextStyle = {
-  color: "rgba(255,255,255,0.08)",
+  color: "#fff",
 }
 
 const $dayTabSub: TextStyle = {
   fontSize: 11,
   fontFamily: typography.primary.normal,
-  color: 'rgba(255,255,255,0.45)',
+  color: colors.palette.figmaGrayMedium,
   marginTop: 2,
 }
 
@@ -1073,7 +1079,7 @@ const $flatListContent: ViewStyle = {
   paddingBottom: 120,
 }
 
-// â”€â”€â”€ Day Headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Day Headers ─────────────
 const $dayHeader: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
@@ -1091,17 +1097,17 @@ const $dayBadge: ViewStyle = {
 const $dayBadgeText: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.semiBold,
-  color: "rgba(255,255,255,0.08)",
+  color: "#fff",
 }
 
 const $dayDate: TextStyle = {
   fontSize: 14,
   fontFamily: typography.primary.normal,
-  color: 'rgba(255,255,255,0.75)',
+  color: colors.palette.figmaGrayDark,
   marginLeft: spacing.sm,
 }
 
-// â”€â”€â”€ Timeline + Cards â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Timeline + Cards ────────
 const $timelineRow: ViewStyle = {
   flexDirection: "row",
   minHeight: 88,
@@ -1121,7 +1127,7 @@ const $timelineNode: ViewStyle = {
 }
 
 const $nodeNumber: TextStyle = {
-  color: "rgba(255,255,255,0.08)",
+  color: "#fff",
   fontSize: 12,
   fontFamily: typography.primary.semiBold,
 }
@@ -1129,22 +1135,22 @@ const $nodeNumber: TextStyle = {
 const $timelineConnector: ViewStyle = {
   width: 2,
   flex: 1,
-  backgroundColor: 'rgba(255,255,255,0.08)',
+  backgroundColor: colors.palette.figmaGrayLight,
   marginVertical: 4,
 }
 
 const $stopCard: ViewStyle = {
   flex: 1,
-  backgroundColor: "rgba(255,255,255,0.08)",
+  backgroundColor: "#fff",
   borderRadius: 20,
   padding: spacing.md,
   marginLeft: spacing.sm,
-  marginBottom: spacing.sm,
-  // Figma shadow: effect_OMBK8U
+  borderWidth: 1,
+  borderColor: colors.palette.figmaGrayLight,
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
+  shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.05,
-  shadowRadius: 4,
+  shadowRadius: 8,
   elevation: 2,
 }
 

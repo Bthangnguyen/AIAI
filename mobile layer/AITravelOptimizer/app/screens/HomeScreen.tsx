@@ -1,22 +1,8 @@
-/**
- * HomeScreen - AI Co-Pilot Chat Center
- * Design: Glassmorphism dark + Royal Hue + Floating Chips
- */
-import React, { FC, useState, useRef, useEffect } from "react"
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-} from "react-native"
+import React, { FC, useState } from "react"
+import { View, ViewStyle, TextStyle, ImageBackground, StyleSheet, Pressable, ScrollView } from "react-native"
+import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
+import { TextField } from "@/components/TextField"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
@@ -44,6 +30,8 @@ const AI_SUGGESTIONS = [
 ]
 
 interface HomeScreenProps extends AppStackScreenProps<"MainTabs"> {}
+
+const BACKGROUND_URL = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"
 
 export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
   const [prompt, setPrompt] = useState("")
@@ -155,84 +143,25 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     })
   }
 
-  const currentHour = new Date().getHours()
-  const greeting =
-    currentHour < 11 ? "Chào buổi sáng! ☀️" :
-    currentHour < 14 ? "Giờ trưa, nghỉ ngơi tí 🌡️" :
-    currentHour < 18 ? "Chiều mát rồi! 🌤️" : "Tối thơ mộng! 🌙"
+  const handleChip = (chipText: string) => {
+    setPrompt(chipText)
+  }
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <LinearGradient
-        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={[styles.decorOrb, { top: -80, right: -80 }]} />
-      <View style={[styles.decorOrb2, { bottom: 200, left: -60 }]} />
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
-        {/* HEADER */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.logoRow}>
-            <View style={styles.logoIconWrap}>
-              <Text style={styles.logoIconText}>📍</Text>
-            </View>
-            <Text style={styles.logoText}>TripFlow</Text>
-          </View>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Text style={styles.notifIcon}>🔔</Text>
-          </TouchableOpacity>
+    <Screen style={$root} preset="fixed" contentContainerStyle={{ flex: 1 }}>
+      <ImageBackground source={{ uri: BACKGROUND_URL }} style={$background} blurRadius={8}>
+        <View style={$overlay} />
+        
+        {/* Header */}
+        <View style={$header}>
+          <Text text="Bạn muốn đi đâu?" style={$titleHighlight} />
         </View>
 
-        {/* Greeting */}
-        <View style={styles.greetSection}>
-          <Text style={styles.greetText}>{greeting}</Text>
-          <Text style={styles.greetSub}>Bạn muốn khám phá Huế thế nào hôm nay?</Text>
-        </View>
-
-        {/* Contextual Chips */}
-        {chatHistory.length === 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsScroll}
-            style={styles.chipsContainer}
-          >
-            {CONTEXTUAL_CHIPS.map((chip, i) => (
-              <TouchableOpacity key={i} style={styles.chip} onPress={() => setPrompt(chip)}>
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]}
-                  style={styles.chipGradient}
-                >
-                  <Text style={styles.chipText}>{chip}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-
-        {/* Chat area */}
-        <ScrollView
-          ref={scrollRef}
-          style={styles.chatScroll}
-          contentContainerStyle={styles.chatContent}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-        >
+        {/* Chat Area */}
+        <ScrollView style={$chatArea} contentContainerStyle={{ paddingBottom: 20 }}>
           {chatHistory.length === 0 && (
-            <View style={styles.emptyState}>
-              <View style={styles.aiAvatar}>
-                <Text style={styles.aiAvatarText}>🤖</Text>
-              </View>
-              <Text style={styles.emptyStateTitle}>Xin chào! Tôi là TripFlow AI</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                Hãy nói với tôi chuyến đi bạn mơ ước. Tôi sẽ tối ưu lộ trình theo sức bền, thời tiết và sở thích!
-              </Text>
+            <View style={$welcomeContainer}>
+              <Text text="Hãy trò chuyện để lên kế hoạch!" style={$heroSub} />
             </View>
           )}
           {chatHistory.map((msg, idx) => (
@@ -257,20 +186,6 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
               </View>
             </View>
           ))}
-          {isTyping && (
-            <View style={[styles.messageRow, styles.messageRowAi]}>
-              <View style={styles.aiAvatarSmall}><Text style={{ fontSize: 16 }}>🤖</Text></View>
-              <View style={styles.aiBubble}>
-                <View style={styles.aiBubbleInner}>
-                  <View style={styles.typingDots}>
-                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
-                    <View style={[styles.typingDot, { opacity: 0.7 }]} />
-                    <View style={[styles.typingDot, { opacity: 1 }]} />
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
         </ScrollView>
 
         {/* Nút bấm Royal CTA xuất hiện mượt mà khi isReady === true */}
@@ -310,39 +225,19 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
             <TextInput
               value={prompt}
               onChangeText={setPrompt}
-              placeholder="Nhập lịch trình bạn mơ ước..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              style={styles.textInput}
+              containerStyle={$inputContainer}
+              style={$promptInput}
+              placeholder="Nhập lịch trình bạn muốn..."
+              placeholderTextColor={colors.palette.figmaPlaceholder}
               multiline
-              maxLength={500}
             />
-            <View style={styles.inputActions}>
-              <Animated.View style={{ transform: [{ scale: micScale }] }}>
-                <TouchableOpacity
-                  style={[styles.micBtn, micActive && styles.micBtnActive]}
-                  onPressIn={() => setMicActive(true)}
-                  onPressOut={() => setMicActive(false)}
-                >
-                  <Text style={styles.micIcon}>🎤</Text>
-                </TouchableOpacity>
-              </Animated.View>
-              <TouchableOpacity
-                style={[styles.sendBtn, !prompt.trim() && styles.sendBtnDisabled]}
-                onPress={handleSend}
-                disabled={!prompt.trim()}
-              >
-                <LinearGradient
-                  colors={prompt.trim() ? [colors.palette.royalPurple, colors.palette.royalPurpleLight] : ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.04)"]}
-                  style={styles.sendBtnGradient}
-                >
-                  <Text style={styles.sendBtnText}>→</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+            <Pressable onPress={handleSend} style={$sendButton}>
+              <Text text="Gửi" style={$buttonText} />
+            </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </ImageBackground>
+    </Screen>
   )
 }
 

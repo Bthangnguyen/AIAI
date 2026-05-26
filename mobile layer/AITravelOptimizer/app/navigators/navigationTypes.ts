@@ -67,13 +67,32 @@ export type TravelItinerary = {
 
 /** Payload sent to Gateway POST /v1/trip/re_route */
 export type ReRoutePayload = {
-  current_lat: number
-  current_lon: number
+  current_location: {
+    lat: number
+    lon: number
+  }
   current_time_min: number
   remaining_poi_ids: string[]
+  locked_remaining_poi_ids: string[]
+  constraints: {
+    budget_remaining: number
+    end_time_min: number
+  }
   excluded_poi_ids?: string[]
   day_index: number
   original_itinerary: TravelItinerary
+  user_state?: {
+    text?: string
+    weather?: string
+    wants_indoor?: boolean
+    tired?: boolean
+    wants_shorter_plan?: boolean
+    extend_time?: boolean
+    prioritize_free?: boolean
+    hungry?: boolean
+    avoid_pois?: string[]
+    [key: string]: any
+  }
 }
 
 /** Response from Gateway re-route endpoint */

@@ -32,10 +32,17 @@ describe("TripService.reRoute", () => {
     }) as any
 
     const result = await TripService.reRoute({
-      current_lat: 16.46,
-      current_lon: 107.59,
+      current_location: {
+        lat: 21.0285,
+        lon: 105.8542
+      },
       current_time_min: 840,
       remaining_poi_ids: ["poi-a", "poi-b"],
+      locked_remaining_poi_ids: [],
+      constraints: {
+        budget_remaining: 100000,
+        end_time_min: 1080
+      },
       day_index: 0,
       original_itinerary: {
         status: "success",
@@ -62,10 +69,17 @@ describe("TripService.reRoute", () => {
     global.fetch = jest.fn().mockRejectedValue(new Error("Network error")) as any
 
     const result = await TripService.reRoute({
-      current_lat: 0,
-      current_lon: 0,
-      current_time_min: 0,
+      current_location: {
+        lat: 21.0,
+        lon: 105.8
+      },
+      current_time_min: 840,
       remaining_poi_ids: [],
+      locked_remaining_poi_ids: [],
+      constraints: {
+        budget_remaining: 100000,
+        end_time_min: 1080
+      },
       day_index: 0,
       original_itinerary: {
         status: "success",

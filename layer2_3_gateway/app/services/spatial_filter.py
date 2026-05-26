@@ -183,6 +183,11 @@ class SpatialFilterService:
         if exclude_uuids:
             conditions.append(POI.uuid.notin_(exclude_uuids))
 
+        for excluded_name in contract.excluded_pois or []:
+            clean_name = excluded_name.strip().lower()
+            if clean_name:
+                conditions.append(~func.lower(POI.name).contains(clean_name))
+
         if apply_budget and contract.budget_max:
             conditions.append(POI.price <= contract.budget_max)
 

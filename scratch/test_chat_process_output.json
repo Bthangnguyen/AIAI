@@ -1,0 +1,34 @@
+{
+  "status": "ready",
+  "reply": "Dạ em đã nhận đủ thông tin rồi ạ. Em đang lên lịch trình tối ưu cho mình đây, đợi em một chút nhé!",
+  "updated_contract": {
+    "destination": "Huế",
+    "budget_max": null,
+    "radius_km": 10.0,
+    "num_days": 2,
+    "time_window": null,
+    "tags": [
+      "food",
+      "culture"
+    ],
+    "locked_pois": [
+      "Đại Nội"
+    ],
+    "weather_preference": null,
+    "hotel_lat": null,
+    "hotel_lon": null,
+    "hotel_name": "Hotel",
+    "estimated_pois": null,
+    "time_slot": null,
+    "trip_duration_hours": null,
+    "vibe": null,
+    "trip_type": null,
+    "preferred_pace": null,
+    "walking_tolerance": null,
+    "food_preferences": [
+      "bun_bo"
+    ],
+    "avoid_tags": [],
+    "target_category_distribution": null
+  }
+}

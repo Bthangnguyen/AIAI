@@ -44,6 +44,7 @@ export default function Page() {
   const [prompt, setPrompt] = useState("")
   const [mode, setMode] = useState<BuilderMode>("build")
   const [intent, setIntent] = useState<TripIntent | undefined>()
+  const [contract, setContract] = useState<LLMDataContract | null>(null)
   const [followUp, setFollowUp] = useState<FollowUpQuestion | null>(null)
   const [draft, setDraft] = useState<ItineraryDraft | null>(null)
   const [savedDrafts, setSavedDrafts] = useState<ItineraryDraft[]>([])
@@ -190,6 +191,81 @@ export default function Page() {
     setStreamDetails({})
   }
 
+  async function buildItineraryFromContract(nextContractInput: LLMDataContract, rawPrompt: string, assistantReply?: string) {
+    const nextContract = normalizeContract(nextContractInput)
+    const nextIntent = intentFromContract(nextContract, rawPrompt)
+    setContract(nextContract)
+    setIntent(nextIntent)
+    setStreamDetails(prev => ({ ...prev, 0: `Đã xác nhận đủ thông tin: ${nextIntent.destination || "Huế"}, ${nextIntent.days} ngày.` }))
+    await delay(500)
+
+    setStreamDetails(prev => ({ ...prev, 1: "Đang tìm địa điểm và tối ưu lịch trình..." }))
+    const nextDraft = await generateRealItinerary(
+      rawPrompt,
+      nextIntent.days,
+      nextIntent.budget,
+      nextIntent.destination || "Huế",
+      nextIntent.interests,
+      nextContract
+    )
+
+    setActiveStep(3)
+    setStreamDetails(prev => ({ ...prev, 2: `Tối ưu: ${nextDraft.optimizationStats?.totalDistanceKm?.toFixed(1) || "?"} km` }))
+    await delay(600)
+    setStreamDetails(prev => ({ ...prev, 3: "Hoàn tất!" }))
+    await delay(400)
+
+    setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? nextContract)
+    setIntent(nextDraft.intent)
+    setStatus("live")
+    setViewMode("split")
+    setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
+    setMessages((items) => [
+      ...items,
+      ...(assistantReply ? [{ role: "assistant" as const, content: assistantReply }] : []),
+      { role: "assistant" as const, content: `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày từ hệ thống AI.` }
+    ])
+    setToastMessage("Đã tạo lịch trình thành công.")
+  }
+
+  async function regenerateDraftFromContract(nextContractInput: LLMDataContract, rawPrompt: string, assistantReply?: string) {
+    const nextContract = normalizeContract(nextContractInput)
+    const nextIntent = intentFromContract(nextContract, rawPrompt)
+    const nextDraft = await generateRealItinerary(
+      rawPrompt,
+      nextIntent.days,
+      nextIntent.budget,
+      nextIntent.destination || "Huế",
+      nextIntent.interests,
+      nextContract
+    )
+    setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? nextContract)
+    setIntent(nextDraft.intent)
+    setStatus("live")
+    setFollowUp(null)
+    if (assistantReply) {
+      setMessages((items) => [...items, { role: "assistant", content: assistantReply }, { role: "assistant", content: "Đã cập nhật lại lịch trình theo yêu cầu mới." }])
+    }
+  }
+
+  function findDraftItemByMessage(message: string, target?: string | null) {
+    if (!draft) return null
+    const haystack = normalize(`${message} ${target || ""}`)
+    for (const day of draft.days) {
+      for (const item of day.items) {
+        const poi = POI_CACHE.get(item.poiId) || getPoi(item.poiId)
+        const name = normalize(poi?.name || "")
+        const nameTokens = name.split(/\s+/).filter((token) => token.length > 2 && token !== "hue")
+        if (name && (haystack.includes(name) || (nameTokens.length > 0 && nameTokens.every((token) => haystack.includes(token))))) {
+          return { dayNumber: day.dayNumber, item }
+        }
+      }
+    }
+    return null
+  }
+
   function handleHomeSubmit() {
     const cleanPrompt = prompt.trim()
     if (!cleanPrompt || isRunning) return
@@ -203,6 +279,7 @@ export default function Page() {
     setMessages([{ role: "user", content: cleanPrompt }])
     setScreen("builder")
     setDraft(null)
+    setContract(null)
     setIsRunning(true)
     setBuildErrorMessage(null)
 
@@ -503,6 +580,7 @@ export default function Page() {
 
   function openSavedDraft(nextDraft: ItineraryDraft) {
     setDraft(nextDraft)
+    setContract(nextDraft.llmContract ?? normalizeContract(nextDraft.intent))
     setIntent(nextDraft.intent)
     setPrompt(nextDraft.intent.rawPrompt)
     setFollowUp(null)
@@ -515,6 +593,7 @@ export default function Page() {
 
   function resetDraft() {
     setDraft(null)
+    setContract(null)
     setIntent(undefined)
     setFollowUp(null)
     setMessages([])
@@ -615,5 +694,5 @@ export default function Page() {
 }
 
 function normalize(value: string): string {
-  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/d/g, "d")
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d")
 }

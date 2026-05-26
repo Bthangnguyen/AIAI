@@ -8,7 +8,7 @@ PRODUCTION-HARDENED ARCHITECTURE:
 """
 
 import json as json_lib
-from typing import Optional, List
+from typing import List
 from fastapi import APIRouter, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 
@@ -39,19 +39,72 @@ layer4_client = Layer4Client()
 embed_service = EmbeddingService()
 
 
+def _mark_confirmed(contract: LLMDataContract, field: str) -> None:
+    if field not in contract.confirmed_fields:
+        contract.confirmed_fields.append(field)
+
+
+def _merge_unique(left: list[str] | None, right: list[str] | None) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in list(left or []) + list(right or []):
+        key = str(value).strip()
+        if key and key.lower() not in seen:
+            seen.add(key.lower())
+            result.append(key)
+    return result
+
+
+def _apply_request_overrides(contract: LLMDataContract, request: TripPlanRequest) -> LLMDataContract:
+    """Apply explicit API fields after extraction, or after receiving a confirmed contract."""
+    if request.destination:
+        contract.destination = request.destination
+        _mark_confirmed(contract, "destination")
+
+    if request.num_days:
+        contract.num_days = request.num_days
+        _mark_confirmed(contract, "num_days")
+
+    if request.budget is not None and not contract.budget_is_unlimited:
+        contract.budget_max = request.budget
+        _mark_confirmed(contract, "budget")
+
+    if request.preferences:
+        contract.tags = _merge_unique(contract.tags, request.preferences)
+        _mark_confirmed(contract, "interests")
+
+    if request.hotel_lat is not None:
+        contract.hotel_lat = request.hotel_lat
+    if request.hotel_lon is not None:
+        contract.hotel_lon = request.hotel_lon
+    if request.hotel_name:
+        contract.hotel_name = request.hotel_name
+    if request.hotel_lat is not None or request.hotel_lon is not None or request.hotel_name:
+        contract.hotel_confirmed = True
+        _mark_confirmed(contract, "hotel")
+
+    return contract
+
+
 async def _run_pipeline(
     request: TripPlanRequest,
 ) -> tuple[LLMDataContract, List[POIResponse]]:
     """L2 → Embed → L3 pipeline with TOTAL DB I/O isolation."""
     logger.info(f"🚀 _run_pipeline STARTED for prompt: {request.user_prompt}")
     # ──── PHASE A: NETWORK I/O (NO DB SESSION) ────
-    contract = await llm_service.extract_intent(
-        user_prompt=request.user_prompt,
-        hotel_lat=request.hotel_lat,
-        hotel_lon=request.hotel_lon,
-        hotel_name=request.hotel_name,
-        num_days=request.num_days or 1,
-    )
+    if request.contract is not None:
+        contract = request.contract.model_copy(deep=True)
+        logger.info("Using confirmed contract from request; skipping LLM extraction")
+    else:
+        contract = await llm_service.extract_intent(
+            user_prompt=request.user_prompt,
+            hotel_lat=request.hotel_lat,
+            hotel_lon=request.hotel_lon,
+            hotel_name=request.hotel_name,
+            num_days=request.num_days or 1,
+        )
+
+    contract = _apply_request_overrides(contract, request)
 
     query_vector = None
     if contract.tags:
@@ -262,13 +315,10 @@ async def chat_process(request: Request, body: ChatProcessRequest):
         message=body.message,
         history=history_dict,
         current_contract=body.current_contract,
+        has_draft=body.has_draft,
     )
     
-    return ChatProcessResponse(
-        status=result["status"],
-        reply=result["reply"],
-        updated_contract=result["updated_contract"],
-    )
+    return ChatProcessResponse(**result)
 
 
 @router.get("/health")

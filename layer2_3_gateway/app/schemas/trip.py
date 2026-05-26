@@ -1,6 +1,6 @@
 """Pydantic schemas bridging Layer 2 (LLM) → Layer 3 (DB) → Layer 4 (Solver)."""
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -19,15 +19,26 @@ class LLMDataContract(BaseModel):
     """JSON contract produced by Layer 2 (LLM intent extraction)."""
     destination: Optional[str] = Field(None, description="Destination city name")
     budget_max: Optional[float] = Field(None, description="Max budget in VND")
+    budget_is_unlimited: bool = Field(False, description="True when the user explicitly accepts unlimited/open budget")
     radius_km: float = Field(10.0, description="Search radius from hotel in km")
     num_days: int = Field(1, description="Number of travel days")
     time_window: Optional[TimeWindowSpec] = None
     tags: List[str] = Field(default_factory=list, description="Preference tags")
     locked_pois: List[str] = Field(default_factory=list, description="Must-visit POI names")
+    excluded_pois: List[str] = Field(default_factory=list, description="POI names the user explicitly wants to avoid")
     weather_preference: Optional[str] = Field(None, description="indoor/outdoor/any")
     hotel_lat: Optional[float] = Field(None, description="Hotel latitude")
     hotel_lon: Optional[float] = Field(None, description="Hotel longitude")
     hotel_name: Optional[str] = Field("Hotel", description="Hotel display name")
+    hotel_confirmed: bool = Field(False, description="True when hotel info or default hotel choice is confirmed")
+    default_hotel_ok: bool = Field(False, description="True when user agrees to use the default Hue hotel")
+    transport_modes: List[str] = Field(default_factory=list, description="Preferred transport modes")
+    group_type: Optional[str] = Field(None, description="solo/couple/family/friends/business")
+    group_size: Optional[int] = Field(None, description="Number of travelers")
+    confirmed_fields: List[str] = Field(default_factory=list, description="Fields explicitly collected or confirmed")
+    last_question_field: Optional[str] = Field(None, description="Field asked in the latest follow-up question")
+    confirmation_pending: bool = Field(False, description="True after the assistant summarizes and waits for confirmation")
+    ready_to_plan: bool = Field(False, description="True only after user confirms the complete contract")
 
     # === NEW: Scheduling Hints ===
     estimated_pois: Optional[int] = Field(
@@ -59,11 +70,24 @@ class LLMDataContract(BaseModel):
     )
 
 
+class EditIntent(BaseModel):
+    """Structured intent for requests after an itinerary already exists."""
+    action: str = Field(..., description="add_place/remove_place/replace_place/change_budget/change_pace/change_time_window/add_preference/avoid_preference/rebuild_requested/answer_question")
+    target: Optional[str] = None
+    constraints: Dict[str, Any] = Field(default_factory=dict)
+    raw_message: str
+
+
 class ChatProcessResponse(BaseModel):
     """Output of /chat_process containing status, AI reply, and updated contract."""
     status: str = Field(..., description="'ready' or 'clarifying'")
     reply: str = Field(..., description="Conversational Vietnamese response or follow-up question")
     updated_contract: LLMDataContract
+    phase: Optional[str] = Field(None, description="collecting/confirming/ready/editing")
+    missing_fields: List[str] = Field(default_factory=list)
+    next_question: Optional[str] = None
+    requires_confirmation: bool = False
+    edit_intent: Optional[EditIntent] = None
 
 
 # === Layer 3 Output: POI returned from spatial filter ===
@@ -114,6 +138,7 @@ class TripPlanRequest(BaseModel):
     hotel_lat: Optional[float] = Field(None, description="Hotel latitude")
     hotel_lon: Optional[float] = Field(None, description="Hotel longitude")
     hotel_name: Optional[str] = Field(None, description="Hotel name")
+    contract: Optional[LLMDataContract] = Field(None, description="Confirmed Layer 2 contract; skips LLM extraction when present")
 
 
 class TripPlanResponse(BaseModel):
@@ -135,3 +160,4 @@ class ChatProcessRequest(BaseModel):
     message: str
     history: List[ChatMessage] = Field(default_factory=list)
     current_contract: LLMDataContract
+    has_draft: bool = Field(False, description="True when the user is editing an existing itinerary")

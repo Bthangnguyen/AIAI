@@ -58,13 +58,14 @@ class Layer4Client:
             })
 
         # Build Constraints
+        transport_modes = self._normalize_transport_modes(contract.transport_modes)
         constraints = {
             "num_days": contract.num_days,
             "budget_total": contract.budget_max,
             "transport_modes": transport_modes_from_contract(contract),
         }
 
-        return {
+        payload = {
             "pois": l4_pois,
             "hotels": hotels,
             "constraints": constraints,

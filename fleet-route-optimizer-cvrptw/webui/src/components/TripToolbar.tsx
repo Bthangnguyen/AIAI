@@ -1,5 +1,6 @@
 ﻿"use client"
 
+import Link from "next/link"
 import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RotateCcw, Save, Share2, Smartphone } from "lucide-react"
 import type { ItineraryDraft, PreviewMode } from "@/types/trip"
 
@@ -56,6 +57,7 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
             <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onReset}><RotateCcw size={16} /> Reset Draft</button>
             <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onSavedTrips}><FolderOpen size={16} /> Saved Trips</button>
             <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onMobilePhase}><Smartphone size={16} /> Mobile Phase</button>
+            <Link href="/admin" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50">Admin POI / QA</Link>
           </div>
         </div>
       </div>

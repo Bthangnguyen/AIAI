@@ -89,15 +89,31 @@ class UtilityScorer:
         return 0.5
 
     def _compute_comfort(self, poi: POIResponse, contract: LLMDataContract) -> float:
-        """Comfort score based on user pace preference."""
+        """Comfort score based on user pace and walking tolerance."""
+        score = 0.5
+
         if contract.preferred_pace == "chill":
-            # Penalize heavy/long POIs
             if poi.visit_duration_min > 120:
-                return 0.3
-            return 0.8 if poi.category in ("cafe", "restaurant", "spa") else 0.5
+                score = 0.3
+            else:
+                score = 0.8 if poi.category in ("cafe", "restaurant", "spa") else 0.5
         elif contract.preferred_pace == "intense":
-            return 0.8 if poi.visit_duration_min > 60 else 0.5
-        return 0.5  # balanced
+            score = 0.8 if poi.visit_duration_min > 60 else 0.5
+
+        tolerance = (contract.walking_tolerance or "medium").lower()
+        poi_tags = {t.lower() for t in (poi.tags or [])}
+        is_walking_heavy = (
+            poi.category.lower() in ("outdoor", "nature", "hiking")
+            or "walking" in poi_tags
+            or poi.visit_duration_min >= 120
+        )
+
+        if tolerance == "low" and is_walking_heavy:
+            score = min(score, 0.25)
+        elif tolerance == "high" and is_walking_heavy:
+            score = max(score, 0.75)
+
+        return score
 
     def _compute_budget_fit(self, poi: POIResponse, contract: LLMDataContract) -> float:
         """How well POI fits user budget."""

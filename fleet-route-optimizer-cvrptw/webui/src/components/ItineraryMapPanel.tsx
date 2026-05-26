@@ -18,9 +18,10 @@ interface ItineraryMapPanelProps {
   showRouteLines: boolean
   fitSignal: number
   onSelectPoi: (poiId: string) => void
+  onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
-export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onSelectPoi }: ItineraryMapPanelProps) {
+export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onSelectPoi, onOsrmDegradedChange }: ItineraryMapPanelProps) {
   const [isJourneyPlaying, setIsJourneyPlaying] = useState(false)
   if (!draft) {
     return (
@@ -61,6 +62,7 @@ export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selected
           isJourneyPlaying={isJourneyPlaying}
           onJourneyStepChange={(poiId) => onSelectPoi(poiId)}
           onJourneyFinish={() => setIsJourneyPlaying(false)}
+          onOsrmDegradedChange={onOsrmDegradedChange}
         />
       </div>
       <MapLegend draft={draft} />

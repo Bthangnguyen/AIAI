@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { Circle, Compass, MapPinned, Route, Sparkles } from "lucide-react"
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { BuildProgressSteps } from "@/components/BuildProgressSteps"
 import { ExamplePromptChips } from "@/components/ExamplePromptChips"
@@ -88,6 +89,7 @@ export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange
             <button type="button" onClick={() => onNav("demo")} className="transition hover:text-orange-600">Demo</button>
             <button type="button" onClick={() => onNav("saved")} className="transition hover:text-orange-600">Saved Trips</button>
             <button type="button" onClick={() => onNav("mobile")} className="transition hover:text-orange-600">Mobile Phase</button>
+            <Link href="/admin" className="transition hover:text-orange-600">Admin</Link>
           </nav>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onAuthClick} className="hidden rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-sm font-black text-orange-950 transition hover:border-orange-400 sm:inline-flex">

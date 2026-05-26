@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # Rate Limit
     RATE_LIMIT_PER_MINUTE: int = 5
 
+    # Admin API (local-only stub)
+    ADMIN_ENABLED: bool = True
+    ADMIN_TOKEN: str = ""
+
     # Layer 4 Base URL (defined in travel.env, added here)
     LAYER4_BASE_URL: str = "http://host.docker.internal:8000"
 

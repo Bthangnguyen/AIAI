@@ -4,6 +4,7 @@ import { TripStatsPanel } from "@/components/TripStatsPanel"
 import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryDraft } from "@/types/trip"
+import type { MoveDirection } from "@/lib/reorderDayItems"
 
 interface ItineraryArtifactProps {
   draft: ItineraryDraft
@@ -13,10 +14,12 @@ interface ItineraryArtifactProps {
   onSaveDraft: () => void
   onAddPlace: (dayNumber: number) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
+  onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onApplyManualOrder?: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
 }
 
-export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onOptimizeDay }: ItineraryArtifactProps) {
+export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay }: ItineraryArtifactProps) {
   const totals = draftTotals(draft)
   const enoughInfo = Boolean(draft.intent.destination && draft.intent.days && draft.intent.budget)
 
@@ -51,7 +54,19 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
 
       <div className="space-y-4">
         {draft.days.map((day) => (
-          <TimelineDayCard key={day.dayNumber} day={day} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onRemovePlace={onRemovePlace} onAddPlace={onAddPlace} onOptimizeDay={onOptimizeDay} />
+          <TimelineDayCard
+            key={day.dayNumber}
+            day={day}
+            selectedPoiId={selectedPoiId}
+            isManualOrder={draft.manualDayNumbers?.includes(day.dayNumber)}
+            onSelectPoi={onSelectPoi}
+            onHoverPoi={onHoverPoi}
+            onRemovePlace={onRemovePlace}
+            onMovePlace={onMovePlace}
+            onApplyManualOrder={onApplyManualOrder}
+            onAddPlace={onAddPlace}
+            onOptimizeDay={onOptimizeDay}
+          />
         ))}
       </div>
     </div>

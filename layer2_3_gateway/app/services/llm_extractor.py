@@ -37,7 +37,8 @@ THÊM: Phân tích và suy luận các trường sau:
 - vibe: "lãng mạn" → "romantic". "khám phá" → "adventure". "chill" → "chill". "ăn uống" → "foodie".
 - trip_type: "food tour" → "food_tour". "cafe hopping" → "cafe_hopping". "ngắm cảnh" → "sightseeing".
 - target_category_distribution: Suy luận từ ý định. VD "văn hóa lịch sử" → {"culture": 0.50, "food": 0.20, "cafe": 0.15, "nature": 0.10, "shopping": 0.05}
-- avoid_tags: "không muốn đông" → ["crowded"]. "tránh chỗ đắt" → ["expensive"]."""
+- avoid_tags: "không muốn đông" → ["crowded"]. "tránh chỗ đắt" → ["expensive"].
+- walking_tolerance: "low" nếu khách không muốn/hạn chế đi bộ; "high" nếu thích đi bộ khám phá; "medium" nếu không nêu."""
 
 CHAT_PROCESS_SYSTEM_PROMPT = """Bạn là trợ lý du lịch ảo chuyên trách phân tích và cập nhật hợp đồng dữ liệu chuyến đi (LLMDataContract) từ cuộc trò chuyện với khách hàng.
 
@@ -70,7 +71,7 @@ THÊM: Cập nhật các trường scheduling hints khi khách đề cập:
 - target_category_distribution: Suy luận từ ý định.
 - avoid_tags: "không muốn đông" → ["crowded"].
 - preferred_pace: "thư thả" → "chill". "nhiều chỗ" → "intense".
-"""
+- walking_tolerance: "low" nếu khách không muốn/hạn chế đi bộ; "high" nếu thích đi bộ nhiều; "medium" mặc định."""
 
 
 class LLMExtractorService:
@@ -222,3 +223,17 @@ class LLMExtractorService:
         if any(keyword in raw_text_lower for keyword in veg_keywords):
             if "vegetarian" not in contract.tags:
                 contract.tags.append("vegetarian")
+
+        # 3. Walking tolerance keyword scanning
+        low_walk_keywords = [
+            "không muốn đi bộ", "khong muon di bo", "hạn chế đi bộ", "han che di bo",
+            "ít đi bộ", "it di bo", "không thích đi bộ", "ngại đi bộ",
+        ]
+        high_walk_keywords = [
+            "đi bộ nhiều", "di bo nhieu", "thích đi bộ", "thich di bo",
+            "trekking", "đi bộ khám phá",
+        ]
+        if any(keyword in raw_text_lower for keyword in low_walk_keywords):
+            contract.walking_tolerance = "low"
+        elif any(keyword in raw_text_lower for keyword in high_walk_keywords):
+            contract.walking_tolerance = "high"

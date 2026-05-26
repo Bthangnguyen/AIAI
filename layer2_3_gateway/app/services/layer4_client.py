@@ -9,6 +9,9 @@ from app.utils.logging import AppLogger
 logger = AppLogger().get_logger()
 
 
+from app.services.transport_modes import transport_modes_from_contract
+
+
 class Layer4Client:
     """Assembles TravelPlanRequest and sends to Layer 4 API."""
 
@@ -58,7 +61,7 @@ class Layer4Client:
         constraints = {
             "num_days": contract.num_days,
             "budget_total": contract.budget_max,
-            "transport_modes": ["taxi", "walking"],
+            "transport_modes": transport_modes_from_contract(contract),
         }
 
         return {
@@ -66,6 +69,18 @@ class Layer4Client:
             "hotels": hotels,
             "constraints": constraints,
         }
+
+    def _re_route_constraints(self, original_itinerary: dict, day_index: int) -> Dict:
+        """Prefer transport modes stored on original itinerary; fallback to taxi+walking."""
+        stored = original_itinerary.get("constraints", {})
+        modes = stored.get("transport_modes")
+        if isinstance(modes, list) and modes:
+            return {"num_days": 1, "transport_modes": modes}
+        walking = original_itinerary.get("walking_tolerance")
+        if walking:
+            contract = LLMDataContract(walking_tolerance=walking, num_days=1)
+            return {"num_days": 1, "transport_modes": transport_modes_from_contract(contract)}
+        return {"num_days": 1, "transport_modes": ["taxi", "walking"]}
 
     async def plan(
         self,
@@ -112,6 +127,28 @@ class Layer4Client:
 
         yield f"data: {json_lib.dumps(result)}\n\n"
         yield "data: [DONE]\n\n"
+
+    async def plan_alternatives(
+        self,
+        pois: List[POIResponse],
+        contract: LLMDataContract,
+        time_limit: int = 30,
+    ) -> Optional[Dict]:
+        """Send assembled payload to Layer 4 POST /plan-multi."""
+        payload = self._build_payload(pois, contract)
+
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.post(
+                    f"{self.base_url}/plan-multi",
+                    json=payload,
+                    params={"time_limit": time_limit},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Layer 4 plan-multi failed: {e}")
+            return None
 
     async def re_route(
         self,
@@ -178,10 +215,7 @@ class Layer4Client:
         }
 
         # Build constraints
-        constraints = {
-            "num_days": 1,
-            "transport_modes": ["taxi", "walking"],
-        }
+        constraints = self._re_route_constraints(original_itinerary, day_index)
 
         # Assemble Layer 4 ReRouteRequest
         payload = {

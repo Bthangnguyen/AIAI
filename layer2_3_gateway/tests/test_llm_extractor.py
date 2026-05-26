@@ -26,6 +26,7 @@ def test_service_init():
     assert service._client is None
 
 
+@pytest.mark.integration
 @pytest.mark.anyio
 async def test_process_chat_turn_extraction():
     service = LLMExtractorService()

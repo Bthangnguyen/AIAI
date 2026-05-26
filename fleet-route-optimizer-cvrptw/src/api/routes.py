@@ -134,18 +134,30 @@ async def plan_multi_endpoint(
             solver_type=solver,
         )
 
+        from ..services.plan_metrics import compute_plan_metrics
+
+        budget_total = request.constraints.budget_total if request.constraints else None
+        max_fatigue = getattr(request.constraints, "max_fatigue_per_day", 15) if request.constraints else 15
+
         # Serialize results
         results = []
         for plan in plans:
             days_data = [d.model_dump() for d in plan["days"]] if plan.get("days") else []
+            metrics = compute_plan_metrics(
+                days_data,
+                list(request.pois),
+                budget_total=budget_total,
+                max_fatigue_per_day=max_fatigue,
+            )
             results.append({
                 "style": plan["style"],
                 "label": plan["label"],
                 "description": plan["description"],
                 "num_days": len(days_data),
                 "days": days_data,
-                "total_pois": sum(len(d.get("stops", [])) for d in days_data),
+                "total_pois": metrics["poi_count"],
                 "overlap_warning": plan.get("overlap_warning"),
+                "metrics": metrics,
             })
 
         return {"status": "success", "plans": results, "num_plans": len(results)}

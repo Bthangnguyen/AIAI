@@ -320,6 +320,33 @@ async def search_pois_endpoint(request: Request, query: str, limit: int = 5):
         return pois
 
 
+@router.post("/plan_alternatives")
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
+async def plan_alternatives(request: Request, body: TripPlanRequest):
+    """Generate Balanced / Budget / Chill alternatives via Layer 4 /plan-multi."""
+    try:
+        contract, pois = await _run_pipeline(body)
+        if not pois:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No POIs found matching your criteria.",
+            )
+
+        result = await layer4_client.plan_alternatives(pois=pois, contract=contract, time_limit=60)
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Layer 4 multi-plan solver unavailable",
+            )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"plan_alternatives error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/re_route")
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 async def re_route(request: Request, body: MobileReRouteRequest):

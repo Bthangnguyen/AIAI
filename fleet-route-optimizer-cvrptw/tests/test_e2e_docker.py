@@ -7,9 +7,12 @@ Tests run against LIVE Docker containers:
 TDD approach: RED -> GREEN -> REFACTOR
 """
 
+import os
 import time
 import httpx
 import pytest
+
+LIVE = os.getenv("LIVE_INTEGRATION") == "1"
 
 # ── Config ──
 L4_URL = "http://localhost:8000"
@@ -367,6 +370,7 @@ class TestGatewayHealth:
 # TEST SUITE 5: E2E Gateway → Layer 4 Pipeline
 # ═══════════════════════════════════════════
 
+@pytest.mark.live
 class TestE2EPipeline:
     """Test full pipeline from Gateway through Layer 4."""
 
@@ -391,13 +395,19 @@ class TestE2EPipeline:
                 timeout=180.0,
             )
         except httpx.ReadTimeout:
+            if LIVE:
+                pytest.fail("Gateway LLM + solver timed out after 180s")
             pytest.skip("Gateway LLM + solver timed out")
 
         # Gateway may return error if LLM key is expired or DB has no POIs
         if resp.status_code == 429:
+            if LIVE:
+                pytest.fail(f"Rate limited: {resp.text[:200]}")
             pytest.skip("Rate limited")
 
         if resp.status_code == 500:
+            if LIVE:
+                pytest.fail(f"Gateway internal error: {resp.text[:400]}")
             pytest.skip(f"Gateway internal error (likely LLM/DB issue): {resp.text[:200]}")
 
         assert resp.status_code == 200

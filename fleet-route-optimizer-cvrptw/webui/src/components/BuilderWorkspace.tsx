@@ -7,6 +7,8 @@ import { ItineraryPreviewPanel } from "@/components/ItineraryPreviewPanel"
 import { TripControlPanel } from "@/components/TripControlPanel"
 import { TripToolbar } from "@/components/TripToolbar"
 import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, POI, PreviewMode, TripIntent } from "@/types/trip"
+import type { PlanVariant } from "@/types/plan"
+import type { MoveDirection } from "@/lib/reorderDayItems"
 
 interface BuilderWorkspaceProps {
   draft: ItineraryDraft | null
@@ -18,6 +20,10 @@ interface BuilderWorkspaceProps {
   mode: BuilderMode
   viewMode: PreviewMode
   status: BuildStatus
+  planVariants: PlanVariant[] | null
+  planVariantsLoading: boolean
+  planVariantsError?: string | null
+  onApplyPlanVariant?: (variant: PlanVariant) => void
   selectedPoiId: string | null
   hoveredPoiId: string | null
   selectedDay: number | "all"
@@ -44,7 +50,14 @@ interface BuilderWorkspaceProps {
   onFitMap: () => void
   onAddPoi: (dayNumber: number, poi: POI) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
+  onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onApplyManualOrder?: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
+  buildErrorMessage?: string | null
+  onRetryBuild?: () => void
+  onSuggestFix?: (fix: string) => void
+  osrmDegraded?: boolean
+  onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
 type MobileTab = "chat" | "preview" | "control"
@@ -76,7 +89,7 @@ export function BuilderWorkspace(props: BuilderWorkspaceProps) {
         </div>
 
         <div className={`${mobileTab === "preview" ? "block" : "hidden"} h-full min-h-0 min-w-0 md:block`}>
-          <ItineraryPreviewPanel draft={props.draft} status={props.status} viewMode={props.viewMode} selectedPoiId={props.selectedPoiId} hoveredPoiId={props.hoveredPoiId} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} fitSignal={props.fitSignal} onViewModeChange={props.onViewModeChange} onRebuild={props.onRebuild} onSelectPoi={props.onSelectPoi} onHoverPoi={props.onHoverPoi} onSaveDraft={props.onSaveDraft} onAddPlace={(dayNumber) => openAddPlace(dayNumber)} onRemovePlace={props.onRemovePlace} onOptimizeDay={props.onOptimizeDay} />
+          <ItineraryPreviewPanel draft={props.draft} status={props.status} viewMode={props.viewMode} planVariants={props.planVariants} planVariantsLoading={props.planVariantsLoading} planVariantsError={props.planVariantsError} onApplyPlanVariant={props.onApplyPlanVariant} selectedPoiId={props.selectedPoiId} hoveredPoiId={props.hoveredPoiId} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} fitSignal={props.fitSignal} onViewModeChange={props.onViewModeChange} onRebuild={props.onRebuild} onSelectPoi={props.onSelectPoi} onHoverPoi={props.onHoverPoi} onSaveDraft={props.onSaveDraft} onAddPlace={(dayNumber) => openAddPlace(dayNumber)} onRemovePlace={props.onRemovePlace} onMovePlace={props.onMovePlace} onApplyManualOrder={props.onApplyManualOrder} onOptimizeDay={props.onOptimizeDay} buildErrorMessage={props.buildErrorMessage} onRetryBuild={props.onRetryBuild} onSuggestFix={props.onSuggestFix} osrmDegraded={props.osrmDegraded} onOsrmDegradedChange={props.onOsrmDegradedChange} />
         </div>
 
         <div className={`${mobileTab === "control" ? "block" : "hidden"} h-full min-h-0 md:block`}>

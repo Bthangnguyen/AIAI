@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Layer 2: extract and refine travel intent with LLM + deterministic gates."""
 
 import logging
@@ -51,7 +52,7 @@ Quan trọng:
   add_place, remove_place, replace_place, change_budget, change_pace,
   change_time_window, add_preference, avoid_preference, rebuild_requested,
   answer_question.
-- Output vẫn phải có updated_contract."""
+- Output vẫn phải có updated_contract.
 
 THÊM: Cập nhật các trường scheduling hints khi khách đề cập:
 - estimated_pois: Ước lượng số địa điểm user muốn. "2-3 quán" → 3. "cả ngày" → 8-12.

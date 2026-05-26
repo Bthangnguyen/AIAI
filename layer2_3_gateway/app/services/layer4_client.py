@@ -1,15 +1,48 @@
 """HTTP client for Layer 4 (OR-Tools Routing Engine)."""
 
 import httpx
+import time
 from typing import Optional, Dict, List
 from app.config import settings
 from app.schemas.trip import POIResponse, LLMDataContract
 from app.utils.logging import AppLogger
+from app.services.transport_modes import transport_modes_from_contract
 
 logger = AppLogger().get_logger()
 
 
-from app.services.transport_modes import transport_modes_from_contract
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, recovery_time=30.0):
+        self.failure_threshold = failure_threshold
+        self.recovery_time = recovery_time
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF-OPEN
+        self.failure_count = 0
+        self.last_state_change = time.time()
+
+    def check_state(self):
+        if self.state == "OPEN":
+            if time.time() - self.last_state_change > self.recovery_time:
+                self.state = "HALF-OPEN"
+                logger.info("Circuit Breaker transitioned to HALF-OPEN")
+        return self.state
+
+    def record_success(self):
+        self.failure_count = 0
+        self.state = "CLOSED"
+        self.last_state_change = time.time()
+        logger.info("Circuit Breaker transitioned to CLOSED (success recorded)")
+
+    def record_failure(self):
+        self.failure_count += 1
+        logger.warning(f"Circuit Breaker failure recorded. Count: {self.failure_count}/{self.failure_threshold}")
+        if self.failure_count >= self.failure_threshold:
+            self.state = "OPEN"
+            self.last_state_change = time.time()
+            logger.error("Circuit Breaker transitioned to OPEN (threshold exceeded)")
+
+
+# Global circuit breaker instance
+solver_breaker = CircuitBreaker()
 
 
 class Layer4Client:
@@ -18,13 +51,40 @@ class Layer4Client:
     def __init__(self):
         self.base_url = settings.LAYER4_BASE_URL
 
+    @staticmethod
+    def _normalize_transport_modes(modes: List[str] | None) -> List[str]:
+        """Map conversational transport names to Layer 4's supported enum values."""
+        supported = {"walking", "taxi", "bus"}
+        aliases = {
+            "walk": "walking",
+            "foot": "walking",
+            "on_foot": "walking",
+            "car": "taxi",
+            "oto": "taxi",
+            "o_to": "taxi",
+            "private_car": "taxi",
+            "motorbike": "taxi",
+            "scooter": "taxi",
+            "xe_may": "taxi",
+            "xe máy": "taxi",
+            "bus": "bus",
+            "xe_buyt": "bus",
+            "xe buýt": "bus",
+        }
+        normalized: List[str] = []
+        for raw in modes or []:
+            key = str(raw).strip().lower().replace(" ", "_")
+            mode = aliases.get(key, key)
+            if mode in supported and mode not in normalized:
+                normalized.append(mode)
+        return normalized or ["taxi", "walking"]
+
     def _build_payload(
         self,
         pois: List[POIResponse],
         contract: LLMDataContract,
     ) -> Dict:
         """Assemble TravelPlanRequest matching Layer 4 schema exactly."""
-        # Build POI list matching Layer 4's POI model
         l4_pois = []
         for p in pois:
             l4_pois.append({
@@ -38,13 +98,12 @@ class Layer4Client:
                     "end_min": p.close_time,
                 },
                 "entrance_fee": p.entrance_fee,
-                "priority_score": p.utility_score,  # utility_score from Phase 0B scorer
+                "priority_score": p.utility_score,
                 "tags": p.tags or [],
                 "description": p.description,
                 "is_locked": p.is_locked,
             })
 
-        # Build Hotel depot — one per day for multi-day trips
         hotels = []
         for day_idx in range(contract.num_days):
             hotels.append({
@@ -57,12 +116,14 @@ class Layer4Client:
                 "assigned_days": [day_idx],
             })
 
-        # Build Constraints
-        transport_modes = self._normalize_transport_modes(contract.transport_modes)
+        # Integrate transport extraction & normalization
+        contract_modes = transport_modes_from_contract(contract)
+        normalized_modes = self._normalize_transport_modes(contract_modes)
+
         constraints = {
             "num_days": contract.num_days,
-            "budget_total": contract.budget_max,
-            "transport_modes": transport_modes_from_contract(contract),
+            "budget_total": None if getattr(contract, "budget_is_unlimited", False) else contract.budget_max,
+            "transport_modes": normalized_modes,
         }
 
         payload = {
@@ -71,16 +132,34 @@ class Layer4Client:
             "constraints": constraints,
         }
 
+        # Populate custom day plans for time windows if present
+        if getattr(contract, "time_window", None) is not None:
+            payload["day_plans"] = [
+                {
+                    "day_index": day_idx,
+                    "date": f"Day {day_idx + 1}",
+                    "hotel_id": f"hotel_day_{day_idx}",
+                    "start_time_min": contract.time_window.start_min,
+                    "end_time_min": contract.time_window.end_min,
+                }
+                for day_idx in range(contract.num_days)
+            ]
+
+        return payload
+
     def _re_route_constraints(self, original_itinerary: dict, day_index: int) -> Dict:
         """Prefer transport modes stored on original itinerary; fallback to taxi+walking."""
         stored = original_itinerary.get("constraints", {})
         modes = stored.get("transport_modes")
         if isinstance(modes, list) and modes:
             return {"num_days": 1, "transport_modes": modes}
+        
         walking = original_itinerary.get("walking_tolerance")
         if walking:
             contract = LLMDataContract(walking_tolerance=walking, num_days=1)
-            return {"num_days": 1, "transport_modes": transport_modes_from_contract(contract)}
+            extracted_modes = transport_modes_from_contract(contract)
+            return {"num_days": 1, "transport_modes": self._normalize_transport_modes(extracted_modes)}
+        
         return {"num_days": 1, "transport_modes": ["taxi", "walking"]}
 
     async def plan(
@@ -89,7 +168,12 @@ class Layer4Client:
         contract: LLMDataContract,
         time_limit: int = 30,
     ) -> Optional[Dict]:
-        """Send assembled payload to Layer 4 POST /plan (blocking)."""
+        """Send assembled payload to Layer 4 POST /plan (blocking) under Circuit Breaker protection."""
+        state = solver_breaker.check_state()
+        if state == "OPEN":
+            logger.error("Circuit breaker is OPEN. Blocking request to Layer 4 Solver.")
+            return {"error_code": "CIRCUIT_BREAKER_OPEN", "message": "Hệ thống đang quá tải. Vui lòng thử lại sau 30 giây."}
+
         payload = self._build_payload(pois, contract)
 
         try:
@@ -99,33 +183,61 @@ class Layer4Client:
                     json=payload,
                     params={"time_limit": time_limit},
                 )
+                
+                if resp.status_code == 400:
+                    solver_breaker.record_success()
+                    error_detail = resp.json().get("detail", {})
+                    return {
+                        "error_code": error_detail.get("error_code", "NO_FEASIBLE_ROUTE"),
+                        "message": error_detail.get("message", "Lỗi lập lịch trình.")
+                    }
+                
                 resp.raise_for_status()
+                solver_breaker.record_success()
                 return resp.json()
-        except httpx.HTTPError as e:
+        except httpx.TimeoutException as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 call timed out: {e}")
+            return {"error_code": "TIMEOUT", "message": "Quá thời gian phản hồi từ máy chủ lập lịch trình."}
+        except httpx.HTTPStatusError as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 HTTP error: {e}")
+            return {"error_code": "NO_FEASIBLE_ROUTE", "message": f"Lỗi hệ thống Solver: {e.response.status_code}"}
+        except httpx.RequestError as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 request error: {e}")
+            return {"error_code": "OSRM_UNREACHABLE", "message": "Không thể kết nối đến máy chủ định tuyến."}
+        except Exception as e:
+            solver_breaker.record_failure()
             logger.error(f"Layer 4 call failed: {e}")
-            return None
+            return {"error_code": "NO_FEASIBLE_ROUTE", "message": f"Planning error: {str(e)}"}
 
     async def plan_stream(
         self,
         pois: List[POIResponse],
         contract: LLMDataContract,
         time_limit: int = 30,
+        hotel_fallback: bool = False,
     ):
-        """SSE streaming: call Layer 4 /plan then yield result as SSE event.
-
-        Layer 4 returns a single JSON response (not a stream), so we call
-        plan() and wrap the result in an SSE-compatible format that the
-        mobile client expects (data.status === 'success' || data.days).
-        """
+        """SSE streaming: call Layer 4 /plan then yield result as SSE event."""
         import json as json_lib
+
+        if hotel_fallback:
+            logger.warning("🏨 [HOTEL_FALLBACK] Selected optimal hotel default chosen by spatial criteria.")
 
         result = await self.plan(pois=pois, contract=contract, time_limit=time_limit)
 
         if result is None:
-            yield f"data: {json_lib.dumps({'step': 'error', 'message': 'Layer 4 solver unavailable'})}\n\n"
+            yield f"data: {json_lib.dumps({'step': 'error', 'error_code': 'NO_FEASIBLE_ROUTE', 'message': 'Layer 4 solver unavailable'})}\n\n"
             yield "data: [DONE]\n\n"
             return
 
+        if "error_code" in result:
+            yield f"data: {json_lib.dumps({'step': 'error', 'error_code': result['error_code'], 'message': result['message']})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        result["hotel_fallback"] = hotel_fallback
         yield f"data: {json_lib.dumps(result)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -135,7 +247,12 @@ class Layer4Client:
         contract: LLMDataContract,
         time_limit: int = 30,
     ) -> Optional[Dict]:
-        """Send assembled payload to Layer 4 POST /plan-multi."""
+        """Send assembled payload to Layer 4 POST /plan-multi under Circuit Breaker protection."""
+        state = solver_breaker.check_state()
+        if state == "OPEN":
+            logger.error("Circuit breaker is OPEN. Blocking request to Layer 4 alternatives.")
+            return {"error_code": "CIRCUIT_BREAKER_OPEN", "message": "Hệ thống đang quá tải. Vui lòng thử lại sau 30 giây."}
+
         payload = self._build_payload(pois, contract)
 
         try:
@@ -145,11 +262,34 @@ class Layer4Client:
                     json=payload,
                     params={"time_limit": time_limit},
                 )
+                
+                if resp.status_code == 400:
+                    solver_breaker.record_success()
+                    error_detail = resp.json().get("detail", {})
+                    return {
+                        "error_code": error_detail.get("error_code", "NO_FEASIBLE_ROUTE"),
+                        "message": error_detail.get("message", "Lỗi lập lịch trình thay thế.")
+                    }
+                
                 resp.raise_for_status()
+                solver_breaker.record_success()
                 return resp.json()
-        except httpx.HTTPError as e:
+        except httpx.TimeoutException as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 plan-multi timed out: {e}")
+            return {"error_code": "TIMEOUT", "message": "Quá thời gian phản hồi máy chủ."}
+        except httpx.HTTPStatusError as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 plan-multi HTTP error: {e}")
+            return {"error_code": "NO_FEASIBLE_ROUTE", "message": f"Solver error: {e.response.status_code}"}
+        except httpx.RequestError as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 plan-multi network error: {e}")
+            return {"error_code": "OSRM_UNREACHABLE", "message": "Không kết nối được máy chủ định tuyến."}
+        except Exception as e:
+            solver_breaker.record_failure()
             logger.error(f"Layer 4 plan-multi failed: {e}")
-            return None
+            return {"error_code": "NO_FEASIBLE_ROUTE", "message": str(e)}
 
     async def re_route(
         self,
@@ -162,12 +302,7 @@ class Layer4Client:
         excluded_poi_ids: list[str] | None = None,
         time_limit: int = 15,
     ) -> dict | None:
-        """Forward re-route request to Layer 4 POST /re-route.
-
-        Extracts POI objects and hotel/constraints from the original
-        itinerary and builds a Layer 4 ReRouteRequest payload.
-        """
-        # Extract the target day from original itinerary
+        """Forward re-route request to Layer 4 POST /re-route."""
         days = original_itinerary.get("days", [])
         target_day = None
         for d in days:
@@ -181,8 +316,6 @@ class Layer4Client:
             logger.error("No day found in original itinerary for re-route")
             return None
 
-        # Build POI objects from stops in the target day
-        # Layer 4 needs full POI objects, not just IDs
         pois = []
         for stop in target_day.get("stops", []):
             pois.append({
@@ -195,7 +328,6 @@ class Layer4Client:
                 "priority_score": 0.8,
             })
 
-        # Build hotel from day's hotel info (support both v1 and v2 field names)
         hotel_name = target_day.get("end_hotel_name") or target_day.get("start_hotel_name") or target_day.get("hotel_name", "Hotel")
         hotel_location = target_day.get("end_hotel_location") or target_day.get("start_hotel_location") or target_day.get("hotel_location", {
             "latitude": current_lat,
@@ -207,7 +339,6 @@ class Layer4Client:
             "location": hotel_location,
         }
 
-        # Build day plan
         day_plan = {
             "day_index": day_index,
             "date": target_day.get("date", "re-route"),
@@ -215,10 +346,9 @@ class Layer4Client:
             "end_time_min": 1260,  # 21:00
         }
 
-        # Build constraints
+        # Resolve itinerary-aware rerouting constraints
         constraints = self._re_route_constraints(original_itinerary, day_index)
 
-        # Assemble Layer 4 ReRouteRequest
         payload = {
             "current_location": {
                 "latitude": current_lat,
@@ -245,4 +375,3 @@ class Layer4Client:
         except httpx.HTTPError as e:
             logger.error(f"Layer 4 re-route failed: {e}")
             return None
-

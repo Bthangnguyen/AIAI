@@ -1,8 +1,22 @@
-import React, { FC, useState } from "react"
-import { View, ViewStyle, TextStyle, ImageBackground, StyleSheet, Pressable, ScrollView } from "react-native"
-import { Screen } from "@/components/Screen"
+/**
+ * HomeScreen - AI Co-Pilot Chat Center
+ * Design: Glassmorphism dark + Royal Hue + Floating Chips
+ */
+import React, { FC, useState, useRef, useEffect } from "react"
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+} from "react-native"
 import { Text } from "@/components/Text"
-import { TextField } from "@/components/TextField"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
@@ -23,15 +37,7 @@ const CONTEXTUAL_CHIPS = [
   "☕ Trà cung đình chiều tà",
 ]
 
-const AI_SUGGESTIONS = [
-  "Tôi sẽ lập lịch ngay! Cho tôi biết bạn có bao nhiêu ngày và ngân sách khoảng bao nhiêu nhé? 🗺️",
-  "Tuyệt vời! Đang phân tích tuyến đường tối ưu theo sức bền và thời tiết của bạn... ⚡",
-  "Đã tìm thấy lộ trình phù hợp! 3 phương án đang được chuẩn bị - Balanced, Chill và Budget. 🎯",
-]
-
 interface HomeScreenProps extends AppStackScreenProps<"MainTabs"> {}
-
-const BACKGROUND_URL = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"
 
 export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
   const [prompt, setPrompt] = useState("")
@@ -46,6 +52,7 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     hotel_name: "Pilgrimage Village",
     hotel_lat: 16.4637,
     hotel_lon: 107.5909,
+    confirmed_fields: [],
   })
   const [isTyping, setIsTyping] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -81,14 +88,12 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     const trimmed = prompt.trim()
     if (!trimmed) return
 
-    // 1. Ghi nhận tin nhắn người dùng nhập vào khung chat
     const userMsg: ChatMessage = { role: "user", content: trimmed }
     setChatHistory((prev) => [...prev, userMsg])
     setPrompt("")
     setIsTyping(true)
 
     try {
-      // 2. Gửi yêu cầu đàm thoại làm rõ hợp đồng du lịch lên Gateway
       const response = await TripService.processChat(
         trimmed,
         chatHistory,
@@ -96,15 +101,12 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
       )
 
       setIsTyping(false)
-      
-      // 3. Cập nhật hợp đồng đã gộp trên Backend và thêm bong bóng trả lời của AI
       setCurrentContract(response.updated_contract)
       setChatHistory((prev) => [
         ...prev,
         { role: "assistant", content: response.reply },
       ])
 
-      // 4. Nếu đàm thoại đạt trạng thái sẵn sàng (status === "ready"), tạm thời lưu lại state isReady (Task 3 sẽ dùng hiển thị nút bấm)
       if (response.status === "ready") {
         setIsReady(true)
       } else {
@@ -140,28 +142,84 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
       hotelLat: currentContract.hotel_lat || 16.4637,
       hotelLon: currentContract.hotel_lon || 107.5909,
       numDays: currentContract.num_days || 1,
+      contract: currentContract,
     })
   }
 
-  const handleChip = (chipText: string) => {
-    setPrompt(chipText)
-  }
+  const currentHour = new Date().getHours()
+  const greeting =
+    currentHour < 11 ? "Chào buổi sáng! ☀️" :
+    currentHour < 14 ? "Giờ trưa, nghỉ ngơi tí 🌡️" :
+    currentHour < 18 ? "Chiều mát rồi! 🌤️" : "Tối thơ mộng! 🌙"
 
   return (
-    <Screen style={$root} preset="fixed" contentContainerStyle={{ flex: 1 }}>
-      <ImageBackground source={{ uri: BACKGROUND_URL }} style={$background} blurRadius={8}>
-        <View style={$overlay} />
-        
-        {/* Header */}
-        <View style={$header}>
-          <Text text="Bạn muốn đi đâu?" style={$titleHighlight} />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={[styles.decorOrb, { top: -80, right: -80 }]} />
+      <View style={[styles.decorOrb2, { bottom: 200, left: -60 }]} />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <View style={styles.logoRow}>
+            <View style={styles.logoIconWrap}>
+              <Text style={styles.logoIconText}>📍</Text>
+            </View>
+            <Text style={styles.logoText}>TripFlow</Text>
+          </View>
+          <TouchableOpacity style={styles.notifBtn}>
+            <Text style={styles.notifIcon}>🔔</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Chat Area */}
-        <ScrollView style={$chatArea} contentContainerStyle={{ paddingBottom: 20 }}>
+        <View style={styles.greetSection}>
+          <Text style={styles.greetText}>{greeting}</Text>
+          <Text style={styles.greetSub}>Bạn muốn khám phá Huế thế nào hôm nay?</Text>
+        </View>
+
+        {chatHistory.length === 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}
+            style={styles.chipsContainer}
+          >
+            {CONTEXTUAL_CHIPS.map((chip, i) => (
+              <TouchableOpacity key={i} style={styles.chip} onPress={() => setPrompt(chip)}>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]}
+                  style={styles.chipGradient}
+                >
+                  <Text style={styles.chipText}>{chip}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        <ScrollView
+          ref={scrollRef}
+          style={styles.chatScroll}
+          contentContainerStyle={styles.chatContent}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        >
           {chatHistory.length === 0 && (
-            <View style={$welcomeContainer}>
-              <Text text="Hãy trò chuyện để lên kế hoạch!" style={$heroSub} />
+            <View style={styles.emptyState}>
+              <View style={styles.aiAvatar}>
+                <Text style={styles.aiAvatarText}>🤖</Text>
+              </View>
+              <Text style={styles.emptyStateTitle}>Xin chào! Tôi là TripFlow AI</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                Hãy nói với tôi chuyến đi bạn mơ ước. Tôi sẽ tối ưu lộ trình theo sức bền, thời tiết và sở thích!
+              </Text>
             </View>
           )}
           {chatHistory.map((msg, idx) => (
@@ -186,9 +244,22 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
               </View>
             </View>
           ))}
+          {isTyping && (
+            <View style={[styles.messageRow, styles.messageRowAi]}>
+              <View style={styles.aiAvatarSmall}><Text style={{ fontSize: 16 }}>🤖</Text></View>
+              <View style={styles.aiBubble}>
+                <View style={styles.aiBubbleInner}>
+                  <View style={styles.typingDots}>
+                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
+                    <View style={[styles.typingDot, { opacity: 0.7 }]} />
+                    <View style={[styles.typingDot, { opacity: 1 }]} />
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
         </ScrollView>
 
-        {/* Nút bấm Royal CTA xuất hiện mượt mà khi isReady === true */}
         {isReady && (
           <Animated.View
             style={[
@@ -219,25 +290,44 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
           </Animated.View>
         )}
 
-        {/* Input glass card */}
         <View style={[styles.inputCard, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.inputCardInner}>
             <TextInput
               value={prompt}
               onChangeText={setPrompt}
-              containerStyle={$inputContainer}
-              style={$promptInput}
-              placeholder="Nhập lịch trình bạn muốn..."
-              placeholderTextColor={colors.palette.figmaPlaceholder}
+              placeholder="Nhập lịch trình bạn mơ ước..."
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              style={styles.textInput}
               multiline
+              maxLength={500}
             />
-            <Pressable onPress={handleSend} style={$sendButton}>
-              <Text text="Gửi" style={$buttonText} />
-            </Pressable>
+            <View style={styles.inputActions}>
+              <Animated.View style={{ transform: [{ scale: micScale }] }}>
+                <TouchableOpacity
+                  style={[styles.micBtn, micActive && styles.micBtnActive]}
+                  onPressIn={() => setMicActive(true)}
+                  onPressOut={() => setMicActive(false)}
+                >
+                  <Text style={styles.micIcon}>🎤</Text>
+                </TouchableOpacity>
+              </Animated.View>
+              <TouchableOpacity
+                style={[styles.sendBtn, !prompt.trim() && styles.sendBtnDisabled]}
+                onPress={handleSend}
+                disabled={!prompt.trim()}
+              >
+                <LinearGradient
+                  colors={prompt.trim() ? [colors.palette.royalPurple, colors.palette.royalPurpleLight] : ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.04)"]}
+                  style={styles.sendBtnGradient}
+                >
+                  <Text style={styles.sendBtnText}>→</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ImageBackground>
-    </Screen>
+      </KeyboardAvoidingView>
+    </View>
   )
 }
 

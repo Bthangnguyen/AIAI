@@ -35,6 +35,9 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 curl http://127.0.0.1:8001/v1/trip/health
 ```
 
+For a temporary public IP test without HTTPS, set `GATEWAY_BIND=0.0.0.0` in
+`.env` and open firewall port `8001`.
+
 ## 4. Start with built-in Caddy HTTPS
 
 Point DNS for `BACKEND_DOMAIN` to the server first, then run:

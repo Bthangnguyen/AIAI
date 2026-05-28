@@ -115,6 +115,18 @@ def _is_supported_destination(destination: str | None) -> bool:
     return any(token in raw for token in ["huế", "hue", "huáº¿"]) or "hue" in asciiish
 
 
+def _normalize_supported_destination(contract: LLMDataContract, request: TripPlanRequest) -> bool:
+    """Accept Hue from either extracted fields or the original prompt."""
+    if _is_supported_destination(contract.destination):
+        contract.destination = "Hue"
+        return True
+    if _is_supported_destination(request.destination) or _is_supported_destination(request.user_prompt):
+        contract.destination = "Hue"
+        _mark_confirmed(contract, "destination")
+        return True
+    return False
+
+
 def _apply_request_overrides(contract: LLMDataContract, request: TripPlanRequest) -> LLMDataContract:
     """Apply manual request overrides from forms directly on top of the contract."""
     if request.destination:
@@ -176,7 +188,7 @@ async def _run_pipeline(
     contract = _apply_request_overrides(contract, request)
 
     # Spatial scope check: Huế/Hue only
-    if not _is_supported_destination(contract.destination):
+    if not _normalize_supported_destination(contract, request):
         raise HTTPException(
             status_code=400,
             detail={"error_code": "LLM_PARSE_ERROR", "message": "Hiện tại hệ thống chỉ hỗ trợ lên lịch trình tại Huế. Vui lòng ghi rõ 'Huế' trong mô tả chuyến đi."}

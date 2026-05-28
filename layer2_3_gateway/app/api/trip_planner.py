@@ -112,7 +112,12 @@ def _is_supported_destination(destination: str | None) -> bool:
     raw = destination.lower()
     normalized = unicodedata.normalize("NFD", raw)
     asciiish = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
-    return any(token in raw for token in ["huế", "hue", "huáº¿"]) or "hue" in asciiish
+    return (
+        any(token in raw for token in ["huế", "hue", "huáº¿"])
+        or "hue" in asciiish
+        or asciiish.startswith("hu")
+        or " hu" in asciiish
+    )
 
 
 def _normalize_supported_destination(contract: LLMDataContract, request: TripPlanRequest) -> bool:

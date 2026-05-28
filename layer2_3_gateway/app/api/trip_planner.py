@@ -12,6 +12,7 @@ import json as json_lib
 import uuid
 import asyncio
 import time
+import unicodedata
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import StreamingResponse
@@ -105,6 +106,15 @@ def _merge_unique(left: list[str] | None, right: list[str] | None) -> list[str]:
     return result
 
 
+def _is_supported_destination(destination: str | None) -> bool:
+    if not destination:
+        return False
+    raw = destination.lower()
+    normalized = unicodedata.normalize("NFD", raw)
+    asciiish = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    return any(token in raw for token in ["huế", "hue", "huáº¿"]) or "hue" in asciiish
+
+
 def _apply_request_overrides(contract: LLMDataContract, request: TripPlanRequest) -> LLMDataContract:
     """Apply manual request overrides from forms directly on top of the contract."""
     if request.destination:
@@ -166,7 +176,7 @@ async def _run_pipeline(
     contract = _apply_request_overrides(contract, request)
 
     # Spatial scope check: Huế/Hue only
-    if not contract.destination or not any(x in contract.destination.lower() for x in ["huế", "hue"]):
+    if not _is_supported_destination(contract.destination):
         raise HTTPException(
             status_code=400,
             detail={"error_code": "LLM_PARSE_ERROR", "message": "Hiện tại hệ thống chỉ hỗ trợ lên lịch trình tại Huế. Vui lòng ghi rõ 'Huế' trong mô tả chuyến đi."}

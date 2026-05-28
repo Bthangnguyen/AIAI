@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { AdminGuard } from "@/components/AdminGuard"
 
 const navItems = [
   { href: "/admin/pois", label: "POI" },
@@ -7,7 +8,8 @@ const navItems = [
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex min-h-screen bg-[#fff7ed] text-orange-950">
+    <AdminGuard>
+      <div className="flex min-h-screen bg-[#fff7ed] text-orange-950">
       <aside className="flex w-56 shrink-0 flex-col border-r border-orange-200 bg-white">
         <div className="border-b border-orange-200 px-4 py-5">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-400">Admin</p>
@@ -34,6 +36,7 @@ export default function AdminLayout({ children }: Readonly<{ children: React.Rea
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-6">{children}</main>
-    </div>
+      </div>
+    </AdminGuard>
   )
 }

@@ -10,9 +10,11 @@ interface SavedTripsPageProps {
   onOpenDraft: (draft: ItineraryDraft) => void
   onCreateNew: () => void
   onBack: () => void
+  userLabel?: string
+  isCloudSynced?: boolean
 }
 
-export function SavedTripsPage({ drafts, onOpenDraft, onCreateNew, onBack }: SavedTripsPageProps) {
+export function SavedTripsPage({ drafts, onOpenDraft, onCreateNew, onBack, userLabel, isCloudSynced = false }: SavedTripsPageProps) {
   return (
     <div className="min-h-screen bg-orange-50 text-orange-950">
       <header className="border-b border-orange-200 bg-white/80 backdrop-blur-xl">
@@ -24,7 +26,9 @@ export function SavedTripsPage({ drafts, onOpenDraft, onCreateNew, onBack }: Sav
       <main className="mx-auto max-w-6xl px-6 py-10">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Saved workspace</p>
         <h1 className="mt-3 text-4xl font-black tracking-tight text-orange-950">Lịch trình đã lưu</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-orange-950/65">Mở lại các bản nháp đã lưu trong localStorage. Không có cloud database, auth hoặc đồng bộ tài khoản.</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-orange-950/65">
+          {isCloudSynced ? `Draft duoc luu theo tai khoan ${userLabel || "Google"} trong Firestore.` : "Draft tam thoi duoc luu trong localStorage vi chua dang nhap Firebase."}
+        </p>
 
         {drafts.length === 0 ? (
           <section className="mt-10 flex min-h-[360px] items-center justify-center rounded-[32px] border border-dashed border-orange-300 bg-white/85 p-10 text-center shadow-2xl shadow-orange-950/10">

@@ -1,7 +1,6 @@
 "use client"
 
-import { Circle, Compass, MapPinned, Route, Sparkles } from "lucide-react"
-import Link from "next/link"
+import { Circle, Compass, LogOut, MapPinned, Route, Sparkles, UserCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { BuildProgressSteps } from "@/components/BuildProgressSteps"
 import { ExamplePromptChips } from "@/components/ExamplePromptChips"
@@ -17,7 +16,10 @@ interface HomePageProps {
   onModeChange: (mode: BuilderMode) => void
   onSubmit: () => void
   onAuthClick: () => void
+  onSignOut: () => void
   onNav: (target: "demo" | "saved" | "mobile") => void
+  userName?: string | null
+  userEmail?: string | null
 }
 
 const examples = [
@@ -42,7 +44,7 @@ const sceneImages = [
   "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2200&q=80",
 ]
 
-export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange, onModeChange, onSubmit, onAuthClick, onNav }: HomePageProps) {
+export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange, onModeChange, onSubmit, onAuthClick, onSignOut, onNav, userName, userEmail }: HomePageProps) {
   const [activeLine, setActiveLine] = useState(0)
   const [activeScene, setActiveScene] = useState(0)
 
@@ -89,15 +91,28 @@ export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange
             <button type="button" onClick={() => onNav("demo")} className="transition hover:text-orange-600">Demo</button>
             <button type="button" onClick={() => onNav("saved")} className="transition hover:text-orange-600">Saved Trips</button>
             <button type="button" onClick={() => onNav("mobile")} className="transition hover:text-orange-600">Mobile Phase</button>
-            <Link href="/admin" className="transition hover:text-orange-600">Admin</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onAuthClick} className="hidden rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-sm font-black text-orange-950 transition hover:border-orange-400 sm:inline-flex">
-              Login
-            </button>
-            <button type="button" onClick={onAuthClick} className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600">
-              Sign up
-            </button>
+            {userEmail ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden max-w-[180px] items-center gap-2 truncate rounded-full border border-orange-200 bg-white/70 px-3 py-2 text-xs font-black text-orange-950 sm:inline-flex">
+                  <UserCircle className="h-4 w-4 shrink-0 text-orange-500" />
+                  {userName || userEmail}
+                </span>
+                <button type="button" onClick={onSignOut} className="rounded-full border border-orange-200 bg-white/70 px-3 py-2 text-sm font-black text-orange-950 transition hover:border-orange-400" aria-label="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <button type="button" onClick={onAuthClick} className="hidden rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-sm font-black text-orange-950 transition hover:border-orange-400 sm:inline-flex">
+                  Login
+                </button>
+                <button type="button" onClick={onAuthClick} className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600">
+                  Sign up
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>

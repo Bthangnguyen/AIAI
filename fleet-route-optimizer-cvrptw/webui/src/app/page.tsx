@@ -13,7 +13,8 @@ import { buildFollowUpQuestion } from "@/lib/clarification"
 import { searchPois, getPoi, draftTotals } from "@/lib/mockItineraryFallback"
 import { searchPoisBackend, reRouteDay, POI_CACHE, chatProcess, generateRealItinerary, mapLayer4ResultToDraft } from "@/lib/api"
 import { processReRouteResult } from "@/lib/reRouteFlow"
-import { getSavedDrafts, saveDraft } from "@/lib/storage"
+import { getSavedDraftsForUser, saveDraftForUser } from "@/lib/storage"
+import { useAuth } from "@/lib/auth"
 import type { AIMessage } from "@/components/AITripChatPanel"
 import { fetchPlanAlternatives } from "@/lib/planAlternatives"
 import { applyPlanVariant, planStyleLabel } from "@/lib/applyPlanVariant"
@@ -68,6 +69,7 @@ function delay(ms: number): Promise<void> {
 }
 
 export default function Page() {
+  const { user, loading: authLoading, configured: firebaseConfigured, signInWithGoogle, signOut } = useAuth()
   const [screen, setScreen] = useState<Screen>("home")
   const [prompt, setPrompt] = useState("")
   const [mode, setMode] = useState<BuilderMode>("build")
@@ -101,8 +103,14 @@ export default function Page() {
   const alternativesFetchedForDraftId = useRef<string | null>(null)
 
   useEffect(() => {
-    setSavedDrafts(getSavedDrafts())
-  }, [])
+    let cancelled = false
+    void getSavedDraftsForUser(user?.uid).then((items) => {
+      if (!cancelled) setSavedDrafts(items)
+    }).catch(() => {
+      if (!cancelled) setSavedDrafts([])
+    })
+    return () => { cancelled = true }
+  }, [user?.uid])
 
   useEffect(() => {
     if (!draft) return
@@ -299,13 +307,30 @@ export default function Page() {
   function handleHomeSubmit() {
     const cleanPrompt = prompt.trim()
     if (!cleanPrompt || isRunning) return
-    setShowAuthModal(true)
+    if (!user) {
+      setShowAuthModal(true)
+      return
+    }
+    void continueAfterAuth()
   }
 
-  async function continueAfterMockAuth() {
+  async function handleGoogleAuthContinue() {
+    try {
+      const nextUser = await signInWithGoogle()
+      if (!nextUser) {
+        showToast("Firebase chua duoc cau hinh cho web app.", "warning")
+        return
+      }
+      setShowAuthModal(false)
+      if (prompt.trim()) await continueAfterAuth()
+    } catch (e) {
+      showToast("Khong dang nhap duoc Google: " + (e instanceof Error ? e.message : String(e)), "error")
+    }
+  }
+
+  async function continueAfterAuth() {
     const cleanPrompt = prompt.trim()
     if (!cleanPrompt || isRunning) return
-    setShowAuthModal(false)
     setMessages([{ role: "user", content: cleanPrompt }])
     setScreen("builder")
     setDraft(null)
@@ -407,12 +432,16 @@ export default function Page() {
     }
   }
 
-  function handleSaveDraft() {
+  async function handleSaveDraft() {
     if (!draft) return
-    const next = saveDraft(draft)
-    setSavedDrafts(next)
-    showToast("Đã lưu lịch trình nháp.", "success")
-    setUndoState(null)
+    try {
+      const next = await saveDraftForUser(draft, user?.uid)
+      setSavedDrafts(next)
+      showToast(user ? "Da luu lich trinh vao tai khoan cua ban." : "Da luu lich trinh nhap trong localStorage.", "success")
+      setUndoState(null)
+    } catch (e) {
+      showToast("Loi luu draft: " + (e instanceof Error ? e.message : String(e)), "error")
+    }
   }
 
   function buildOriginalItinerary(currentDraft: ItineraryDraft) {
@@ -639,7 +668,7 @@ export default function Page() {
   }
 
   if (screen === "saved") {
-    return <SavedTripsPage drafts={savedDrafts} onOpenDraft={openSavedDraft} onCreateNew={() => setScreen("home")} onBack={backHome} />
+    return <SavedTripsPage drafts={savedDrafts} onOpenDraft={openSavedDraft} onCreateNew={() => setScreen("home")} onBack={backHome} userLabel={user?.displayName || user?.email || undefined} isCloudSynced={!!user} />
   }
   if (screen === "mobile") {
     return <MobilePhasePage onBack={backHome} />
@@ -709,9 +738,12 @@ export default function Page() {
         onModeChange={setMode}
         onSubmit={handleHomeSubmit}
         onAuthClick={() => setShowAuthModal(true)}
+        onSignOut={() => void signOut()}
         onNav={(target) => setScreen(target === "demo" ? "home" : target)}
+        userName={user?.displayName}
+        userEmail={user?.email}
       />
-      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => void continueAfterMockAuth()} />
+      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => void handleGoogleAuthContinue()} configured={firebaseConfigured} isLoading={authLoading || isRunning} />
       <Toast variant={toastVariant} message={toastMessage} onClose={() => { setToastMessage(null); setUndoState(null) }} />
     </>
   )

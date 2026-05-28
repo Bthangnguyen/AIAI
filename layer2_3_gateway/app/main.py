@@ -25,6 +25,14 @@ from app.api.trip_planner import router as trip_router, limiter
 from app.api.admin_pois import router as admin_router
 from app.config import settings
 
+
+def _cors_origins() -> list[str]:
+    raw = settings.CORS_ORIGINS.strip()
+    if raw == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 app = FastAPI(
     title="AI Travel Gateway — Layer 2 & 3",
     version="1.0.0",
@@ -34,7 +42,7 @@ app = FastAPI(
 # CORS — allow mobile app + dev origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: restrict in production
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

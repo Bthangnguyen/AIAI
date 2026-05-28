@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     ADMIN_ENABLED: bool = True
     ADMIN_TOKEN: str = ""
 
+    # Comma-separated origins. Keep "*" for local development.
+    CORS_ORIGINS: str = "*"
+
     # Layer 4 Base URL (defined in travel.env, added here)
     LAYER4_BASE_URL: str = "http://host.docker.internal:8000"
 

@@ -31,7 +31,9 @@ Thumbs.db
 # Environment
 .env
 travel.env
+travel.prod.env
 *.env.local
+secrets/
 
 # Database
 *.db

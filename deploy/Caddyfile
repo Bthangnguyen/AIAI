@@ -1,0 +1,11 @@
+{$BACKEND_DOMAIN} {
+  encode gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy no-referrer-when-downgrade
+  }
+
+  reverse_proxy travel-gateway:8080
+}

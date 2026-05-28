@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Clock3, Star, Trash2 } from "lucide-react"
 import { getPoi } from "@/lib/mockItineraryFallback"
+import { POI_CACHE } from "@/lib/api"
 import { formatCurrency } from "@/lib/format"
 import type { ItineraryItem } from "@/types/trip"
 import type { MoveDirection } from "@/lib/reorderDayItems"
@@ -25,7 +26,7 @@ export function TimelinePlaceCard({
   onRemove,
   onMove,
 }: TimelinePlaceCardProps) {
-  const poi = getPoi(item.poiId)
+  const poi = getPoi(item.poiId) ?? POI_CACHE.get(item.poiId)
   if (!poi) return null
 
   return (
@@ -70,7 +71,13 @@ export function TimelinePlaceCard({
       <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-orange-950/70">{item.note}</p>
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-orange-950/60">
         <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1"><Clock3 className="h-3 w-3" /> {poi.estimatedDurationMinutes} phút</span>
-        <span className="rounded-full bg-orange-100 px-2.5 py-1">{formatCurrency(poi.estimatedCost)}</span>
+        <span className="rounded-full bg-orange-100 px-2.5 py-1">
+          {poi.id.startsWith("__meal_") 
+            ? "Tự túc" 
+            : poi.id.startsWith("__food_walk_") || poi.id.startsWith("__rest_break_") || poi.estimatedCost === 0 
+              ? "Miễn phí" 
+              : formatCurrency(poi.estimatedCost)}
+        </span>
         {poi.tags.slice(0, 3).map((tag: string) => <span key={tag} className="rounded-full bg-orange-100 px-2.5 py-1">{tag}</span>)}
       </div>
     </article>

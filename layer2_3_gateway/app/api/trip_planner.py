@@ -195,10 +195,17 @@ async def _run_pipeline(
 
     query_vector = None
     if contract.tags:
-        tag_text = embed_service.build_poi_text(
-            name="query", category="preference",
-            tags=contract.tags, description="",
-        )
+        if getattr(contract, "distribution_description", None):
+            tag_text = embed_service.build_distribution_query_text(
+                distribution_description=contract.distribution_description,
+                tags=contract.tags,
+                destination=contract.destination or "Huế"
+            )
+        else:
+            tag_text = embed_service.build_poi_text(
+                name="query", category="preference",
+                tags=contract.tags, description="",
+            )
         try:
             query_vector = await embed_service.aembed_text(tag_text)
         except Exception as e:
@@ -356,7 +363,9 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
                 await idempotency_manager.set_completed(idempotency_key, err_payload)
             return
 
-        yield f"data: {json_lib.dumps({'step': 'l3_done', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked)})}\n\n"
+        # Gửi toàn bộ danh sách POIs (kèm giá, tag, mô tả thực tế) để frontend đưa vào POI_CACHE
+        pois_json = [p.model_dump(mode='json') if hasattr(p, 'model_dump') else p for p in pois]
+        yield f"data: {json_lib.dumps({'step': 'l3_done', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked), 'pois': pois_json})}\n\n"
 
         try:
             plan_result = None
@@ -416,9 +425,24 @@ async def plan_alternatives(request: Request, body: TripPlanRequest, user: Fireb
 
 @router.post("/chat_process", response_model=ChatProcessResponse)
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
-async def chat_process(request: Request, body: ChatProcessRequest, user: FirebaseUser = Depends(get_current_user)):
-    """Processes a chat turn conversationally. Requires Firebase Auth."""
-    logger.info(f"💬 chat_process called by user: {user.uid}")
+async def chat_process(request: Request, body: ChatProcessRequest, user: Optional[FirebaseUser] = Depends(get_optional_user)):
+    """Processes a chat turn conversationally. Supports optional auth for local development."""
+    user_uid = user.uid if user else "mock-uid-12345"
+    logger.info(f"💬 chat_process called by user: {user_uid}")
+    
+    # Ghi log debug ra file để chẩn đoán chính xác
+    try:
+        with open("/tmp/gateway_debug.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- REQUEST DEBUG ---\n")
+            f.write(f"has_draft: {getattr(body, 'has_draft', None)}\n")
+            f.write(f"current_itinerary is None: {body.current_itinerary is None}\n")
+            if body.current_itinerary:
+                f.write(f"current_itinerary keys: {list(body.current_itinerary.keys())}\n")
+            f.write(f"body JSON: {body.model_dump_json(indent=2)}\n")
+    except Exception as e:
+        logger.error(f"Failed to write gateway_debug.log: {e}")
+        
+    logger.warning(f"DEBUG_PRINT_LOGGER: has_draft={body.has_draft}, current_itinerary_is_none={body.current_itinerary is None}")
     history_dict = [{"role": h.role, "content": h.content} for h in body.history]
     
     result = await llm_service.process_chat_turn(
@@ -428,10 +452,154 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Firebas
         has_draft=getattr(body, "has_draft", False),
     )
     
+    updated_itinerary = None
+    edit_intent = result.get("edit_intent")
+    
+    if getattr(body, "has_draft", False) and body.current_itinerary and edit_intent:
+        from app.services.itinerary_editor import ItineraryEditorService
+        from app.schemas.trip import POIResponse
+        from sqlalchemy import select, or_
+        from app.models.poi import PointOfInterest
+        from geoalchemy2.functions import ST_AsGeoJSON
+        import json as json_lib
+        
+        editor_service = ItineraryEditorService()
+        action = edit_intent.action
+        target = edit_intent.target
+        
+        try:
+            rebuild_actions = {
+                "rebuild_requested", "change_budget", "change_pace", 
+                "change_time_window", "change_time", "add_preference", 
+                "avoid_preference", "change_distribution"
+            }
+            if action in rebuild_actions:
+                from app.schemas.trip import TripPlanRequest
+                contract_to_use = result.get("updated_contract")
+                if not contract_to_use:
+                    contract_to_use = body.current_contract
+                
+                rebuild_req = TripPlanRequest(
+                    user_prompt=body.message,
+                    num_days=contract_to_use.num_days,
+                    budget=contract_to_use.budget_max,
+                    destination=contract_to_use.destination or "Huế",
+                    hotel_lat=contract_to_use.hotel_lat,
+                    hotel_lon=contract_to_use.hotel_lon,
+                    hotel_name=contract_to_use.hotel_name,
+                    contract=contract_to_use
+                )
+                
+                new_contract, new_pois, hotel_fallback = await _run_pipeline(rebuild_req)
+                l4_result = await layer4_client.plan(pois=new_pois, contract=new_contract)
+                if l4_result and "error_code" not in l4_result:
+                    updated_itinerary = l4_result
+                else:
+                    logger.error(f"JIT Rebuild solver error: {l4_result}")
+            elif action == "remove_place" and target:
+                updated_itinerary = editor_service.remove_stop(
+                    itinerary=body.current_itinerary,
+                    target=target
+                )
+            elif action == "add_place" and target:
+                POI = PointOfInterest
+                stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
+                    or_(
+                        POI.name.ilike(f"%{target.strip()}%"),
+                        POI.category.ilike(f"%{target.strip()}%"),
+                    )
+                ).order_by(POI.priority_score.desc()).limit(1)
+                
+                async with AsyncSessionFactory() as db_session:
+                    db_res = await db_session.execute(stmt)
+                    row = db_res.first()
+                    if row:
+                        poi_obj = row.PointOfInterest
+                        geojson = json_lib.loads(row.geojson) if row.geojson else None
+                        lat = geojson["coordinates"][1] if geojson else 0.0
+                        lon = geojson["coordinates"][0] if geojson else 0.0
+                        
+                        poi_resp = POIResponse(
+                            uuid=poi_obj.uuid,
+                            name=poi_obj.name,
+                            category=poi_obj.category,
+                            description=poi_obj.description,
+                            latitude=lat,
+                            longitude=lon,
+                            visit_duration_min=poi_obj.visit_duration_min,
+                            price=poi_obj.price,
+                            entrance_fee=poi_obj.entrance_fee,
+                            open_time=poi_obj.open_time,
+                            close_time=poi_obj.close_time,
+                            priority_score=poi_obj.priority_score,
+                            tags=poi_obj.tags,
+                        )
+                        
+                        target_day = edit_intent.constraints.get("target_day", 1)
+                        try:
+                            day_index = max(0, int(target_day) - 1)
+                        except (ValueError, TypeError):
+                            day_index = 0
+                        updated_itinerary = editor_service.add_stop(
+                            itinerary=body.current_itinerary,
+                            day_index=day_index,
+                            poi=poi_resp
+                        )
+            elif action == "replace_place" and target:
+                new_place_query = body.message
+                import re as re_lib
+                parts = re_lib.split(r'(?i)\s+bằng\s+|\s+thành\s+|\s+with\s+|\s+to\s+', body.message)
+                if len(parts) > 1:
+                    new_place_query = parts[1]
+                
+                POI = PointOfInterest
+                stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
+                    or_(
+                        POI.name.ilike(f"%{new_place_query.strip()}%"),
+                        POI.category.ilike(f"%{new_place_query.strip()}%"),
+                    )
+                ).order_by(POI.priority_score.desc()).limit(1)
+                
+                async with AsyncSessionFactory() as db_session:
+                    db_res = await db_session.execute(stmt)
+                    row = db_res.first()
+                    if row:
+                        poi_obj = row.PointOfInterest
+                        geojson = json_lib.loads(row.geojson) if row.geojson else None
+                        lat = geojson["coordinates"][1] if geojson else 0.0
+                        lon = geojson["coordinates"][0] if geojson else 0.0
+                        
+                        poi_resp = POIResponse(
+                            uuid=poi_obj.uuid,
+                            name=poi_obj.name,
+                            category=poi_obj.category,
+                            description=poi_obj.description,
+                            latitude=lat,
+                            longitude=lon,
+                            visit_duration_min=poi_obj.visit_duration_min,
+                            price=poi_obj.price,
+                            entrance_fee=poi_obj.entrance_fee,
+                            open_time=poi_obj.open_time,
+                            close_time=poi_obj.close_time,
+                            priority_score=poi_obj.priority_score,
+                            tags=poi_obj.tags,
+                        )
+                        
+                        updated_itinerary = editor_service.replace_stop(
+                            itinerary=body.current_itinerary,
+                            old_name=target,
+                            new_poi=poi_resp
+                        )
+        except Exception as ex:
+            logger.error(f"JIT Editing failed: {ex}", exc_info=True)
+            
     return ChatProcessResponse(
         status=result["status"],
         reply=result["reply"],
         updated_contract=result["updated_contract"],
+        phase=result.get("phase"),
+        edit_intent=edit_intent,
+        updated_itinerary=updated_itinerary,
     )
 
 
@@ -443,17 +611,59 @@ async def health():
 @router.get("/search_pois", response_model=List[POIResponse])
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 async def search_pois_endpoint(request: Request, query: str, limit: int = 5, user: FirebaseUser = Depends(get_current_user)):
-    """Tìm kiếm POI theo tên để hỗ trợ thao tác Add POI. Requires Firebase Auth."""
-    from sqlalchemy import select
+    """Tìm kiếm POI thông minh theo vector similarity (tags_vector) hỗ trợ thao tác Add/Replace POI. Tự động fallback sang SQL search nếu offline/lỗi API."""
+    from sqlalchemy import select, or_, func
     from app.models.poi import PointOfInterest
     from geoalchemy2.functions import ST_AsGeoJSON
     import json as json_lib
+    import re
     
     POI = PointOfInterest
-    stmt = select(
-        POI, ST_AsGeoJSON(POI.coordinates).label("geojson")
-    ).where(POI.name.ilike(f"%{query}%")).limit(limit)
     
+    # 1. Thử nghiệm tìm kiếm bằng Vector Embedding (Semantic Search)
+    query_vector = None
+    if query.strip():
+        try:
+            query_vector = await embed_service.aembed_text(query.strip())
+        except Exception as e:
+            logger.error(f"Semantic vector search embedding failure: {e}")
+            
+    # 2. Xây dựng câu lệnh truy vấn
+    if query_vector is not None:
+        # Nếu lấy được vector, sắp xếp theo khoảng cách cosine (cosine distance)
+        stmt = select(
+            POI, ST_AsGeoJSON(POI.coordinates).label("geojson")
+        ).order_by(
+            POI.tags_vector.cosine_distance(query_vector),
+            POI.priority_score.desc()
+        ).limit(limit)
+    else:
+        # Hướng xử lý dự phòng: Làm sạch câu tiếng Việt và tìm kiếm SQL substring
+        clean_query = query.strip()
+        prefixes = [
+            r"^(quán|tiệm|cửa hàng|nhà hàng|địa điểm|điểm|món|quán ăn|ăn|uống)\s+",
+            r"^(quán|tiệm|cửa hàng|nhà hàng|địa điểm|điểm|món|quán ăn|ăn|uống)\s+bán\s+"
+        ]
+        for prefix in prefixes:
+            clean_query = re.sub(prefix, "", clean_query, flags=re.IGNORECASE)
+        clean_query = clean_query.strip()
+        
+        conditions = []
+        if query.strip():
+            conditions.append(POI.name.ilike(f"%{query.strip()}%"))
+        if clean_query and clean_query != query.strip():
+            conditions.append(POI.name.ilike(f"%{clean_query}%"))
+        if clean_query:
+            conditions.append(POI.category.ilike(f"%{clean_query}%"))
+            conditions.append(func.coalesce(func.array_to_string(POI.tags, ','), '').ilike(f"%{clean_query}%"))
+            
+        if not conditions:
+            return []
+            
+        stmt = select(
+            POI, ST_AsGeoJSON(POI.coordinates).label("geojson")
+        ).where(or_(*conditions)).order_by(POI.priority_score.desc()).limit(limit)
+        
     async with AsyncSessionFactory() as db_session:
         result = await db_session.execute(stmt)
         rows = result.all()

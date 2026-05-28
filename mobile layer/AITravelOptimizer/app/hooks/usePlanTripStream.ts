@@ -4,7 +4,7 @@ import { SSEStage } from '../types/api';
 
 // Dùng biến môi trường EXPO_PUBLIC_API_URL (cấu hình trong eas.json)
 // Fallback về localhost:8001 khi chạy trên máy tính (web)
-const GATEWAY_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
+const GATEWAY_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8001';
 
 export const usePlanTripStream = () => {
   const setSseStage = useTripStore((state) => state.setSseStage);

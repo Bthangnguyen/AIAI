@@ -20,6 +20,20 @@ logger = get_logger(__name__)
 
 class DistanceCacheService:
     """Manages a SQLite cache of distances and travel times between locations."""
+
+    # OSRM driving durations are often too optimistic for tourist itineraries:
+    # no parking, pickup/dropoff, traffic lights, walking to entrance, or Hue
+    # urban traffic friction. Clamp to realistic door-to-door speeds.
+    MIN_TRANSFER_MIN = {
+        TransportMode.TAXI: 4.0,
+        TransportMode.BUS: 8.0,
+        TransportMode.WALKING: 1.0,
+    }
+    URBAN_SPEED_KMH = {
+        TransportMode.TAXI: 22.0,
+        TransportMode.BUS: 15.0,
+        TransportMode.WALKING: 5.0,
+    }
     
     def __init__(self, db_path: str = None, osrm_base_url: str = None):
         """
@@ -121,6 +135,7 @@ class DistanceCacheService:
                     if mode == TransportMode.WALKING:
                         # Heuristic: 5 km/h = 83.33 m/min
                         dur_min = dist_km / 5.0 * 60.0
+                    dur_min = self._sanitize_duration(dist_km, dur_min, mode)
                     
                     matrix[((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))] = (dist_km, dur_min)
                 else:
@@ -149,12 +164,14 @@ class DistanceCacheService:
                 row = cursor.fetchone()
                 if row:
                     dist_km, dur_min = row
+                    dur_min = self._sanitize_duration(dist_km, dur_min, mode)
                     matrix[((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))] = (dist_km, dur_min)
                 else:
                     # OSRM failed or didn't return this pair -> Haversine fallback
                     dist_km = haversine_distance((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))
-                    speed_kmh = 30.0 if mode != TransportMode.WALKING else 5.0
+                    speed_kmh = self.URBAN_SPEED_KMH.get(mode, 22.0)
                     dur_min = (dist_km / speed_kmh) * 60.0
+                    dur_min = self._sanitize_duration(dist_km, dur_min, mode)
                     matrix[((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))] = (dist_km, dur_min)
             conn.close()
             
@@ -165,9 +182,28 @@ class DistanceCacheService:
                 loc2 = unique_locs[j]
                 dist_km = haversine_distance((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))
                 dur_min = (dist_km / 5.0) * 60.0
+                dur_min = self._sanitize_duration(dist_km, dur_min, mode)
                 matrix[((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude))] = (dist_km, dur_min)
 
         return matrix
+
+    def _sanitize_duration(self, dist_km: float, dur_min: float, mode: TransportMode) -> float:
+        """Return realistic door-to-door travel time for itinerary scheduling."""
+        if dist_km <= 0.02:
+            return 0.0
+
+        speed_kmh = self.URBAN_SPEED_KMH.get(mode, 22.0)
+        transfer_min = self.MIN_TRANSFER_MIN.get(mode, 4.0)
+        floor_min = (dist_km / speed_kmh) * 60.0
+
+        # Tiny hops can be walked/entered quickly, but still should not show
+        # suspicious 1 minute transfers across unrelated POIs.
+        if dist_km < 0.4:
+            transfer_min = min(transfer_min, 2.0)
+        elif dist_km < 1.0:
+            transfer_min = min(transfer_min, 3.0)
+
+        return round(max(float(dur_min or 0.0), floor_min, transfer_min), 1)
 
     def _fetch_osrm_table(self, locs: List[Location], hashes: List[str], mode: TransportMode):
         """Fetch full distance/duration table from OSRM and save to DB."""
@@ -200,7 +236,7 @@ class DistanceCacheService:
                                     continue
                                     
                                 dist_km = dist_m / 1000.0
-                                dur_min = dur_s / 60.0
+                                dur_min = self._sanitize_duration(dist_km, dur_s / 60.0, mode)
                                 
                                 cursor.execute(
                                     """

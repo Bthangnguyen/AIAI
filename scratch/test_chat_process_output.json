@@ -1,9 +1,10 @@
 {
-  "status": "ready",
-  "reply": "Dạ em đã nhận đủ thông tin rồi ạ. Em đang lên lịch trình tối ưu cho mình đây, đợi em một chút nhé!",
+  "status": "clarifying",
+  "reply": "Dạ, Huế 2 ngày với ẩm thực và văn hóa, đặc biệt là Đại Nội và bún bò Huế, nghe tuyệt quá! Em xin phép hỏi thêm: anh/chị dự định chi phí khoảng bao nhiêu cho chuyến đi ạ? Và mỗi ngày anh/chị muốn đi từ mấy giờ đến mấy giờ (hay cả ngày)?",
   "updated_contract": {
     "destination": "Huế",
     "budget_max": null,
+    "budget_is_unlimited": false,
     "radius_km": 10.0,
     "num_days": 2,
     "time_window": null,
@@ -14,11 +15,24 @@
     "locked_pois": [
       "Đại Nội"
     ],
+    "excluded_pois": [],
     "weather_preference": null,
     "hotel_lat": null,
     "hotel_lon": null,
     "hotel_name": "Hotel",
+    "hotel_confirmed": false,
+    "default_hotel_ok": false,
+    "transport_modes": [],
+    "group_type": null,
+    "group_size": null,
+    "confirmed_fields": [
+      "destination"
+    ],
+    "last_question_field": "budget",
+    "confirmation_pending": false,
+    "ready_to_plan": false,
     "estimated_pois": null,
+    "strict_poi_count": false,
     "time_slot": null,
     "trip_duration_hours": null,
     "vibe": null,
@@ -29,6 +43,17 @@
       "bun_bo"
     ],
     "avoid_tags": [],
-    "target_category_distribution": null
-  }
+    "target_category_distribution": {
+      "food": 0.4,
+      "culture": 0.4,
+      "cafe": 0.1,
+      "nature": 0.1
+    },
+    "distribution_description": "Ẩm thực Huế đặc sắc: bún bò Huế, Đại Nội, các món ăn cung đình, cà phê muối."
+  },
+  "phase": null,
+  "missing_fields": [],
+  "next_question": null,
+  "requires_confirmation": false,
+  "edit_intent": null
 }

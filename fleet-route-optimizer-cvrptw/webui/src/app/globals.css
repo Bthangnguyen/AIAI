@@ -66,3 +66,12 @@ button { cursor: pointer; }
   from { opacity: 0; transform: translateY(8px) scale(0.98); filter: blur(4px); }
   to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
+.tripflow-loading-bar {
+  animation: tripflowLoadingBar 1.25s ease-in-out infinite;
+  width: 45%;
+}
+@keyframes tripflowLoadingBar {
+  0% { transform: translateX(-110%); }
+  55% { transform: translateX(95%); }
+  100% { transform: translateX(250%); }
+}

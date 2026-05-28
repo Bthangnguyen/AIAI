@@ -1,6 +1,7 @@
 import { Plus, RefreshCw, Route } from "lucide-react"
 import { TimelinePlaceCard } from "@/components/TimelinePlaceCard"
 import { getPoi } from "@/lib/mockItineraryFallback"
+import { POI_CACHE } from "@/lib/api"
 import { formatCurrency } from "@/lib/format"
 import { canMoveDayItem } from "@/lib/reorderDayItems"
 import type { ItineraryDay } from "@/types/trip"
@@ -33,7 +34,7 @@ export function TimelineDayCard({
 }: TimelineDayCardProps) {
   const totals = day.items.reduce(
     (acc, item) => {
-      const poi = getPoi(item.poiId)
+      const poi = getPoi(item.poiId) ?? POI_CACHE.get(item.poiId)
       if (!poi) return acc
       acc.cost += poi.estimatedCost
       acc.duration += poi.estimatedDurationMinutes
@@ -56,7 +57,7 @@ export function TimelineDayCard({
           </div>
           <h3 className="mt-1 text-lg font-black text-orange-950">Ngày {day.dayNumber}</h3>
           <p className="mt-1 text-xs text-orange-950/60">
-            {day.items.length} điểm đến · ~{Math.max(1, Math.round(totals.duration / 60))} giờ · ước tính {formatCurrency(totals.cost)}
+            {day.items.filter(item => !item.poiId.startsWith("__")).length} điểm đến · ~{Math.max(1, Math.round(totals.duration / 60))} giờ · ước tính {formatCurrency(totals.cost)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

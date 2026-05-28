@@ -50,7 +50,7 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
         <Metric label="Trạng thái" value={enoughInfo ? "Đã đủ thông tin" : "Cần hỏi thêm"} />
       </section>
 
-      {draft.optimizationStats ? <TripStatsPanel stats={draft.optimizationStats} /> : null}
+      {draft.optimizationStats ? <TripStatsPanel stats={draft.optimizationStats} draft={draft} /> : null}
 
       <div className="space-y-4">
         {draft.days.map((day) => (

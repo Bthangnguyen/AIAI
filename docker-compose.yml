@@ -43,6 +43,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./fleet-route-optimizer-cvrptw/src:/app/src
       - ./fleet-route-optimizer-cvrptw/results:/app/results
       - ./fleet-route-optimizer-cvrptw/distance_cache.db:/app/src/distance_cache.db
       - ./fleet-route-optimizer-cvrptw/inputs:/app/inputs
@@ -95,7 +96,8 @@ services:
       - travel-network
 
 volumes:
-  travel_data: {}
+  travel_data:
+    name: layer2_3_gateway_travel_data
 
 networks:
   travel-network:

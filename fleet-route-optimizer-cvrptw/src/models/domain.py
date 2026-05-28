@@ -45,6 +45,7 @@ class POI(BaseModel):
     id: str = Field(..., description="Unique POI identifier")
     name: str = Field(..., description="POI display name")
     category: str = Field(..., description="POI category (museum, market, park, temple, etc.)")
+    category_group: Optional[str] = Field(None, description="Macro group: food|cafe|culture|nature|nightlife|shopping|art|wellness|adventure")
     location: Location = Field(..., description="POI coordinates")
     visit_duration_min: int = Field(..., description="Recommended visit duration in minutes")
     time_window: Optional[TimeWindow] = Field(None, description="Opening hours as time window")
@@ -124,6 +125,10 @@ class TravelConstraints(BaseModel):
     rest_interval_min: int = Field(180, description="Insert rest break every N minutes of activity")
     rest_duration_min: int = Field(20, description="Duration of auto-inserted rest break")
     max_fatigue_per_day: int = Field(15, description="Max accumulated fatigue score per day")
+    # === Category balance ===
+    target_category_distribution: Optional[Dict[str, float]] = Field(
+        None, description="LLM-generated distribution {group: ratio}, sum=1.0. Used by POI Allocator for hard quotas."
+    )
 
 
 class TravelItineraryStop(BaseModel):
@@ -135,6 +140,7 @@ class TravelItineraryStop(BaseModel):
     departure_time_min: int = Field(..., description="Departure time (minutes from midnight)")
     visit_duration_min: int = Field(..., description="Time spent at this POI")
     travel_time_from_prev_min: int = Field(0, description="Travel time from previous stop")
+    travel_time_to_next_min: int = Field(0, description="Travel time to next stop or end hotel")
     entrance_fee: float = Field(0.0, description="Entrance fee paid at this POI")
 
 
@@ -152,6 +158,8 @@ class TravelItineraryDay(BaseModel):
     total_distance_km: float = Field(..., description="Total distance traveled")
     total_entrance_fee: float = Field(0.0, description="Total entrance fees for this day")
     num_pois: int = Field(..., description="Number of POIs visited")
+    start_time_min: int = Field(480, description="Day start time (default 08:00)")
+    end_time_min: int = Field(1260, description="Day end time (default 21:00)")
     # === NEW: Narrative fields ===
     narrative_title: Optional[str] = Field(None, description="VD: 'Làm quen với Huế cổ'")
     narrative_description: Optional[str] = Field(None, description="Flow trải nghiệm dạng story")

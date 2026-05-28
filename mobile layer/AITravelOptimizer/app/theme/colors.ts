@@ -54,6 +54,14 @@ const palette = {
   figmaTeal: "#68D6CA",             // Gradient start, tag backgrounds
   figmaBlue: "#2E60F4",             // Gradient end, links, active
   figmaOrange: "#FF6B35",           // Weather alerts, warnings
+  appOrange: "#F97316",
+  appOrangeDark: "#EA580C",
+  appOrangeSoft: "#FFF3E8",
+  appOrangePale: "#FFE7D1",
+  appCream: "#FFFBF7",
+  appInk: "#1F2937",
+  appMuted: "#6B7280",
+  appLine: "#FED7AA",
 
   // Status
   figmaSuccess: "#4CAF50",
@@ -103,19 +111,19 @@ export const colors = {
   /** Muted/placeholder text — #858585 */
   textMuted: palette.figmaGrayMedium,
   /** Screen background — white */
-  background: palette.figmaWhite,
+  background: palette.appCream,
   /** Section/card background — off-white */
-  backgroundSecondary: palette.figmaOffWhite,
+  backgroundSecondary: palette.figmaWhite,
   /** Default border/divider */
   border: palette.figmaGrayLight,
   /** Primary CTA — Royal Purple */
-  tint: palette.royalPurple,
+  tint: palette.appOrange,
   /** Link / accent blue */
-  link: palette.figmaBlue,
+  link: palette.appOrangeDark,
   /** Gradient start (teal) */
-  gradientStart: palette.figmaTeal,
+  gradientStart: palette.appOrange,
   /** Gradient end (blue) */
-  gradientEnd: palette.figmaBlue,
+  gradientEnd: palette.appOrangeDark,
   /** Inactive icons / tabs */
   tintInactive: palette.figmaInactive,
   /** Dividers and separators */
@@ -137,8 +145,8 @@ export const colors = {
   glassWhite80: palette.glassWhite80,
 
   // ─── Semantic Colors (Modern Royal Hue) ────────────────────────
-  primaryRoyal: palette.royalPurple,
-  accentGold: palette.imperialGold,
+  primaryRoyal: palette.appOrange,
+  accentGold: palette.appOrangeDark,
   jadeGreen: palette.jadeGreen,
   sunsetOrange: palette.sunsetOrange,
   deepSlate: palette.deepSlate,

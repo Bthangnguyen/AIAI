@@ -15,15 +15,15 @@ import { InfeasibleRerouteModal } from "@/components/InfeasibleRerouteModal"
 import { RerouteComparisonModal } from "@/components/RerouteComparisonModal"
 import { FeatureFlags } from "@/config/features"
 import { MOCK_ITINERARY } from "@/constants/mockItinerary"
-import type { AppStackScreenProps, TravelItineraryStop } from "@/navigators/navigationTypes"
+import type { AppStackScreenProps, ReRoutePayload, TravelItineraryDay, TravelItineraryStop } from "@/navigators/navigationTypes"
 import { TripService } from "@/services/api/tripService"
+import { useTripStore } from "@/store/useTripStore"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
 import { getRemainingPOIIds, mergeReRoutedDay, getCurrentTimeMin } from "@/utils/itineraryHelpers"
 import { AppState, AppStateStatus } from "react-native"
 import { RerouteService } from "@/services/api/rerouteService"
-import { ReRoutePayload, TravelItineraryDay } from "@/navigators/navigationTypes"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -61,15 +61,16 @@ interface MapTimelineScreenProps extends AppStackScreenProps<"MapTimeline"> {}
 
 // ——————————————————————————————————————————————————————————————————————————
 const CATEGORY_EMOJI: Record<string, string> = {
-  museum: "🏛️",
-  temple: "🕌",
-  park: "🌳",
-  market: "🛒",
-  restaurant: "🍛",
+  food: "🍜",
   cafe: "☕",
-  beach: "🏖️",
-  waterfall: "💧",
-  pagoda: "🏮",
+  culture: "🏛️",
+  nature: "🌳",
+  nightlife: "🍻",
+  shopping: "🛍️",
+  art: "🎨",
+  wellness: "💆",
+  adventure: "🧗",
+  hotel: "🏨",
   default: "📍",
 }
 
@@ -94,11 +95,16 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const [showSnackbar, setShowSnackbar] = useState(false)
   const [deletedItem, setDeletedItem] = useState<TravelItineraryStop | null>(null)
   const [isReSolving, setIsReSolving] = useState(false)
+  const [showComparison, setShowComparison] = useState(false)
+  const [showInfeasibleModal, setShowInfeasibleModal] = useState(false)
+  const [newProposedDay, setNewProposedDay] = useState<TravelItineraryDay | undefined>()
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Wire isLocked to Zustand store (persist across sessions)
   const isLocked = useTripStore((state) => state.isLocked)
   const setIsLocked = useTripStore((state) => state.setIsLocked)
+  const setCurrentItinerary = useTripStore((state) => state.setCurrentItinerary)
+  const saveLockedTrip = useTripStore((state) => state.saveLockedTrip)
 
   // ─── Backend re-solve after delete (optimistic update) ──────────────────
   const reAfterDelete = useCallback(async (removedPoiId: string) => {
@@ -477,7 +483,8 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 
       const stop = item.stop!
       const isSelected = selectedStopId === stop.poi_id
-      const emoji = CATEGORY_EMOJI[stop.poi_name?.toLowerCase()] || CATEGORY_EMOJI.default
+      const stopCat = (stop.category || "").toLowerCase()
+      const emoji = CATEGORY_EMOJI[stopCat] || CATEGORY_EMOJI.default
 
       return (
         <Pressable onPress={() => handleCardPress(stop)}>
@@ -487,7 +494,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               <View
                 style={[
                   $timelineNode,
-                  { backgroundColor: isSelected ? colors.tint : colors.palette.figmaInactive },
+                  { backgroundColor: isSelected ? colors.tint : "rgba(255, 255, 255, 0.6)" },
                 ]}
               >
                 <Text text={`${(item.stopIndex || 0) + 1}`} style={$nodeNumber} />
@@ -610,6 +617,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           selectedStopId={selectedStopId}
           cameraBounds={cameraBounds}
           onMarkerPress={handleMarkerPress}
+          itinerary={itinerary}
         />
       )}
 
@@ -746,21 +754,30 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
               <Pressable
                 style={{ padding: 14, backgroundColor: colors.palette.imperialGold, borderRadius: 14, flex: 1.5, alignItems: 'center' }}
                 onPress={() => {
-                  Alert.alert(
-                    "🔒 Khóa lộ trình",
-                    "Sau khi khóa, bạn sẽ chuyển sang chế độ Active Trip. Bạn vẫn có thể tái định tuyến bằng GPS.",
-                    [
-                      { text: "Hủy", style: "cancel" },
-                      {
-                        text: "Khóa & Bắt đầu",
-                        onPress: () => {
-                          setIsLocked(true) // Persisted to Zustand/MMKV
-                          // Itinerary already synced to Zustand via useEffect
-                          navigation.navigate("MainTabs", { screen: "MyTrip" })
+                  const performLock = () => {
+                    setIsLocked(true) // Persisted to Zustand/MMKV
+                    setCurrentItinerary(itinerary) // Sync itinerary to active trip
+                    saveLockedTrip(itinerary) // Save to historical locked trips
+                    navigation.navigate("MainTabs", { screen: "MyTrip" })
+                  }
+
+                  if (Platform.OS === "web") {
+                    if (window.confirm("🔒 Khóa lộ trình?\nSau khi khóa, bạn sẽ chuyển sang chế độ Active Trip. Bạn vẫn có thể tái định tuyến bằng GPS.")) {
+                      performLock()
+                    }
+                  } else {
+                    Alert.alert(
+                      "🔒 Khóa lộ trình",
+                      "Sau khi khóa, bạn sẽ chuyển sang chế độ Active Trip. Bạn vẫn có thể tái định tuyến bằng GPS.",
+                      [
+                        { text: "Hủy", style: "cancel" },
+                        {
+                          text: "Khóa & Bắt đầu",
+                          onPress: performLock,
                         },
-                      },
-                    ]
-                  )
+                      ]
+                    )
+                  }
                 }}
               >
                 <Text text="🔒 Khóa lộ trình" style={{ color: "#0e1320", fontFamily: typography.primary.bold, fontSize: 15 }} />
@@ -944,14 +961,22 @@ const $poiPopupCard: ViewStyle = {
   top: 130,
   left: spacing.lg,
   right: spacing.lg,
-  backgroundColor: colors.palette.figmaWhite,
+  backgroundColor: "rgba(255, 255, 255, 0.65)",
   borderRadius: 16,
   padding: spacing.md,
+  borderWidth: 1.5,
+  borderColor: "rgba(255, 255, 255, 0.9)",
+  ...Platform.select({
+    web: {
+      backdropFilter: "blur(25px)",
+      WebkitBackdropFilter: "blur(25px)",
+    } as any
+  }),
   // Figma shadow
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.15,
-  shadowRadius: 12,
+  shadowColor: "#1F2937",
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.04,
+  shadowRadius: 16,
   elevation: 6,
   zIndex: 10,
 }
@@ -1124,6 +1149,14 @@ const $timelineNode: ViewStyle = {
   borderRadius: 13,
   justifyContent: "center",
   alignItems: "center",
+  borderWidth: 1.5,
+  borderColor: "rgba(255, 255, 255, 0.9)",
+  ...Platform.select({
+    web: {
+      backdropFilter: "blur(15px)",
+      WebkitBackdropFilter: "blur(15px)",
+    } as any
+  }),
 }
 
 const $nodeNumber: TextStyle = {
@@ -1141,22 +1174,29 @@ const $timelineConnector: ViewStyle = {
 
 const $stopCard: ViewStyle = {
   flex: 1,
-  backgroundColor: "#fff",
+  backgroundColor: "rgba(255, 255, 255, 0.58)",
   borderRadius: 20,
   padding: spacing.md,
   marginLeft: spacing.sm,
-  borderWidth: 1,
-  borderColor: colors.palette.figmaGrayLight,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 8,
+  borderWidth: 1.5,
+  borderColor: "rgba(255, 255, 255, 0.9)",
+  ...Platform.select({
+    web: {
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+    } as any
+  }),
+  shadowColor: "#1F2937",
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.03,
+  shadowRadius: 10,
   elevation: 2,
 }
 
 const $stopCardActive: ViewStyle = {
   borderWidth: 2,
   borderColor: colors.tint,
+  backgroundColor: "rgba(255, 255, 255, 0.8)",
 }
 
 const $routeLineLayer = {

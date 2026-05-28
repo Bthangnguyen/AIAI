@@ -12,6 +12,7 @@ import { TripService } from "@/services/api/tripService"
 import { MockTripService } from "@/services/mock/mockTripService"
 import { useTripStore } from "@/store/useTripStore"
 import type { TravelItinerary } from "@/navigators/navigationTypes"
+import type { LLMDataContract } from "@/types/api"
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -66,6 +67,7 @@ interface UseTripPipelineOptions {
   hotelLon?: number
   hotelName?: string
   numDays?: number
+  contract?: LLMDataContract
   onItinerary: (itinerary: TravelItinerary) => void
 }
 
@@ -81,6 +83,7 @@ export const useTripPipeline = ({
   hotelLon,
   hotelName,
   numDays,
+  contract,
   onItinerary,
 }: UseTripPipelineOptions): UseTripPipelineResult => {
   const [steps, setSteps] = useState<PipelineStep[]>(INITIAL_STEPS)
@@ -208,7 +211,63 @@ export const useTripPipeline = ({
       hotelLon,
       hotelName,
       numDays,
+      contract,
       (data: any) => {
+        if (data.step === "l2_done") {
+          updateStep("l2", "done")
+          updateStep("l3", "active")
+          addLog(
+            `Intent analyzed. Prefers: ${(data.tags || []).join(", ") || "none"}`,
+            "success",
+          )
+          if ((data.locked || []).length) {
+            addLog(`Locked POIs: ${data.locked.join(", ")}`, "info")
+          }
+          return
+        }
+
+        if (data.step === "l3_done") {
+          updateStep("l3", "done")
+          updateStep("l4", "active")
+          addLog(
+            `Found ${data.pois_found || 0} matching places (${data.locked_count || 0} locked).`,
+            "success",
+          )
+          return
+        }
+
+        if (data.step === "error") {
+          setErrorMsg(data.message || "An error occurred")
+          addLog(data.message || "An error occurred", "error")
+          updateStep("l2", "error")
+          updateStep("l3", "error")
+          updateStep("l4", "error")
+          setSseStage("error")
+          return
+        }
+
+        if (data.status === "success" || data.days) {
+          updateStep("l4", "done")
+          clearTimeout(timeoutTimer)
+          const itinerary = (data.layer4_result || data) as TravelItinerary
+          itineraryRef.current = itinerary
+          setCurrentItinerary(itinerary)
+          addLog(
+            `Itinerary generation complete! Scheduled ${itinerary.total_pois_visited || "?"} POIs across ${itinerary.num_days || "?"} days.`,
+            "success",
+          )
+
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Hành trình đã sẵn sàng!",
+              body: "AI đã tạo xong lịch trình tối ưu của bạn. Nhấn để xem ngay.",
+              sound: true,
+            },
+            trigger: null,
+          })
+          return
+        }
+
         if (data.stage) {
           setSseStage(data.stage)
         }

@@ -29,9 +29,6 @@ import { typography } from "@/theme/typography"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.48
 
-const TABS = ["Câu chuyện", "Thông tin", "Giá vé", "Khách sạn"] as const
-type TabKey = typeof TABS[number]
-
 const AUDIO_NARRATIVE = `Lăng Tự Đức — hay còn gọi là Khiêm Lăng — là lăng mộ tráng lệ nhất trong số các lăng vua triều Nguyễn. Được xây dựng từ năm 1864 đến 1867, công trình này không chỉ là nơi an nghỉ của vua Tự Đức mà còn là cả một khu cung điện sống động khi người còn tại vị.
 
 Vua Tự Đức, tên thật là Nguyễn Phúc Hồng Nhậm, là vị hoàng đế có học thức uyên bác và đa cảm nhất triều Nguyễn. Ông là thi nhân, nhạc sĩ, và cũng là người cô đơn nhất ngai vàng — không có người kế thừa trực tiếp.
@@ -47,7 +44,9 @@ export const POIDetailScreen: React.FC<Props> = () => {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Props["route"]>()
   const {
+    poiId,
     poiName,
+    category,
     photoUrl,
     rating = 4.8,
     reviewCount = 2847,
@@ -59,7 +58,12 @@ export const POIDetailScreen: React.FC<Props> = () => {
     lon,
   } = route.params ?? {}
 
-  const [activeTab, setActiveTab] = useState<TabKey>("Câu chuyện")
+  const isEatery = category && (category.toLowerCase() === "food" || category.toLowerCase() === "cafe")
+  const TABS = isEatery
+    ? ["Câu chuyện", "Thông tin", "Giá cả", "Khách sạn"]
+    : ["Câu chuyện", "Thông tin", "Giá vé", "Khách sạn"]
+
+  const [activeTab, setActiveTab] = useState(TABS[0])
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioProgress, setAudioProgress] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -173,7 +177,19 @@ export const POIDetailScreen: React.FC<Props> = () => {
           {/* POI name overlay on hero */}
           <View style={styles.heroTextOverlay}>
             <View style={styles.heroCategoryBadge}>
-              <Text style={styles.heroCategoryText}>🏯 Di Tích Lịch Sử</Text>
+              <Text style={styles.heroCategoryText}>
+                {category && (category.toLowerCase() === "food") ? "🍜 Quán Ăn Ngon" :
+                 category && (category.toLowerCase() === "cafe") ? "☕ Cà Phê & Trà" :
+                 category && (category.toLowerCase() === "culture") ? "🏯 Di Tích Lịch Sử" :
+                 category && (category.toLowerCase() === "nature") ? "🌲 Phong Cảnh Tự Nhiên" :
+                 category && (category.toLowerCase() === "nightlife") ? "🍻 Giải Trí Đêm" :
+                 category && (category.toLowerCase() === "shopping") ? "🛍️ Điểm Mua Sắm" :
+                 category && (category.toLowerCase() === "art") ? "🎨 Không Gian Nghệ Thuật" :
+                 category && (category.toLowerCase() === "wellness") ? "💆 Thư Giãn Spa" :
+                 category && (category.toLowerCase() === "adventure") ? "🧗 Trải Nghiệm Khám Phá" :
+                 category && (category.toLowerCase() === "hotel") ? "🏨 Khách Sạn Lưu Trú" :
+                 "📍 Điểm Tham Quan"}
+              </Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{displayName}</Text>
             <View style={styles.heroMeta}>
@@ -190,9 +206,9 @@ export const POIDetailScreen: React.FC<Props> = () => {
           {/* Quick info strip */}
           <View style={styles.infoStrip}>
             <View style={styles.infoStripItem}>
-              <Text style={styles.infoStripIcon}>🎫</Text>
+              <Text style={styles.infoStripIcon}>{isEatery ? (category.toLowerCase() === "cafe" ? "☕" : "🍜") : "🎫"}</Text>
               <Text style={styles.infoStripValue}>{formatFee(entranceFee)}</Text>
-              <Text style={styles.infoStripLabel}>Vé vào</Text>
+              <Text style={styles.infoStripLabel}>{isEatery ? "Trung bình" : "Vé vào"}</Text>
             </View>
             <View style={styles.infoStripDivider} />
             <View style={styles.infoStripItem}>
@@ -227,72 +243,9 @@ export const POIDetailScreen: React.FC<Props> = () => {
             ))}
           </ScrollView>
 
-          {/* Tab: Câu chuyện = Audio Guide */}
+          {/* Tab: Câu chuyện = Narrative text only */}
           {activeTab === "Câu chuyện" && (
             <View style={styles.audioSection}>
-              {/* Audio Player */}
-              <View style={styles.audioPlayer}>
-                <LinearGradient
-                  colors={[colors.palette.royalPurple + "40", colors.palette.deepSlate]}
-                  style={styles.audioPlayerGradient}
-                >
-                  {/* Spinning disc */}
-                  <Animated.View style={[styles.audioDisc, { transform: [{ rotate: spin }] }]}>
-                    <LinearGradient
-                      colors={[colors.palette.royalPurple, "#2a1040", colors.palette.royalPurple]}
-                      style={styles.audioDiscGradient}
-                    />
-                    <View style={styles.audioDiscCenter} />
-                  </Animated.View>
-
-                  {/* Audio info */}
-                  <View style={styles.audioInfo}>
-                    <Text style={styles.audioTitle}>🎧 Thuyết minh AI</Text>
-                    <Text style={styles.audioSubtitle}>Giọng Huế · Tiếng Việt</Text>
-                    <Text style={styles.audioDuration}>07:23 / 15:00</Text>
-                  </View>
-                </LinearGradient>
-
-                {/* Waveform + progress */}
-                <View style={styles.waveformContainer}>
-                  {WAVEFORM_BARS.map((h, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.waveformBar,
-                        {
-                          height: h * 32,
-                          backgroundColor: i / WAVEFORM_BARS.length < audioProgress / 100
-                            ? colors.palette.imperialGold
-                            : "rgba(255,255,255,0.15)",
-                        },
-                      ]}
-                    />
-                  ))}
-                </View>
-
-                {/* Controls */}
-                <View style={styles.audioControls}>
-                  <TouchableOpacity style={styles.audioControlBtn}>
-                    <Text style={styles.audioControlIcon}>⏮</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.audioPlayBtn}
-                    onPress={() => setIsPlaying(!isPlaying)}
-                  >
-                    <LinearGradient
-                      colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
-                      style={styles.audioPlayBtnGradient}
-                    >
-                      <Text style={styles.audioPlayIcon}>{isPlaying ? "⏸" : "▶"}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.audioControlBtn}>
-                    <Text style={styles.audioControlIcon}>⏭</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
               {/* Narrative text */}
               <View style={styles.narrativeSection}>
                 <Text style={styles.narrativeSectionTitle}>📜 Câu Chuyện Lịch Sử</Text>
@@ -321,23 +274,38 @@ export const POIDetailScreen: React.FC<Props> = () => {
             </View>
           )}
 
-          {/* Tab: Giá vé */}
-          {activeTab === "Giá vé" && (
+          {/* Tab: Giá vé / Giá cả */}
+          {activeTab === (isEatery ? "Giá cả" : "Giá vé") && (
             <View style={styles.pricingSection}>
-              {[
-                { type: "Vé vào cửa chính", price: formatFee(entranceFee), note: "Người lớn" },
-                { type: "Vé vào cửa chính", price: "Miễn phí", note: "Trẻ em dưới 7 tuổi" },
-                { type: "Audio Guide AI", price: "50.000 ₫", note: "Thuyết minh tiếng Việt/Anh" },
-                { type: "Chụp ảnh chuyên nghiệp", price: "Miễn phí", note: "Không cần giấy phép" },
-              ].map((item, i) => (
-                <View key={i} style={styles.pricingRow}>
-                  <View>
-                    <Text style={styles.pricingType}>{item.type}</Text>
-                    <Text style={styles.pricingNote}>{item.note}</Text>
+              {isEatery ? (
+                [
+                  { type: "Mức giá trung bình", price: formatFee(entranceFee), note: "Mức giá trung bình cho mỗi phần ăn/đồ uống" },
+                  { type: "Chi phí tối thiểu", price: entranceFee > 0 ? formatFee(entranceFee * 0.5) : "Miễn phí", note: "Món ăn nhẹ hoặc đồ uống đơn giản" },
+                ].map((item, i) => (
+                  <View key={i} style={styles.pricingRow}>
+                    <View>
+                      <Text style={styles.pricingType}>{item.type}</Text>
+                      <Text style={styles.pricingNote}>{item.note}</Text>
+                    </View>
+                    <Text style={styles.pricingPrice}>{item.price}</Text>
                   </View>
-                  <Text style={styles.pricingPrice}>{item.price}</Text>
-                </View>
-              ))}
+                ))
+              ) : (
+                [
+                  { type: "Vé vào cửa chính", price: formatFee(entranceFee), note: "Người lớn" },
+                  { type: "Vé vào cửa chính", price: "Miễn phí", note: "Trẻ em dưới 7 tuổi" },
+                  { type: "Audio Guide AI", price: "50.000 ₫", note: "Thuyết minh tiếng Việt/Anh" },
+                  { type: "Chụp ảnh chuyên nghiệp", price: "Miễn phí", note: "Không cần giấy phép" },
+                ].map((item, i) => (
+                  <View key={i} style={styles.pricingRow}>
+                    <View>
+                      <Text style={styles.pricingType}>{item.type}</Text>
+                      <Text style={styles.pricingNote}>{item.note}</Text>
+                    </View>
+                    <Text style={styles.pricingPrice}>{item.price}</Text>
+                  </View>
+                ))
+              )}
             </View>
           )}
 

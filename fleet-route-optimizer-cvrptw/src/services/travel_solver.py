@@ -130,8 +130,9 @@ class TravelSolverAdapter:
         # Locked list
         is_locked_list = [True] * num_hotel_nodes + [poi.is_locked for poi in pois]
 
-        # Categories and intensities
-        categories = [None] * num_hotel_nodes + [poi.category for poi in pois]
+        # Categories and intensities for diversity/rhythm penalties
+        # Use macro category_group (food, cafe, culture...) instead of micro-category to catch streaks
+        categories = [None] * num_hotel_nodes + [(poi.category_group or poi.category) for poi in pois]
         intensities = [None] * num_hotel_nodes + [
             poi.intensity if poi.intensity != "medium" else get_intensity(poi.category)
             for poi in pois
@@ -169,6 +170,11 @@ class TravelSolverAdapter:
                 getattr(poi, "is_outdoor", False) for poi in pois
             ],
         }
+
+        # Hard cap on stops per vehicle (day) — maps DayPlan.max_pois
+        if days:
+            max_stops = [d.max_pois for d in days]
+            problem["max_stops_per_vehicle"] = max_stops
 
         # Inject distance/duration matrices if available
         if matrix:
@@ -254,6 +260,8 @@ class TravelSolverAdapter:
                 total_distance_km=round(vehicle_route.get("distance_km", 0.0), 2) if vehicle_route else 0.0,
                 total_entrance_fee=total_fee,
                 num_pois=len(stops),
+                start_time_min=day.start_time_min,
+                end_time_min=day.end_time_min,
             ))
 
         return results
@@ -298,7 +306,8 @@ class TravelSolverAdapter:
         is_locked_list = [True] + [poi.is_locked for poi in pois]
 
         # Categories and intensities for diversity/rhythm penalties
-        categories = [None] + [poi.category for poi in pois]
+        # Use macro category_group (food, cafe, culture...) instead of micro-category to catch streaks
+        categories = [None] + [(poi.category_group or poi.category) for poi in pois]
         intensities = [None] + [
             poi.intensity if poi.intensity != "medium" else get_intensity(poi.category)
             for poi in pois
@@ -365,6 +374,8 @@ class TravelSolverAdapter:
                 end_hotel_name=hotel.name, end_hotel_location=hotel.location,
                 stops=[], total_travel_min=0, total_visit_min=0,
                 total_distance_km=0.0, total_entrance_fee=0.0, num_pois=0,
+                start_time_min=day.start_time_min,
+                end_time_min=day.end_time_min,
             )
 
         problem = self.build_problem_data(pois, hotel, day, matrix)
@@ -429,5 +440,7 @@ class TravelSolverAdapter:
             total_distance_km=round(route.get("distance_km", 0.0), 2),
             total_entrance_fee=total_fee,
             num_pois=len(stops),
+            start_time_min=day.start_time_min,
+            end_time_min=day.end_time_min,
         )
 

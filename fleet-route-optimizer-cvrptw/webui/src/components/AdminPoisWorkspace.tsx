@@ -18,7 +18,7 @@ const AdminPoiMap = dynamic(() => import("@/components/AdminPoiMap").then((mod) 
   ),
 })
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 2000
 
 export function AdminPoisWorkspace() {
   const [query, setQuery] = useState("")

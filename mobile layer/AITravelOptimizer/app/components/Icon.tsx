@@ -64,14 +64,13 @@ export function PressableIcon(props: PressableIconProps) {
 
   const $imageStyle: StyleProp<ImageStyle> = [
     $imageStyleBase,
-    { tintColor: color ?? theme.colors.text },
     size !== undefined && { width: size, height: size },
     $imageStyleOverride,
   ]
 
   return (
     <TouchableOpacity {...pressableProps} style={$containerStyleOverride}>
-      <Image style={$imageStyle} source={iconRegistry[icon]} />
+      <Image style={$imageStyle} source={iconRegistry[icon]} resizeMode="contain" tintColor={color ?? theme.colors.text} />
     </TouchableOpacity>
   )
 }
@@ -97,14 +96,13 @@ export function Icon(props: IconProps) {
 
   const $imageStyle: StyleProp<ImageStyle> = [
     $imageStyleBase,
-    { tintColor: color ?? theme.colors.text },
     size !== undefined && { width: size, height: size },
     $imageStyleOverride,
   ]
 
   return (
     <View {...viewProps} style={$containerStyleOverride}>
-      <Image style={$imageStyle} source={iconRegistry[icon]} />
+      <Image style={$imageStyle} source={iconRegistry[icon]} resizeMode="contain" tintColor={color ?? theme.colors.text} />
     </View>
   )
 }
@@ -135,5 +133,6 @@ export const iconRegistry = {
 }
 
 const $imageStyleBase: ImageStyle = {
-  resizeMode: "contain",
+  width: 24,
+  height: 24,
 }

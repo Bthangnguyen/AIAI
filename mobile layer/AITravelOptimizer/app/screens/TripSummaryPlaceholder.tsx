@@ -37,9 +37,9 @@ export const TripSummaryPlaceholder: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <LinearGradient
-        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
+        colors={[colors.palette.appCream, "#FFFFFF"]}
         style={StyleSheet.absoluteFillObject}
       />
       {/* Decorative orb */}
@@ -60,7 +60,7 @@ export const TripSummaryPlaceholder: React.FC = () => {
           <View style={styles.glassCard}>
             <View style={styles.emojiWrap}>
               <LinearGradient
-                colors={[colors.palette.royalPurple + "40", "rgba(108,42,123,0.1)"]}
+                colors={["rgba(249, 115, 22, 0.08)", "rgba(249, 115, 22, 0.04)"]}
                 style={styles.emojiGradient}
               >
                 <Text style={styles.emoji}>✈️</Text>
@@ -106,7 +106,7 @@ export const TripSummaryPlaceholder: React.FC = () => {
             {/* Resume button */}
             <TouchableOpacity style={styles.ctaBtn} onPress={handleResume}>
               <LinearGradient
-                colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
+                colors={[colors.palette.appOrange, colors.palette.appOrangeDark]}
                 style={styles.ctaBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -125,7 +125,7 @@ export const TripSummaryPlaceholder: React.FC = () => {
           <View style={styles.emptyContainer}>
             <View style={styles.emojiWrap}>
               <LinearGradient
-                colors={[colors.palette.royalPurple + "40", "rgba(108,42,123,0.1)"]}
+                colors={["rgba(249, 115, 22, 0.08)", "rgba(249, 115, 22, 0.04)"]}
                 style={styles.emojiGradient}
               >
                 <Text style={styles.emoji}>🗺️</Text>
@@ -151,7 +151,7 @@ export const TripSummaryPlaceholder: React.FC = () => {
               onPress={() => navigation.navigate("ItineraryForm")}
             >
               <LinearGradient
-                colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
+                colors={[colors.palette.appOrange, colors.palette.appOrangeDark]}
                 style={styles.ctaBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -174,7 +174,7 @@ export const TripSummaryPlaceholder: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.palette.appCream },
   orb: {
     position: "absolute",
     top: 100,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: colors.palette.royalPurple + "25",
+    backgroundColor: "rgba(249, 115, 22, 0.08)",
   },
   header: {
     flexDirection: "row",
@@ -191,18 +191,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: "rgba(249, 115, 22, 0.1)",
   },
-  headerTitle: { fontFamily: typography.primary.bold, fontSize: 24, color: "#FFFFFF" },
+  headerTitle: { fontFamily: typography.primary.bold, fontSize: 24, color: colors.palette.appInk },
   filterBtn: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.8)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: colors.palette.appLine,
   },
   filterBtnText: { fontSize: 20 },
   center: {
@@ -220,9 +220,9 @@ const styles = StyleSheet.create({
   },
   glassCard: {
     width: "100%",
-    backgroundColor: colors.palette.glassWhite,
+    backgroundColor: "rgba(255, 255, 255, 0.75)",
     borderWidth: 1,
-    borderColor: colors.palette.glassBorder,
+    borderColor: "rgba(249, 115, 22, 0.15)",
     borderRadius: 24,
     padding: spacing.lg,
     alignItems: "center",
@@ -236,47 +236,47 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.palette.royalPurple + "50",
+    borderColor: "rgba(249, 115, 22, 0.3)",
   },
   emoji: { fontSize: 48 },
   title: {
     fontFamily: typography.primary.bold,
     fontSize: 22,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
     textAlign: "center",
   },
   subtitle: {
     fontFamily: typography.primary.normal,
     fontSize: 14,
-    color: "rgba(255,255,255,0.5)",
+    color: colors.palette.appMuted,
     textAlign: "center",
     lineHeight: 22,
   },
   itineraryDetails: {
     width: "100%",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(249, 115, 22, 0.04)",
     borderRadius: 16,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(249, 115, 22, 0.08)",
   },
   itineraryName: {
     fontFamily: typography.primary.bold,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
     marginBottom: 4,
   },
   itinerarySummary: {
     fontFamily: typography.primary.medium,
     fontSize: 13,
-    color: colors.palette.royalPurpleLight,
+    color: colors.palette.appOrangeDark,
   },
   statsBox: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(249, 115, 22, 0.12)",
     borderRadius: 16,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
@@ -291,32 +291,32 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontFamily: typography.primary.semiBold,
-    color: "#FFFFFF",
+    color: colors.palette.appOrangeDark,
   },
   statLabel: {
     fontSize: 11,
     fontFamily: typography.primary.normal,
-    color: "rgba(255,255,255,0.4)",
+    color: colors.palette.appMuted,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(249, 115, 22, 0.12)",
   },
   featuresRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", justifyContent: "center" },
   featureChip: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(249, 115, 22, 0.12)",
   },
   featureChipText: {
     fontFamily: typography.primary.medium,
     fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
+    color: colors.palette.appInk,
   },
   ctaBtn: { width: "100%", borderRadius: 18, overflow: "hidden" },
   ctaBtnGradient: { paddingVertical: 18, alignItems: "center" },
@@ -329,16 +329,17 @@ const styles = StyleSheet.create({
   secondaryCta: {
     paddingVertical: 14,
     paddingHorizontal: 24,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(249, 115, 22, 0.15)",
     width: "100%",
     alignItems: "center",
   },
   secondaryCtaText: {
     fontFamily: typography.primary.medium,
     fontSize: 15,
-    color: "rgba(255,255,255,0.6)",
+    color: colors.palette.appInk,
   },
 })
+

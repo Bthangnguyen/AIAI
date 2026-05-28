@@ -108,11 +108,11 @@ class ORToolsSolverImpl:
     
     def _compute_time_matrix(self) -> List[List[int]]:
         """
-        Compute time matrix (travel time + service time).
+        Compute time matrix (travel time + service time of source).
         
         Service time is calculated dynamically as:
         - Depot: 0 minutes
-        - Customer: 10 minutes (fixed) + 2 minutes per unit
+        - Customer: demands[i] (visit_duration_min)
         """
         distance_matrix = self.problem_data['distance_matrix']
         demands = self.problem_data['demands']
@@ -128,14 +128,14 @@ class ORToolsSolverImpl:
                 for j in range(n):
                     travel_time = int(duration_matrix[i][j] * 100)
                     # IMPORTANT ASSUMPTION (Travel Domain):
-                    # demands[j] = visit_duration_min (POI visit time).
+                    # demands[i] = visit_duration_min (POI visit time of source i).
                     # This value serves DUAL purpose:
                     #   1) Capacity dimension: sum(demands) <= max_daily_minutes (visit-time budget)
                     #   2) Time dimension: time_matrix[i][j] = travel_time + visit_time
                     # The capacity constraint is STRICTER because it ignores travel_time.
                     # This is acceptable: if visit-time alone exceeds the budget, no route is valid.
                     # If travel_time pushes total over budget, the time dimension catches it.
-                    service_time_scaled = int(demands[j] * 100) if j not in depot_set else 0
+                    service_time_scaled = int(demands[i] * 100) if i not in depot_set else 0
                     time_matrix[i][j] = travel_time + service_time_scaled
             return time_matrix
             
@@ -147,8 +147,8 @@ class ORToolsSolverImpl:
                 travel_time_hours = distance_matrix[i][j] / speed
                 travel_time_scaled = int(travel_time_hours * 60 * 100)
                 
-                # In Travel Domain, demands[j] = visit_duration_min
-                service_time_scaled = int(demands[j] * 100) if j not in depot_set else 0
+                # In Travel Domain, demands[i] = visit_duration_min of source i
+                service_time_scaled = int(demands[i] * 100) if i not in depot_set else 0
                 
                 time_matrix[i][j] = travel_time_scaled + service_time_scaled
         
@@ -324,6 +324,21 @@ class ORToolsSolverImpl:
                 True, 'Fatigue'
             )
             logger.info(f"Fatigue dimension added: max_per_day={max_fatigue}")
+
+        # === Stop Count dimension (hard cap on POIs per vehicle/day) ===
+        max_stops_per_vehicle = self.problem_data.get('max_stops_per_vehicle')
+        if max_stops_per_vehicle:
+            def count_callback(from_index):
+                node = manager.IndexToNode(from_index)
+                return 0 if node in depot_indices else 1
+
+            count_cb_index = routing.RegisterUnaryTransitCallback(count_callback)
+            routing.AddDimensionWithVehicleCapacity(
+                count_cb_index, 0,
+                max_stops_per_vehicle,  # list[int], one per vehicle
+                True, 'StopCount'
+            )
+            logger.info(f"StopCount dimension added: max_per_vehicle={max_stops_per_vehicle}")
         
         # POI time windows
         for loc_idx, tw in enumerate(self.problem_data['time_windows']):

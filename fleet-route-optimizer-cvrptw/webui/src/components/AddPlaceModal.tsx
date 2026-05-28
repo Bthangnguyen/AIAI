@@ -1,8 +1,9 @@
-﻿"use client"
+"use client"
 
 import { CircleOff, Plus, Search, Star, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { formatCurrency, searchPois } from "@/lib/planner"
+import { searchPoisBackend } from "@/lib/api"
 import type { ItineraryDraft, POI } from "@/types/trip"
 
 interface AddPlaceModalProps {
@@ -16,15 +17,51 @@ interface AddPlaceModalProps {
 export function AddPlaceModal({ draft, defaultDay, isOpen, onClose, onAdd }: AddPlaceModalProps) {
   const [query, setQuery] = useState("")
   const [targetDay, setTargetDay] = useState(defaultDay)
+  const [results, setResults] = useState<POI[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       setTargetDay(defaultDay)
       setQuery("")
+      setResults(searchPois(""))
     }
   }, [defaultDay, isOpen])
 
-  const results = useMemo(() => searchPois(query), [query])
+  useEffect(() => {
+    let active = true
+    if (!query.trim()) {
+      setResults(searchPois(""))
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    const timer = setTimeout(async () => {
+      try {
+        const backendResults = await searchPoisBackend(query)
+        if (!active) return
+        if (backendResults && backendResults.length > 0) {
+          setResults(backendResults)
+        } else {
+          // Fallback offline
+          setResults(searchPois(query))
+        }
+      } catch (e) {
+        console.error("Vector search failed, falling back to offline", e)
+        if (active) {
+          setResults(searchPois(query))
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }, 300) // Debounce 300ms
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [query])
 
   if (!isOpen) return null
 
@@ -53,7 +90,12 @@ export function AddPlaceModal({ draft, defaultDay, isOpen, onClose, onAdd }: Add
         </div>
 
         <div className="custom-scrollbar max-h-[52vh] overflow-y-auto px-5 pb-6">
-          {results.length === 0 ? (
+          {loading ? (
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 py-8 text-center">
+              <span className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600" />
+              <p className="text-sm font-black text-orange-950/60">Đang tìm kiếm thông minh qua Vector Search...</p>
+            </div>
+          ) : results.length === 0 ? (
             <div className="rounded-[28px] border border-dashed border-orange-300 bg-white p-8 text-center">
               <CircleOff className="mx-auto h-10 w-10 text-travel" />
               <h3 className="mt-3 text-xl font-black text-orange-950">Không tìm thấy địa điểm phù hợp trong dữ liệu mock.</h3>

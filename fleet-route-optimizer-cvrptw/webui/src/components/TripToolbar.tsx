@@ -1,7 +1,8 @@
 ﻿"use client"
 
 import Link from "next/link"
-import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RotateCcw, Save, Share2, Smartphone } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RefreshCw, RotateCcw, Save, Share2, Smartphone } from "lucide-react"
 import type { ItineraryDraft, PreviewMode } from "@/types/trip"
 
 interface TripToolbarProps {
@@ -11,12 +12,24 @@ interface TripToolbarProps {
   onBack: () => void
   onSave: () => void
   onReset: () => void
+  onRebuild: () => void
   onSavedTrips: () => void
   onMobilePhase: () => void
 }
 
-export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave, onReset, onSavedTrips, onMobilePhase }: TripToolbarProps) {
+export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave, onReset, onRebuild, onSavedTrips, onMobilePhase }: TripToolbarProps) {
   const title = draft ? `${draft.destination} ${draft.days.length} ngày` : "Untitled Trip"
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handlePointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    window.addEventListener("pointerdown", handlePointerDown)
+    return () => window.removeEventListener("pointerdown", handlePointerDown)
+  }, [menuOpen])
 
   return (
     <div className="relative flex h-14 items-center border-b border-orange-200 bg-white px-4 text-orange-950 shadow-sm">
@@ -48,17 +61,20 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
         <button type="button" disabled className="hidden items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-black text-white opacity-70 sm:flex">
           <Share2 size={14} /> Chia sẻ
         </button>
-        <div className="group relative">
-          <button type="button" className="rounded-lg p-2 text-orange-950/60 transition hover:bg-orange-100 hover:text-orange-700" aria-label="More actions">
+        <div ref={menuRef} className="relative">
+          <button type="button" onClick={() => setMenuOpen((value) => !value)} className="rounded-lg p-2 text-orange-950/60 transition hover:bg-orange-100 hover:text-orange-700" aria-label="More actions" aria-expanded={menuOpen}>
             <MoreHorizontal size={20} />
           </button>
-          <div className="invisible absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-orange-200 bg-white py-1.5 opacity-0 shadow-2xl shadow-orange-950/10 transition group-hover:visible group-hover:opacity-100">
-            <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => console.log(JSON.stringify(draft, null, 2))}><Download size={16} /> Export JSON</button>
-            <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onReset}><RotateCcw size={16} /> Reset Draft</button>
-            <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onSavedTrips}><FolderOpen size={16} /> Saved Trips</button>
-            <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={onMobilePhase}><Smartphone size={16} /> Mobile Phase</button>
-            <Link href="/admin" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50">Admin POI / QA</Link>
-          </div>
+          {menuOpen ? (
+            <div className="absolute right-0 top-full z-50 mt-2 w-60 rounded-xl border border-orange-200 bg-white py-1.5 shadow-2xl shadow-orange-950/10">
+              <button type="button" disabled={!draft} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { setMenuOpen(false); onRebuild() }}><RefreshCw size={16} /> Tạo option khác</button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); console.log(JSON.stringify(draft, null, 2)) }}><Download size={16} /> Export JSON</button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onReset() }}><RotateCcw size={16} /> Reset Draft</button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onSavedTrips() }}><FolderOpen size={16} /> Saved Trips</button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onMobilePhase() }}><Smartphone size={16} /> Mobile Phase</button>
+              <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50">Admin POI / QA</Link>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

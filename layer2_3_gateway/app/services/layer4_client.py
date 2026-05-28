@@ -90,7 +90,7 @@ class Layer4Client:
             l4_pois.append({
                 "id": str(p.uuid),
                 "name": p.name,
-                "category": p.category,
+                "category": (p.category_group or p.category),
                 "location": {"latitude": p.latitude, "longitude": p.longitude},
                 "visit_duration_min": p.visit_duration_min,
                 "time_window": {
@@ -98,7 +98,7 @@ class Layer4Client:
                     "end_min": p.close_time,
                 },
                 "entrance_fee": p.entrance_fee,
-                "priority_score": p.utility_score,
+                "priority_score": getattr(p, "utility_score", 1.0),
                 "tags": p.tags or [],
                 "description": p.description,
                 "is_locked": p.is_locked,
@@ -124,7 +124,15 @@ class Layer4Client:
             "num_days": contract.num_days,
             "budget_total": None if getattr(contract, "budget_is_unlimited", False) else contract.budget_max,
             "transport_modes": normalized_modes,
+            "target_category_distribution": contract.target_category_distribution,
         }
+
+        # Ensure distribution is never None — use balanced default
+        if not constraints["target_category_distribution"]:
+            constraints["target_category_distribution"] = {
+                "food": 0.35, "culture": 0.35, "nature": 0.20,
+                "nightlife": 0.05, "adventure": 0.05
+            }
 
         payload = {
             "pois": l4_pois,
@@ -132,18 +140,33 @@ class Layer4Client:
             "constraints": constraints,
         }
 
-        # Populate custom day plans for time windows if present
-        if getattr(contract, "time_window", None) is not None:
-            payload["day_plans"] = [
-                {
-                    "day_index": day_idx,
-                    "date": f"Day {day_idx + 1}",
-                    "hotel_id": f"hotel_day_{day_idx}",
-                    "start_time_min": contract.time_window.start_min,
-                    "end_time_min": contract.time_window.end_min,
-                }
-                for day_idx in range(contract.num_days)
-            ]
+        # Hard cap: max 6 POIs per day, minimum 3 (for full_day/evening slot) or 2 (for short slots)
+        max_pois_per_day = 6
+        if getattr(contract, "estimated_pois", None) is not None:
+            # Use ceiling division to prevent rounding down (e.g. 5 POIs in 2 days -> 3 per day, not 2)
+            calculated_max = (contract.estimated_pois + contract.num_days - 1) // contract.num_days
+            # Add a generous buffer if user requested a full day or food tour to allow adding outdoor/nature stops
+            is_full_or_tour = (
+                getattr(contract, "time_slot", None) == "full_day"
+                or getattr(contract, "trip_type", None) == "food_tour"
+                or getattr(contract, "trip_duration_hours", 0) >= 6
+            )
+            if is_full_or_tour:
+                max_pois_per_day = min(6, max(4, calculated_max + 1))
+            else:
+                max_pois_per_day = min(6, max(2, calculated_max))
+
+        payload["day_plans"] = [
+            {
+                "day_index": day_idx,
+                "date": f"Day {day_idx + 1}",
+                "hotel_id": f"hotel_day_{day_idx}",
+                "start_time_min": contract.time_window.start_min if getattr(contract, "time_window", None) is not None else 480,
+                "end_time_min": contract.time_window.end_min if getattr(contract, "time_window", None) is not None else 1260,
+                "max_pois": max_pois_per_day,
+            }
+            for day_idx in range(contract.num_days)
+        ]
 
         return payload
 
@@ -194,7 +217,29 @@ class Layer4Client:
                 
                 resp.raise_for_status()
                 solver_breaker.record_success()
-                return resp.json()
+                result = resp.json()
+                if result and "days" in result:
+                    poi_map = {str(p.uuid): p for p in pois}
+                    for day in result["days"]:
+                        if "stops" in day:
+                            for stop in day["stops"]:
+                                poi_id = stop.get("poi_id")
+                                if poi_id in poi_map:
+                                    poi = poi_map[poi_id]
+                                    stop["category"] = poi.category
+                                    stop["description"] = poi.description
+
+                # Run post-solver LLM itinerary validation layer
+                if result and result.get("status") != "error" and "days" in result:
+                    from app.services.itinerary_validator import ItineraryValidatorService
+                    validator = ItineraryValidatorService()
+                    result = await validator.validate_and_adjust(
+                        l4_result=result,
+                        contract=contract,
+                        all_pois=pois
+                    )
+
+                return result
         except httpx.TimeoutException as e:
             solver_breaker.record_failure()
             logger.error(f"Layer 4 call timed out: {e}")
@@ -273,7 +318,20 @@ class Layer4Client:
                 
                 resp.raise_for_status()
                 solver_breaker.record_success()
-                return resp.json()
+                result = resp.json()
+                if result and "plans" in result:
+                    poi_map = {str(p.uuid): p for p in pois}
+                    for plan in result["plans"]:
+                        if "days" in plan:
+                            for day in plan["days"]:
+                                if "stops" in day:
+                                    for stop in day["stops"]:
+                                        poi_id = stop.get("poi_id")
+                                        if poi_id in poi_map:
+                                            poi = poi_map[poi_id]
+                                            stop["category"] = poi.category
+                                            stop["description"] = poi.description
+                return result
         except httpx.TimeoutException as e:
             solver_breaker.record_failure()
             logger.error(f"Layer 4 plan-multi timed out: {e}")
@@ -371,7 +429,16 @@ class Layer4Client:
                     params={"time_limit": time_limit},
                 )
                 resp.raise_for_status()
-                return resp.json()
+                result = resp.json()
+                if result and "stops" in result:
+                    stop_map = {s.get("poi_id"): s for s in target_day.get("stops", []) if isinstance(s, dict)}
+                    for stop in result["stops"]:
+                        poi_id = stop.get("poi_id")
+                        if poi_id in stop_map:
+                            orig = stop_map[poi_id]
+                            stop["category"] = orig.get("category")
+                            stop["description"] = orig.get("description")
+                return result
         except httpx.HTTPError as e:
             logger.error(f"Layer 4 re-route failed: {e}")
             return None

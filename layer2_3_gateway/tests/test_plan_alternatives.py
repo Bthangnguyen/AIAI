@@ -9,6 +9,15 @@ from fastapi import status
 pytestmark = pytest.mark.anyio
 
 
+@pytest.fixture(autouse=True)
+def check_db():
+    import socket
+    try:
+        socket.getaddrinfo("db", None)
+    except socket.gaierror:
+        pytest.skip("Database host 'db' is offline/unresolved.")
+
+
 async def test_plan_alternatives_validation(client: AsyncClient):
     response = await client.post("/trip/plan_alternatives", json={})
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

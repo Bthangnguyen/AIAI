@@ -1,11 +1,11 @@
-﻿/**
+/**
  * ItineraryFormScreen - Dark Royal Hue Design
  * Date range picker + query suggestions + hotel picker + AI Generate
  */
 import React, { useState } from "react"
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, StatusBar, Dimensions,
+  TextInput, StatusBar, Dimensions, Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -107,8 +107,8 @@ export const ItineraryFormScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={[colors.palette.deepSlate, "#111827", "#0f0a1e"]} style={StyleSheet.absoluteFillObject} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient colors={[colors.palette.appCream, "#FFFFFF"]} style={StyleSheet.absoluteFillObject} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -120,6 +120,7 @@ export const ItineraryFormScreen: React.FC = () => {
       </View>
 
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -174,7 +175,7 @@ export const ItineraryFormScreen: React.FC = () => {
                   >
                     {(start || end) ? (
                       <LinearGradient
-                        colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
+                        colors={[colors.palette.appOrange, colors.palette.appOrangeDark]}
                         style={styles.dayCellSelectedGradient}
                       >
                         <Text style={styles.dayCellTextSelected}>{day}</Text>
@@ -230,7 +231,7 @@ export const ItineraryFormScreen: React.FC = () => {
               value={query}
               onChangeText={setQuery}
               placeholder="VD: Tôi muốn thăm lăng tẩm, ăn bún bò, tránh nắng..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholderTextColor={colors.palette.appMuted}
               style={styles.queryInput}
               multiline
               numberOfLines={3}
@@ -258,12 +259,12 @@ export const ItineraryFormScreen: React.FC = () => {
           >
             <LinearGradient
               colors={selectedStart && selectedEnd
-                ? [colors.palette.royalPurple, colors.palette.royalPurpleLight]
-                : ["rgba(255,255,255,0.06)", "rgba(255,255,255,0.04)"]}
+                ? [colors.palette.appOrange, colors.palette.appOrangeDark]
+                : ["rgba(255,255,255,0.6)", "rgba(255,255,255,0.4)"]}
               style={styles.generateBtnGradient}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={[styles.generateBtnText, (!selectedStart || !selectedEnd) && { color: "rgba(255,255,255,0.3)" }]}>
+              <Text style={[styles.generateBtnText, (!selectedStart || !selectedEnd) && { color: "rgba(31, 41, 55, 0.3)" }]}>
                 {selectedStart && selectedEnd
                   ? `🤖 Tạo Lộ Trình ${numDays} Ngày với AI ✨`
                   : "Chọn ngày đi để tiếp tục"}
@@ -284,40 +285,57 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: spacing.lg, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomWidth: 1, borderBottomColor: "rgba(249, 115, 22, 0.1)",
   },
   backBtn: {
     width: 44, height: 44, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
     justifyContent: "center", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(15px)",
+        WebkitBackdropFilter: "blur(15px)",
+      } as any
+    }),
   },
-  backBtnText: { fontSize: 20, color: "#FFFFFF", fontFamily: typography.primary.bold },
-  headerTitle: { fontFamily: typography.primary.bold, fontSize: 20, color: "#FFFFFF" },
+  backBtnText: { fontSize: 20, color: colors.palette.appOrangeDark, fontFamily: typography.primary.bold },
+  headerTitle: { fontFamily: typography.primary.bold, fontSize: 20, color: colors.palette.appInk },
   scroll: { padding: spacing.lg, gap: 0 },
   section: { marginBottom: spacing.xl },
   sectionLabel: {
-    fontFamily: typography.primary.semiBold, fontSize: 15, color: "#FFFFFF",
+    fontFamily: typography.primary.semiBold, fontSize: 15, color: colors.palette.appInk,
     marginBottom: spacing.sm,
   },
   calendarCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderRadius: 20, borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
     padding: spacing.md,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
   },
   monthNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
   monthNavBtn: {
     width: 36, height: 36, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(249, 115, 22, 0.06)",
     justifyContent: "center", alignItems: "center",
   },
-  monthNavBtnText: { fontSize: 22, color: "#FFFFFF", fontFamily: typography.primary.bold },
-  monthTitle: { fontFamily: typography.primary.semiBold, fontSize: 16, color: "#FFFFFF" },
+  monthNavBtnText: { fontSize: 22, color: colors.palette.appOrangeDark, fontFamily: typography.primary.bold },
+  monthTitle: { fontFamily: typography.primary.semiBold, fontSize: 16, color: colors.palette.appInk },
   dayHeaders: { flexDirection: "row", marginBottom: spacing.sm },
   dayHeader: {
     width: CELL_SIZE, textAlign: "center",
     fontFamily: typography.primary.semiBold, fontSize: 11,
-    color: "rgba(255,255,255,0.4)", textTransform: "uppercase",
+    color: colors.palette.appMuted, textTransform: "uppercase",
   },
   calGrid: { flexDirection: "row", flexWrap: "wrap" },
   dayCell: {
@@ -327,29 +345,29 @@ const styles = StyleSheet.create({
   },
   dayCellEmpty: { opacity: 0 },
   dayCellPast: { opacity: 0.25 },
-  dayCellInRange: { backgroundColor: colors.palette.royalPurple + "20" },
+  dayCellInRange: { backgroundColor: "rgba(249, 115, 22, 0.08)" },
   dayCellSelected: {},
   dayCellSelectedGradient: {
     width: CELL_SIZE - 4, height: CELL_SIZE - 4,
     borderRadius: (CELL_SIZE - 4) / 2,
     justifyContent: "center", alignItems: "center",
   },
-  dayCellText: { fontFamily: typography.primary.medium, fontSize: 14, color: "rgba(255,255,255,0.85)" },
+  dayCellText: { fontFamily: typography.primary.medium, fontSize: 14, color: colors.palette.appInk },
   dayCellTextSelected: { fontFamily: typography.primary.bold, fontSize: 14, color: "#FFFFFF" },
-  dayCellTextInRange: { color: colors.palette.royalPurpleLight },
-  dayCellTextPast: { color: "rgba(255,255,255,0.25)" },
+  dayCellTextInRange: { color: colors.palette.appOrangeDark },
+  dayCellTextPast: { color: "rgba(31, 41, 55, 0.25)" },
   dateRangeRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     marginTop: spacing.md, gap: spacing.sm, flexWrap: "wrap",
   },
   dateTag: {
-    backgroundColor: colors.palette.royalPurple + "30",
+    backgroundColor: "rgba(249, 115, 22, 0.08)",
     borderRadius: 12, padding: spacing.sm, alignItems: "center",
-    borderWidth: 1, borderColor: colors.palette.royalPurple + "60",
+    borderWidth: 1, borderColor: "rgba(249, 115, 22, 0.3)",
   },
-  dateTagLabel: { fontFamily: typography.primary.normal, fontSize: 10, color: colors.palette.royalPurpleLight },
-  dateTagValue: { fontFamily: typography.primary.semiBold, fontSize: 14, color: "#FFFFFF" },
-  dateArrow: { fontSize: 18, color: "rgba(255,255,255,0.4)" },
+  dateTagLabel: { fontFamily: typography.primary.normal, fontSize: 10, color: colors.palette.appOrangeDark },
+  dateTagValue: { fontFamily: typography.primary.semiBold, fontSize: 14, color: colors.palette.appInk },
+  dateArrow: { fontSize: 18, color: colors.palette.appMuted },
   numDaysBadge: {
     backgroundColor: colors.palette.imperialGold + "30",
     borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
@@ -357,28 +375,50 @@ const styles = StyleSheet.create({
   },
   numDaysText: { fontFamily: typography.primary.semiBold, fontSize: 13, color: colors.palette.imperialGold },
   queryBox: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderRadius: 16, borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
     padding: spacing.md, marginBottom: spacing.sm,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  queryBoxFocused: { borderColor: colors.palette.royalPurple },
+  queryBoxFocused: { borderColor: colors.palette.appOrange },
   queryInput: {
     fontFamily: typography.primary.normal, fontSize: 14,
-    color: "#FFFFFF", minHeight: 70, textAlignVertical: "top",
+    color: colors.palette.appInk, minHeight: 70, textAlignVertical: "top",
   },
   suggestionsScroll: { flexDirection: "row", gap: 8 },
   suggestionChip: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.55)",
     borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(15px)",
+        WebkitBackdropFilter: "blur(15px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  suggestionText: { fontFamily: typography.primary.normal, fontSize: 13, color: "rgba(255,255,255,0.7)" },
+  suggestionText: { fontFamily: typography.primary.normal, fontSize: 13, color: colors.palette.appInk },
   generateBtn: { borderRadius: 18, overflow: "hidden", marginBottom: spacing.sm },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: { paddingVertical: 18, alignItems: "center" },
   generateBtnText: { fontFamily: typography.primary.semiBold, fontSize: 16, color: "#FFFFFF", letterSpacing: 0.3 },
   generateHint: {
     fontFamily: typography.primary.normal, fontSize: 12,
-    color: "rgba(255,255,255,0.35)", textAlign: "center",
+    color: colors.palette.appMuted, textAlign: "center",
   },
 })

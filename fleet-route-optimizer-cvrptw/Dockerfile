@@ -9,10 +9,8 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies from pre-downloaded wheels (bypass slow Docker network)
-COPY wheels/ /tmp/wheels/
-RUN pip install --no-cache-dir --no-index --find-links=/tmp/wheels/ -r requirements.txt \
-    && rm -rf /tmp/wheels/
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY src/ ./src/

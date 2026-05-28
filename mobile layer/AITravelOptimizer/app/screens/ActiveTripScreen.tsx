@@ -23,6 +23,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native"
 import { Text } from "@/components/Text"
 import { LinearGradient } from "expo-linear-gradient"
@@ -39,11 +40,18 @@ import type { TravelItineraryStop, TravelItineraryDay } from "@/navigators/navig
 
 const { width } = Dimensions.get("window")
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const CATEGORY_EMOJI: Record<string, string> = {
-  museum: "🏛️", temple: "🕌", park: "🌳", market: "🛒",
-  restaurant: "🍛", cafe: "☕", beach: "🏖️", pagoda: "🏮",
-  palace: "🏯", tomb: "⛩️", nature: "🌅", default: "📍",
+  food: "🍜",
+  cafe: "☕",
+  culture: "🏛️",
+  nature: "🌳",
+  nightlife: "🍻",
+  shopping: "🛍️",
+  art: "🎨",
+  wellness: "💆",
+  adventure: "🧗",
+  hotel: "🏨",
+  default: "📍",
 }
 
 const STATUS_COLORS = {
@@ -73,6 +81,16 @@ export const ActiveTripScreen: React.FC = () => {
 
   const scrollRef = useRef<ScrollView>(null)
   const pulseAnim = useRef(new Animated.Value(1)).current
+
+  // ─── Dynamically sync currentDayIndex with itinerary (handles 1-indexed) ───
+  useEffect(() => {
+    if (itinerary?.days && itinerary.days.length > 0) {
+      const hasCurrentDay = itinerary.days.some((d) => d.day_index === currentDayIndex)
+      if (!hasCurrentDay) {
+        setCurrentDayIndex(itinerary.days[0].day_index)
+      }
+    }
+  }, [itinerary, currentDayIndex])
 
   // Pulse animation for current stop
   useEffect(() => {
@@ -118,9 +136,9 @@ export const ActiveTripScreen: React.FC = () => {
   if (!itinerary || !itinerary.days || itinerary.days.length === 0) {
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <LinearGradient
-          colors={[colors.palette.deepSlate, "#0d1117", "#111827"]}
+          colors={[colors.palette.appCream, "#FFFFFF"]}
           style={StyleSheet.absoluteFillObject}
         />
         <View style={[styles.emptyContainer, { paddingTop: insets.top + 40 }]}>
@@ -219,9 +237,9 @@ export const ActiveTripScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <LinearGradient
-        colors={[colors.palette.deepSlate, "#0d1117", "#111827"]}
+        colors={[colors.palette.appCream, "#FFFFFF"]}
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -277,7 +295,7 @@ export const ActiveTripScreen: React.FC = () => {
       {currentStop && tripStatus && (
         <View style={styles.statusCard}>
           <LinearGradient
-            colors={["rgba(255,255,255,0.06)", "rgba(255,255,255,0.02)"]}
+            colors={["rgba(255,255,255,0.8)", "rgba(255,255,255,0.5)"]}
             style={styles.statusCardGradient}
           >
             <View style={styles.statusCardLeft}>
@@ -352,7 +370,7 @@ export const ActiveTripScreen: React.FC = () => {
                   ]}
                 >
                   <Text style={styles.nodeEmoji}>
-                    {isCompleted ? "✓" : (CATEGORY_EMOJI[stop.poi_id?.split("_")[0] || ""] || "📍")}
+                    {isCompleted ? "✓" : (CATEGORY_EMOJI[(stop.category || "").toLowerCase()] || "📍")}
                   </Text>
                 </View>
                 {idx < stops.length - 1 && (
@@ -438,8 +456,8 @@ export const ActiveTripScreen: React.FC = () => {
           <LinearGradient
             colors={
               isReRouting
-                ? ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]
-                : [colors.palette.royalPurple, colors.palette.royalPurpleLight]
+                ? ["rgba(31,41,55,0.06)", "rgba(31,41,55,0.04)"]
+                : [colors.palette.appOrange, colors.palette.appOrangeDark]
             }
             style={styles.reRouteBtnGradient}
           >
@@ -468,19 +486,19 @@ export const ActiveTripScreen: React.FC = () => {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.palette.appCream },
   emptyContainer: {
     flex: 1, alignItems: "center", justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
   emptyIcon: { fontSize: 64, marginBottom: spacing.lg },
   emptyTitle: {
-    fontFamily: typography.primary.bold, fontSize: 22, color: "#FFFFFF",
+    fontFamily: typography.primary.bold, fontSize: 22, color: colors.palette.appInk,
     marginBottom: spacing.sm, textAlign: "center",
   },
   emptySubtitle: {
     fontFamily: typography.primary.normal, fontSize: 14,
-    color: "rgba(255,255,255,0.5)", textAlign: "center", lineHeight: 22,
+    color: colors.palette.appMuted, textAlign: "center", lineHeight: 22,
   },
   topBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -489,27 +507,28 @@ const styles = StyleSheet.create({
   logoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoIconWrap: {
     width: 32, height: 32, borderRadius: 10,
-    backgroundColor: colors.palette.sunsetOrange,
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
     justifyContent: "center", alignItems: "center",
   },
   logoIconText: { fontSize: 16 },
-  logoText: { fontFamily: typography.primary.bold, fontSize: 18, color: "#FFFFFF" },
+  logoText: { fontFamily: typography.primary.bold, fontSize: 18, color: colors.palette.appInk },
   liveIndicator: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: colors.palette.sunsetOrange + "25",
+    backgroundColor: "rgba(249,115,22,0.08)",
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: colors.palette.sunsetOrange + "60", gap: 4,
+    borderWidth: 1, borderColor: "rgba(249,115,22,0.15)", gap: 4,
   },
   liveDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: colors.palette.sunsetOrange,
+    width: 6, height: 6, borderRadius: 3, backgroundColor: colors.palette.appOrangeDark,
   },
-  liveText: { fontFamily: typography.primary.semiBold, fontSize: 10, color: colors.palette.sunsetOrange },
+  liveText: { fontFamily: typography.primary.semiBold, fontSize: 10, color: colors.palette.appOrangeDark },
   progressPill: {
-    backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.8)", borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1, borderColor: colors.palette.appLine,
   },
-  progressText: { fontFamily: typography.primary.medium, fontSize: 13, color: "rgba(255,255,255,0.8)" },
+  progressText: { fontFamily: typography.primary.medium, fontSize: 13, color: colors.palette.appInk },
 
   // Day selector
   daySelector: {
@@ -517,25 +536,25 @@ const styles = StyleSheet.create({
   },
   dayChip: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderWidth: 1, borderColor: colors.palette.appLine,
   },
   dayChipActive: {
-    backgroundColor: colors.palette.royalPurple + "30",
-    borderColor: colors.palette.royalPurple,
+    backgroundColor: "rgba(249, 115, 22, 0.12)",
+    borderColor: colors.palette.appOrange,
   },
   dayChipText: {
-    fontFamily: typography.primary.medium, fontSize: 13, color: "rgba(255,255,255,0.5)",
+    fontFamily: typography.primary.medium, fontSize: 13, color: colors.palette.appMuted,
   },
   dayChipTextActive: {
-    color: colors.palette.imperialGold, fontFamily: typography.primary.semiBold,
+    color: colors.palette.appOrangeDark, fontFamily: typography.primary.semiBold,
   },
 
   // Trip Status Card
   statusCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.sm,
     borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
   },
   statusCardGradient: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -544,19 +563,19 @@ const styles = StyleSheet.create({
   statusCardLeft: { flex: 1, marginRight: spacing.sm },
   statusCardLabel: {
     fontFamily: typography.primary.normal, fontSize: 11,
-    color: "rgba(255,255,255,0.4)", marginBottom: 2,
+    color: colors.palette.appMuted, marginBottom: 2,
   },
   statusCardName: {
-    fontFamily: typography.primary.semiBold, fontSize: 15, color: "#FFFFFF",
+    fontFamily: typography.primary.semiBold, fontSize: 15, color: colors.palette.appInk,
     marginBottom: 4,
   },
   statusCardTime: {
     fontFamily: typography.primary.normal, fontSize: 12,
-    color: "rgba(255,255,255,0.5)",
+    color: colors.palette.appMuted,
   },
   statusBadge: {
     borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1, borderColor: "rgba(31,41,55,0.1)",
   },
   statusBadgeText: {
     fontFamily: typography.primary.semiBold, fontSize: 12,
@@ -566,12 +585,12 @@ const styles = StyleSheet.create({
   gpsBar: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     marginHorizontal: spacing.lg, marginBottom: spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.75)", borderRadius: 10,
     paddingHorizontal: spacing.md, paddingVertical: 6,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: "rgba(249, 115, 22, 0.12)",
   },
   gpsText: {
-    fontFamily: typography.primary.normal, fontSize: 11, color: "rgba(255,255,255,0.4)",
+    fontFamily: typography.primary.normal, fontSize: 11, color: colors.palette.appMuted,
     flex: 1,
   },
   gpsRight: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -580,7 +599,7 @@ const styles = StyleSheet.create({
   },
   gpsRefreshBtn: {
     width: 24, height: 24, borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     justifyContent: "center", alignItems: "center",
   },
   gpsRefreshText: { fontSize: 12 },
@@ -588,13 +607,13 @@ const styles = StyleSheet.create({
   // Depot info
   depotInfo: {
     marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.palette.royalPurple + "15",
+    backgroundColor: "rgba(249, 115, 22, 0.06)",
     borderRadius: 8, paddingHorizontal: spacing.md, paddingVertical: 5,
-    borderWidth: 1, borderColor: colors.palette.royalPurple + "30",
+    borderWidth: 1, borderColor: "rgba(249, 115, 22, 0.15)",
   },
   depotInfoText: {
     fontFamily: typography.primary.normal, fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
+    color: colors.palette.appMuted,
   },
 
   // Timeline
@@ -603,46 +622,65 @@ const styles = StyleSheet.create({
   timelineRow: { flexDirection: "row", minHeight: 80 },
   nodeCol: { width: 44, alignItems: "center" },
   node: {
-    width: 36, height: 36, borderRadius: 12,
+    width: 36, height: 36, borderRadius: 18,
     justifyContent: "center", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(15px)",
+        WebkitBackdropFilter: "blur(15px)",
+      } as any
+    }),
   },
-  nodeCompleted: { backgroundColor: colors.palette.jadeGreen },
+  nodeCompleted: { backgroundColor: colors.palette.jadeGreen, borderColor: colors.palette.jadeGreen },
   nodeCurrent: {
     backgroundColor: colors.palette.imperialGold,
+    borderColor: colors.palette.imperialGold,
     shadowColor: colors.palette.imperialGold,
     shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 8, elevation: 6,
   },
   nodeEmoji: { fontSize: 16, color: "#FFFFFF" },
   connector: {
     width: 2, flex: 1, marginVertical: 4, borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
 
   // Stop cards
   stopCard: {
-    flex: 1, backgroundColor: "rgba(255,255,255,0.05)",
+    flex: 1, backgroundColor: "rgba(255, 255, 255, 0.58)",
     borderRadius: 16, padding: spacing.md,
     marginLeft: spacing.sm, marginBottom: spacing.sm,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   stopCardCurrent: {
-    borderColor: colors.palette.imperialGold + "60",
-    backgroundColor: "rgba(255,184,0,0.08)",
+    borderColor: "rgba(249, 115, 22, 0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.75)",
   },
   stopCardCompleted: {
-    borderColor: "rgba(255,255,255,0.05)",
-    backgroundColor: "rgba(255,255,255,0.02)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
   },
   stopCardRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   stopCardInfo: { flex: 1 },
   currentBadge: {
     alignSelf: "flex-start",
-    backgroundColor: colors.palette.imperialGold + "25",
+    backgroundColor: "rgba(249, 115, 22, 0.15)",
     borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 4,
   },
   currentBadgeText: {
-    fontFamily: typography.primary.semiBold, fontSize: 10, color: colors.palette.imperialGold,
+    fontFamily: typography.primary.semiBold, fontSize: 10, color: colors.palette.appOrangeDark,
   },
   completedBadge: {
     alignSelf: "flex-start",
@@ -652,14 +690,14 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontFamily: typography.primary.semiBold, fontSize: 10, color: colors.palette.jadeGreen,
   },
-  stopName: { fontFamily: typography.primary.semiBold, fontSize: 14, color: "#FFFFFF" },
+  stopName: { fontFamily: typography.primary.semiBold, fontSize: 14, color: colors.palette.appInk },
   stopMeta: {
     fontFamily: typography.primary.normal, fontSize: 12,
-    color: "rgba(255,255,255,0.45)", marginTop: 2,
+    color: colors.palette.appMuted, marginTop: 2,
   },
   stopDistance: {
     fontFamily: typography.primary.normal, fontSize: 11,
-    color: "rgba(255,255,255,0.35)", marginTop: 2,
+    color: "rgba(31, 41, 55, 0.4)", marginTop: 2,
   },
 
   // Arrived button
@@ -670,7 +708,7 @@ const styles = StyleSheet.create({
   // Bottom actions
   bottomActions: {
     paddingHorizontal: spacing.md, paddingTop: 8,
-    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)",
+    borderTopWidth: 1, borderTopColor: "rgba(249, 115, 22, 0.12)",
   },
   reRouteBtn: { borderRadius: 16, overflow: "hidden" },
   reRouteBtnGradient: { paddingVertical: 16, alignItems: "center" },
@@ -681,6 +719,6 @@ const styles = StyleSheet.create({
   },
   reRouteHint: {
     fontFamily: typography.primary.normal, fontSize: 11,
-    color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 6,
+    color: colors.palette.appMuted, textAlign: "center", marginTop: 6,
   },
 })

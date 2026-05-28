@@ -3,6 +3,12 @@
 
 import { Platform } from "react-native"
 import {
+  BeVietnamPro_400Regular as beVietnamProRegular,
+  BeVietnamPro_500Medium as beVietnamProMedium,
+  BeVietnamPro_600SemiBold as beVietnamProSemiBold,
+  BeVietnamPro_700Bold as beVietnamProBold,
+} from "@expo-google-fonts/be-vietnam-pro"
+import {
   Poppins_400Regular as poppinsRegular,
   Poppins_500Medium as poppinsMedium,
   Poppins_600SemiBold as poppinsSemiBold,
@@ -17,6 +23,10 @@ import {
 } from "@expo-google-fonts/space-grotesk"
 
 export const customFontsToLoad = {
+  beVietnamProRegular,
+  beVietnamProMedium,
+  beVietnamProSemiBold,
+  beVietnamProBold,
   spaceGroteskLight,
   spaceGroteskRegular,
   spaceGroteskMedium,
@@ -44,6 +54,12 @@ const fonts = {
     medium: "poppinsMedium",
     semiBold: "poppinsSemiBold",
     bold: "poppinsBold",
+  },
+  beVietnamPro: {
+    normal: "beVietnamProRegular",
+    medium: "beVietnamProMedium",
+    semiBold: "beVietnamProSemiBold",
+    bold: "beVietnamProBold",
   },
   helveticaNeue: {
     // iOS only font.
@@ -76,9 +92,9 @@ export const typography = {
   fonts,
   /**
    * The primary font. Used in most places.
-   * Switched to Poppins per Figma Travel App UI Kit design tokens.
+   * Be Vietnam Pro keeps Vietnamese diacritics balanced across Android, iOS, and web.
    */
-  primary: fonts.poppins,
+  primary: fonts.beVietnamPro,
   /**
    * An alternate font used for perhaps titles and stuff.
    */

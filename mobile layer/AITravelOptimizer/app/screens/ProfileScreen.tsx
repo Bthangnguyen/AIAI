@@ -1,10 +1,10 @@
-﻿/**
+/**
  * ProfileScreen - Dark Royal Hue Design
  * User profile with stats, achievement badges & settings
  */
 import React, { useState } from "react"
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image, Dimensions,
+  View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image, Dimensions, Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -46,9 +46,9 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <LinearGradient
-        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
+        colors={[colors.palette.appCream, "#FFFFFF"]}
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -58,7 +58,7 @@ export const ProfileScreen: React.FC = () => {
       >
         {/* HERO SECTION */}
         <LinearGradient
-          colors={[colors.palette.royalPurple + "50", "transparent"]}
+          colors={["rgba(249, 115, 22, 0.08)", "transparent"]}
           style={[styles.heroSection, { paddingTop: insets.top + 20 }]}
         >
           {/* Settings shortcut */}
@@ -103,13 +103,13 @@ export const ProfileScreen: React.FC = () => {
         {/* STATS */}
         <View style={styles.statsRow}>
           {[
-            { value: MOCK_USER.tripCount, label: "Chuyến đi", color: colors.palette.royalPurple },
+            { value: MOCK_USER.tripCount, label: "Chuyến đi", color: colors.palette.appOrangeDark },
             { value: MOCK_USER.reviewCount, label: "Đánh giá", color: colors.palette.imperialGold },
             { value: MOCK_USER.savedCount, label: "Đã lưu", color: colors.palette.jadeGreen },
           ].map((stat, i) => (
             <View key={i} style={styles.statCard}>
               <LinearGradient
-                colors={[stat.color + "20", "transparent"]}
+                colors={[stat.color + "08", "rgba(255,255,255,0.7)"]}
                 style={styles.statCardGradient}
               >
                 <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
@@ -126,7 +126,7 @@ export const ProfileScreen: React.FC = () => {
             {ACHIEVEMENTS.map((ach, i) => (
               <View key={i} style={styles.achievementCard}>
                 <LinearGradient
-                  colors={[ach.color + "25", "rgba(255,255,255,0.03)"]}
+                  colors={[ach.color + "10", "rgba(255,255,255,0.7)"]}
                   style={styles.achievementGradient}
                 >
                   <Text style={styles.achievementIcon}>{ach.icon}</Text>
@@ -185,88 +185,111 @@ export const ProfileScreen: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.palette.appCream },
   scroll: {},
   heroSection: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   heroActions: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xl },
-  heroTitle: { fontFamily: typography.primary.bold, fontSize: 24, color: "#FFFFFF" },
+  heroTitle: { fontFamily: typography.primary.bold, fontSize: 24, color: colors.palette.appInk },
   settingsBtn: {
     width: 44, height: 44, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
     justifyContent: "center", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(15px)",
+        WebkitBackdropFilter: "blur(15px)",
+      } as any
+    }),
   },
   settingsBtnIcon: { fontSize: 20 },
   profileBlock: { alignItems: "center" },
   avatarWrap: { position: "relative", marginBottom: spacing.md },
-  avatar: { width: 100, height: 100, borderRadius: 30, borderWidth: 3, borderColor: colors.palette.royalPurple },
-  avatarFallback: { backgroundColor: colors.palette.royalPurple + "60", justifyContent: "center", alignItems: "center" },
-  avatarInitial: { fontFamily: typography.primary.bold, fontSize: 36, color: "#FFFFFF" },
+  avatar: { width: 100, height: 100, borderRadius: 30, borderWidth: 3, borderColor: colors.palette.appOrange },
+  avatarFallback: { backgroundColor: colors.palette.appOrange + "40", justifyContent: "center", alignItems: "center" },
+  avatarInitial: { fontFamily: typography.primary.bold, fontSize: 36, color: colors.palette.appOrangeDark },
   onlineDot: {
     position: "absolute", bottom: 4, right: 4,
     width: 16, height: 16, borderRadius: 8,
     backgroundColor: colors.palette.jadeGreen,
-    borderWidth: 2, borderColor: colors.palette.deepSlate,
+    borderWidth: 2, borderColor: "#FFFFFF",
   },
-  name: { fontFamily: typography.primary.bold, fontSize: 22, color: "#FFFFFF", marginBottom: 4 },
-  email: { fontFamily: typography.primary.normal, fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 8 },
+  name: { fontFamily: typography.primary.bold, fontSize: 22, color: colors.palette.appInk, marginBottom: 4 },
+  email: { fontFamily: typography.primary.normal, fontSize: 14, color: colors.palette.appMuted, marginBottom: 8 },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  locationText: { fontFamily: typography.primary.normal, fontSize: 13, color: "rgba(255,255,255,0.5)" },
-  locationDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.25)" },
-  joinedText: { fontFamily: typography.primary.normal, fontSize: 13, color: "rgba(255,255,255,0.35)" },
-  bio: { fontFamily: typography.primary.normal, fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", lineHeight: 22, marginTop: 4 },
+  locationText: { fontFamily: typography.primary.normal, fontSize: 13, color: colors.palette.appMuted },
+  locationDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(31, 41, 55, 0.25)" },
+  joinedText: { fontFamily: typography.primary.normal, fontSize: 13, color: "rgba(31, 41, 55, 0.5)" },
+  bio: { fontFamily: typography.primary.normal, fontSize: 14, color: colors.palette.appInk, textAlign: "center", lineHeight: 22, marginTop: 4 },
   statsRow: { flexDirection: "row", paddingHorizontal: spacing.lg, gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md },
-  statCard: { flex: 1, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  statCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+  },
   statCardGradient: { padding: spacing.md, alignItems: "center" },
   statValue: { fontFamily: typography.primary.bold, fontSize: 24, marginBottom: 2 },
-  statLabel: { fontFamily: typography.primary.normal, fontSize: 11, color: "rgba(255,255,255,0.45)" },
+  statLabel: { fontFamily: typography.primary.normal, fontSize: 11, color: colors.palette.appMuted },
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  sectionTitle: { fontFamily: typography.primary.semiBold, fontSize: 16, color: "#FFFFFF", marginBottom: spacing.md },
+  sectionTitle: { fontFamily: typography.primary.semiBold, fontSize: 16, color: colors.palette.appInk, marginBottom: spacing.md },
   achievementsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   achievementCard: {
     width: (width - spacing.lg * 2 - spacing.sm) / 2,
     borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
   },
   achievementGradient: { padding: spacing.md, alignItems: "center", gap: 6 },
   achievementIcon: { fontSize: 32 },
   achievementCount: { fontFamily: typography.primary.bold, fontSize: 20 },
-  achievementLabel: { fontFamily: typography.primary.normal, fontSize: 12, color: "rgba(255,255,255,0.5)" },
+  achievementLabel: { fontFamily: typography.primary.normal, fontSize: 12, color: colors.palette.appMuted },
   menuContainer: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderRadius: 16, borderWidth: 1.5, borderColor: "rgba(255, 255, 255, 0.9)",
     overflow: "hidden",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   menuItem: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     padding: spacing.md,
-    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)",
+    borderBottomWidth: 1, borderBottomColor: "rgba(249, 115, 22, 0.08)",
   },
   menuItemLast: { borderBottomWidth: 0 },
   menuItemLeft: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   menuIconWrap: {
     width: 36, height: 36, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(249, 115, 22, 0.06)",
     justifyContent: "center", alignItems: "center",
   },
   menuIcon: { fontSize: 18 },
-  menuLabel: { fontFamily: typography.primary.medium, fontSize: 15, color: "#FFFFFF" },
+  menuLabel: { fontFamily: typography.primary.medium, fontSize: 15, color: colors.palette.appInk },
   menuItemRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   menuCountBadge: {
-    backgroundColor: colors.palette.royalPurple + "40",
+    backgroundColor: "rgba(249, 115, 22, 0.08)",
     borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
-    borderWidth: 1, borderColor: colors.palette.royalPurple + "60",
+    borderWidth: 1, borderColor: "rgba(249, 115, 22, 0.15)",
   },
-  menuCountText: { fontFamily: typography.primary.semiBold, fontSize: 11, color: colors.palette.royalPurpleLight },
-  menuArrow: { fontSize: 20, color: "rgba(255,255,255,0.25)", fontFamily: typography.primary.normal },
+  menuCountText: { fontFamily: typography.primary.semiBold, fontSize: 11, color: colors.palette.appOrangeDark },
+  menuArrow: { fontSize: 20, color: "rgba(31, 41, 55, 0.3)", fontFamily: typography.primary.normal },
   logoutBtn: { marginHorizontal: spacing.lg, marginBottom: spacing.md },
   logoutBtnInner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: spacing.sm, paddingVertical: 14,
-    backgroundColor: colors.palette.sunsetOrange + "15",
-    borderRadius: 16, borderWidth: 1, borderColor: colors.palette.sunsetOrange + "40",
+    backgroundColor: "rgba(255, 107, 107, 0.08)",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.2)",
   },
   logoutIcon: { fontSize: 20 },
   logoutText: { fontFamily: typography.primary.semiBold, fontSize: 15, color: colors.palette.sunsetOrange },
-  appVersion: { fontFamily: typography.primary.normal, fontSize: 12, color: "rgba(255,255,255,0.2)", textAlign: "center", paddingBottom: spacing.md },
+  appVersion: { fontFamily: typography.primary.normal, fontSize: 12, color: "rgba(31, 41, 55, 0.3)", textAlign: "center", paddingBottom: spacing.md },
 })

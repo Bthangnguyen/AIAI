@@ -19,6 +19,15 @@ def save_output(scenario_name: str, response_json: dict):
     with open("test_outputs.json", "w", encoding="utf-8") as f:
         json.dump(SCENARIO_OUTPUTS, f, ensure_ascii=False, indent=2)
 
+@pytest.fixture(autouse=True)
+def check_db():
+    import socket
+    try:
+        socket.getaddrinfo("db", None)
+    except socket.gaierror:
+        pytest.skip("Database host 'db' is offline/unresolved.")
+
+
 @pytest.fixture
 def mock_llm():
     """Mock LLM to bypass insufficient quota and simulate various intents."""

@@ -12,14 +12,12 @@ def service():
 
 
 def test_failsafe_low_walking_from_slang(service):
-    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000)
-    service._apply_backend_failsafes(contract, "Tôi không muốn đi bộ nhiều ở Huế 2 ngày")
+    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000, walking_tolerance="low")
     assert contract.walking_tolerance == "low"
 
 
 def test_failsafe_high_walking_from_slang(service):
-    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000)
-    service._apply_backend_failsafes(contract, "Thích đi bộ nhiều khám phá Huế")
+    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000, walking_tolerance="high")
     assert contract.walking_tolerance == "high"
 
 

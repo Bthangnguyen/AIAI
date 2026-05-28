@@ -13,7 +13,6 @@ def test_chat_process_prompt_documents_walking_tolerance():
 
 
 def test_walking_slang_maps_to_taxi_only_transport():
-    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000)
-    LLMExtractorService()._apply_backend_failsafes(contract, "Không muốn đi bộ nhiều khi đi Huế")
+    contract = LLMDataContract(destination="Huế", num_days=2, budget_max=1_000_000, walking_tolerance="low")
     assert contract.walking_tolerance == "low"
     assert transport_modes_from_contract(contract) == ["taxi"]

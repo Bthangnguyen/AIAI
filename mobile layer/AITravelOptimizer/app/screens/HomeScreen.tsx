@@ -1,47 +1,47 @@
-/**
- * HomeScreen - AI Co-Pilot Chat Center
- * Design: Glassmorphism dark + Royal Hue + Floating Chips
- */
-import React, { FC, useState, useRef, useEffect } from "react"
+import React, { FC, useRef, useState, useEffect } from "react"
 import {
-  View,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StatusBar,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Animated,
+  Easing,
 } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+import { AppIcon } from "@/components/AppIcon"
 import { Text } from "@/components/Text"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { TripService } from "@/services/api/tripService"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
-import { LinearGradient } from "expo-linear-gradient"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { LLMDataContract, ChatMessage } from "@/types/api"
-import { TripService } from "@/services/api/tripService"
-
-const { width } = Dimensions.get("window")
+import { ChatMessage, LLMDataContract } from "@/types/api"
 
 const CONTEXTUAL_CHIPS = [
-  "🏯 Đại Nội Huế 1 ngày",
-  "🛵 Tour xe máy lăng tẩm",
-  "🌅 Chiều hoàng hôn Phá Tam Giang",
-  "🍜 Cơm hến + bún bò sáng",
-  "🎋 Vườn An Hiên thư thái",
-  "☕ Trà cung đình chiều tà",
+  "Đại Nội Huế 1 ngày",
+  "Tour xe máy lăng tẩm",
+  "Chiều hoàng hôn Phá Tam Giang",
+  "Cơm hến và bún bò sáng",
+  "Vườn An Hiên thư thái",
+  "Trà cung đình chiều tà",
 ]
 
 interface HomeScreenProps extends AppStackScreenProps<"MainTabs"> {}
 
 export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets()
+  const scrollRef = useRef<ScrollView>(null)
   const [prompt, setPrompt] = useState("")
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [isTyping, setIsTyping] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const [currentContract, setCurrentContract] = useState<LLMDataContract>({
     destination: undefined,
     budget_max: undefined,
@@ -54,90 +54,122 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     hotel_lon: 107.5909,
     confirmed_fields: [],
   })
-  const [isTyping, setIsTyping] = useState(false)
-  const [isReady, setIsReady] = useState(false)
-  const [micActive, setMicActive] = useState(false)
-  const scrollRef = useRef<ScrollView>(null)
-  const micScale = useRef(new Animated.Value(1)).current
-  const ctaAnim = useRef(new Animated.Value(0)).current
-  const insets = useSafeAreaInsets()
+
+  // ─── Gemini Aura Animations ──────────────────────────────────────────────────
+  const orb1Scale = useRef(new Animated.Value(1)).current
+  const orb1TransX = useRef(new Animated.Value(0)).current
+  const orb1TransY = useRef(new Animated.Value(0)).current
+
+  const orb2Scale = useRef(new Animated.Value(1)).current
+  const orb2TransX = useRef(new Animated.Value(0)).current
+  const orb2TransY = useRef(new Animated.Value(0)).current
+
+  const sparkleRotate = useRef(new Animated.Value(0)).current
+  const shimmerOpacity = useRef(new Animated.Value(0.4)).current
+  const inputFocusAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    if (micActive) {
-      Animated.loop(
+    // 1. Orb 1 Animation Loop
+    Animated.loop(
+      Animated.parallel([
         Animated.sequence([
-          Animated.timing(micScale, { toValue: 1.2, duration: 600, useNativeDriver: true }),
-          Animated.timing(micScale, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      ).start()
-    } else {
-      micScale.setValue(1)
-    }
-  }, [micActive])
+          Animated.timing(orb1Scale, { toValue: 1.25, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb1Scale, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(orb1TransX, { toValue: 35, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb1TransX, { toValue: 0, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(orb1TransY, { toValue: -25, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb1TransY, { toValue: 0, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      ])
+    ).start()
 
-  useEffect(() => {
-    Animated.spring(ctaAnim, {
-      toValue: isReady ? 1 : 0,
-      tension: 50,
-      friction: 8,
-      useNativeDriver: true,
-    }).start()
-  }, [isReady])
+    // 2. Orb 2 Animation Loop
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(orb2Scale, { toValue: 1.2, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb2Scale, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(orb2TransX, { toValue: -30, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb2TransX, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(orb2TransY, { toValue: 40, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(orb2TransY, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      ])
+    ).start()
 
+    // 3. Sparkle Rotation Loop
+    Animated.loop(
+      Animated.timing(sparkleRotate, {
+        toValue: 1,
+        duration: 4000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start()
+
+    // 4. Shimmer opacity loop for loader
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerOpacity, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(shimmerOpacity, { toValue: 0.4, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start()
+  }, [])
+
+  const spinSparkle = sparkleRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  })
+
+  // ─── API handlers ────────────────────────────────────────────────────────────
   const handleSend = async () => {
     const trimmed = prompt.trim()
     if (!trimmed) return
 
     const userMsg: ChatMessage = { role: "user", content: trimmed }
-    setChatHistory((prev) => [...prev, userMsg])
+    const history = [...chatHistory, userMsg]
+    setChatHistory(history)
     setPrompt("")
     setIsTyping(true)
 
     try {
-      const response = await TripService.processChat(
-        trimmed,
-        chatHistory,
-        currentContract
-      )
-
-      setIsTyping(false)
+      const response = await TripService.processChat(trimmed, chatHistory, currentContract)
       setCurrentContract(response.updated_contract)
-      setChatHistory((prev) => [
-        ...prev,
-        { role: "assistant", content: response.reply },
-      ])
-
-      if (response.status === "ready") {
-        setIsReady(true)
-      } else {
-        setIsReady(false)
-      }
-    } catch (err) {
+      setChatHistory((prev) => [...prev, { role: "assistant", content: response.reply }])
+      setIsReady(response.status === "ready")
+    } catch (err: any) {
+      Alert.alert("Lỗi kết nối", err?.message || "Không thể gửi yêu cầu lúc này.")
+    } finally {
       setIsTyping(false)
-      console.error("Chat API error:", err)
     }
   }
 
   const handleLaunchRouteSolver = () => {
     const parts: string[] = []
     parts.push(`Lập kế hoạch du lịch tại ${currentContract.destination || "Huế"}`)
-    parts.push(`trong ${currentContract.num_days} ngày`)
-    if (currentContract.budget_max) {
-      parts.push(`với ngân sách tối đa là ${currentContract.budget_max.toLocaleString()} VND.`)
-    } else {
-      parts.push(`với ngân sách thoải mái.`)
-    }
-    if (currentContract.locked_pois && currentContract.locked_pois.length > 0) {
+    parts.push(`trong ${currentContract.num_days || 1} ngày`)
+    parts.push(
+      currentContract.budget_max
+        ? `với ngân sách tối đa ${currentContract.budget_max.toLocaleString()} VND.`
+        : "với ngân sách thoải mái.",
+    )
+    if (currentContract.locked_pois?.length) {
       parts.push(`Địa điểm bắt buộc ghé thăm: ${currentContract.locked_pois.join(", ")}.`)
     }
-    if (currentContract.tags && currentContract.tags.length > 0) {
+    if (currentContract.tags?.length) {
       parts.push(`Sở thích: ${currentContract.tags.join(", ")}.`)
     }
 
-    const unifiedPrompt = parts.join(" ")
-
     navigation.navigate("Loading", {
-      prompt: unifiedPrompt,
+      prompt: parts.join(" "),
       hotelName: currentContract.hotel_name || "Pilgrimage Village",
       hotelLat: currentContract.hotel_lat || 16.4637,
       hotelLon: currentContract.hotel_lon || 107.5909,
@@ -146,42 +178,57 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
     })
   }
 
-  const currentHour = new Date().getHours()
-  const greeting =
-    currentHour < 11 ? "Chào buổi sáng! ☀️" :
-    currentHour < 14 ? "Giờ trưa, nghỉ ngơi tí 🌡️" :
-    currentHour < 18 ? "Chiều mát rồi! 🌤️" : "Tối thơ mộng! 🌙"
-
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <LinearGradient
-        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
-        style={StyleSheet.absoluteFillObject}
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      
+      {/* ─── Pulsing Aura Background Orbs (Gemini style) ──────────────────────── */}
+      <Animated.View
+        style={[
+          styles.orb1,
+          {
+            transform: [
+              { scale: orb1Scale },
+              { translateX: orb1TransX },
+              { translateY: orb1TransY },
+            ],
+          },
+        ]}
       />
-      <View style={[styles.decorOrb, { top: -80, right: -80 }]} />
-      <View style={[styles.decorOrb2, { bottom: 200, left: -60 }]} />
+      <Animated.View
+        style={[
+          styles.orb2,
+          {
+            transform: [
+              { scale: orb2Scale },
+              { translateX: orb2TransX },
+              { translateY: orb2TransY },
+            ],
+          },
+        ]}
+      />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.logoRow}>
             <View style={styles.logoIconWrap}>
-              <Text style={styles.logoIconText}>📍</Text>
+              <Animated.Text style={[styles.logoIconText, { transform: [{ rotate: spinSparkle }] }]}>✨</Animated.Text>
             </View>
-            <Text style={styles.logoText}>TripFlow</Text>
+            <View>
+              <Text style={styles.logoText}>TripFlow</Text>
+              <Text style={styles.logoSub}>AI travel optimizer</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Text style={styles.notifIcon}>🔔</Text>
+          <TouchableOpacity style={styles.iconButton}>
+            <AppIcon name="bell" size={19} color={colors.palette.appOrangeDark} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.greetSection}>
-          <Text style={styles.greetText}>{greeting}</Text>
-          <Text style={styles.greetSub}>Bạn muốn khám phá Huế thế nào hôm nay?</Text>
+        <View style={styles.hero}>
+          <Text style={styles.greetText}>Lên lịch trình Huế thật gọn</Text>
+          <Text style={styles.greetSub}>
+            Nói mục tiêu chuyến đi, TripFlow sẽ tự động hỏi thêm khi thiếu dữ liệu và tối ưu tuyến đường cho bạn.
+          </Text>
         </View>
 
         {chatHistory.length === 0 && (
@@ -191,14 +238,9 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
             contentContainerStyle={styles.chipsScroll}
             style={styles.chipsContainer}
           >
-            {CONTEXTUAL_CHIPS.map((chip, i) => (
-              <TouchableOpacity key={i} style={styles.chip} onPress={() => setPrompt(chip)}>
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]}
-                  style={styles.chipGradient}
-                >
-                  <Text style={styles.chipText}>{chip}</Text>
-                </LinearGradient>
+            {CONTEXTUAL_CHIPS.map((chip) => (
+              <TouchableOpacity key={chip} style={styles.chip} onPress={() => setPrompt(chip)}>
+                <Text style={styles.chipText}>{chip}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -214,117 +256,79 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
           {chatHistory.length === 0 && (
             <View style={styles.emptyState}>
               <View style={styles.aiAvatar}>
-                <Text style={styles.aiAvatarText}>🤖</Text>
+                <Animated.View style={[styles.sparkleRing, { transform: [{ rotate: spinSparkle }] }]}>
+                  <Text style={styles.aiSparkle}>✨</Text>
+                </Animated.View>
+                <AppIcon name="route" size={32} color={colors.palette.appOrangeDark} />
               </View>
-              <Text style={styles.emptyStateTitle}>Xin chào! Tôi là TripFlow AI</Text>
+              <Text style={styles.emptyStateTitle}>Bạn muốn đi theo kiểu nào?</Text>
               <Text style={styles.emptyStateSubtitle}>
-                Hãy nói với tôi chuyến đi bạn mơ ước. Tôi sẽ tối ưu lộ trình theo sức bền, thời tiết và sở thích!
+                Ví dụ: “Tôi có 2 ngày ở Huế, thích di tích, ăn địa phương, đi nhẹ nhàng và tránh nắng buổi trưa.”
               </Text>
             </View>
           )}
+
           {chatHistory.map((msg, idx) => (
-            <View key={idx} style={[styles.messageRow, msg.role === "user" ? styles.messageRowUser : styles.messageRowAi]}>
+            <View key={`${msg.role}-${idx}`} style={[styles.messageRow, msg.role === "user" && styles.messageRowUser]}>
               {msg.role === "assistant" && (
-                <View style={styles.aiAvatarSmall}><Text style={{ fontSize: 16 }}>🤖</Text></View>
+                <View style={styles.aiAvatarSmall}>
+                  <AppIcon name="route" size={16} color={colors.palette.appOrangeDark} />
+                </View>
               )}
               <View style={msg.role === "user" ? styles.userBubble : styles.aiBubble}>
-                {msg.role === "user" ? (
-                  <LinearGradient
-                    colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
-                    style={styles.userBubbleGradient}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={styles.userBubbleText}>{msg.content}</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.aiBubbleInner}>
-                    <Text style={styles.aiBubbleText}>{msg.content}</Text>
-                  </View>
-                )}
+                <Text style={msg.role === "user" ? styles.userBubbleText : styles.aiBubbleText}>{msg.content}</Text>
               </View>
             </View>
           ))}
+
           {isTyping && (
-            <View style={[styles.messageRow, styles.messageRowAi]}>
-              <View style={styles.aiAvatarSmall}><Text style={{ fontSize: 16 }}>🤖</Text></View>
-              <View style={styles.aiBubble}>
-                <View style={styles.aiBubbleInner}>
-                  <View style={styles.typingDots}>
-                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
-                    <View style={[styles.typingDot, { opacity: 0.7 }]} />
-                    <View style={[styles.typingDot, { opacity: 1 }]} />
-                  </View>
-                </View>
+            <View style={styles.messageRow}>
+              <View style={styles.aiAvatarSmall}>
+                <AppIcon name="route" size={16} color={colors.palette.appOrangeDark} />
               </View>
+              <Animated.View style={[styles.aiBubble, styles.aiBubbleLoading, { opacity: shimmerOpacity }]}>
+                <Text style={[styles.aiBubbleText, { fontStyle: "italic", color: colors.palette.appOrangeDark }]}>
+                  TripFlow đang phân tích yêu cầu ✨
+                </Text>
+              </Animated.View>
             </View>
           )}
         </ScrollView>
 
         {isReady && (
-          <Animated.View
-            style={[
-              styles.ctaWrapper,
-              {
-                opacity: ctaAnim,
-                transform: [
-                  {
-                    translateY: ctaAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [20, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <TouchableOpacity style={styles.ctaButton} onPress={handleLaunchRouteSolver}>
-              <LinearGradient
-                colors={[colors.palette.royalPurple, colors.palette.royalPurpleLight]}
-                style={styles.ctaGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.ctaButtonText}>🤖 Tạo Lộ Trình Tối Ưu Ngay ✨</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity style={styles.ctaButton} onPress={handleLaunchRouteSolver}>
+            <LinearGradient
+              colors={[colors.palette.appOrange, colors.palette.appOrangeDark]}
+              style={styles.ctaGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.ctaButtonText}>Tạo lộ trình tối ưu</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
 
-        <View style={[styles.inputCard, { paddingBottom: insets.bottom + 12 }]}>
-          <View style={styles.inputCardInner}>
+        <View style={styles.inputCard}>
+          <Animated.View style={[styles.inputCardInner, { borderColor: inputFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.palette.appLine, colors.palette.appOrange] }) }]}>
             <TextInput
               value={prompt}
               onChangeText={setPrompt}
-              placeholder="Nhập lịch trình bạn mơ ước..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
+              placeholder="Nhập lịch trình bạn mong muốn..."
+              placeholderTextColor={colors.palette.appMuted}
               style={styles.textInput}
               multiline
               maxLength={500}
+              onFocus={() => Animated.timing(inputFocusAnim, { toValue: 1, duration: 200, useNativeDriver: false }).start()}
+              onBlur={() => Animated.timing(inputFocusAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start()}
             />
-            <View style={styles.inputActions}>
-              <Animated.View style={{ transform: [{ scale: micScale }] }}>
-                <TouchableOpacity
-                  style={[styles.micBtn, micActive && styles.micBtnActive]}
-                  onPressIn={() => setMicActive(true)}
-                  onPressOut={() => setMicActive(false)}
-                >
-                  <Text style={styles.micIcon}>🎤</Text>
-                </TouchableOpacity>
-              </Animated.View>
-              <TouchableOpacity
-                style={[styles.sendBtn, !prompt.trim() && styles.sendBtnDisabled]}
-                onPress={handleSend}
-                disabled={!prompt.trim()}
-              >
-                <LinearGradient
-                  colors={prompt.trim() ? [colors.palette.royalPurple, colors.palette.royalPurpleLight] : ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.04)"]}
-                  style={styles.sendBtnGradient}
-                >
-                  <Text style={styles.sendBtnText}>→</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <TouchableOpacity
+              style={[styles.sendBtn, !prompt.trim() && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={!prompt.trim()}
+            >
+              <Text style={styles.sendBtnText}>→</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -332,20 +336,29 @@ export const HomeScreen: FC<HomeScreenProps> = ({ navigation }) => {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  decorOrb: {
+  root: { flex: 1, backgroundColor: colors.palette.appCream, overflow: "hidden" },
+  flex: { flex: 1 },
+  orb1: {
     position: "absolute",
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: colors.palette.royalPurple + "40",
+    top: -150,
+    right: -150,
+    width: 600,
+    height: 600,
+    borderRadius: 300,
+    backgroundColor: "#E3D5FF", // Soft premium pastel lavender
+    opacity: 0.08,
+    zIndex: -1,
   },
-  decorOrb2: {
+  orb2: {
     position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: colors.palette.imperialGold + "20",
+    bottom: -150,
+    left: -150,
+    width: 700,
+    height: 700,
+    borderRadius: 350,
+    backgroundColor: "#D5FFF6", // Soft premium pastel mint
+    opacity: 0.06,
+    zIndex: -1,
   },
   header: {
     flexDirection: "row",
@@ -354,109 +367,231 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: 12,
   },
-  logoRow: { flexDirection: "row", alignItems: "center" },
+  logoRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: colors.palette.sunsetOrange,
-    justifyContent: "center", alignItems: "center", marginRight: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  logoIconText: { fontSize: 16 },
-  logoText: { fontFamily: typography.primary.bold, fontSize: 20, color: "#FFFFFF", letterSpacing: 0.3 },
-  notifBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  logoIconText: { fontSize: 20, color: colors.palette.appOrangeDark },
+  logoText: { fontFamily: typography.primary.bold, fontSize: 20, color: colors.palette.appInk },
+  logoSub: { fontFamily: typography.primary.medium, fontSize: 11, color: colors.palette.appMuted },
+  iconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  notifIcon: { fontSize: 18 },
-  greetSection: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  greetText: { fontFamily: typography.primary.semiBold, fontSize: 24, color: "#FFFFFF", marginBottom: 4 },
-  greetSub: { fontFamily: typography.primary.normal, fontSize: 14, color: "rgba(255,255,255,0.5)" },
-  chipsContainer: { maxHeight: 60 },
+  hero: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  greetText: {
+    fontFamily: typography.primary.bold,
+    fontSize: 28,
+    color: colors.palette.appInk,
+    lineHeight: 36,
+  },
+  greetSub: {
+    fontFamily: typography.primary.normal,
+    fontSize: 14,
+    color: colors.palette.appMuted,
+    lineHeight: 22,
+    marginTop: 8,
+  },
+  chipsContainer: { maxHeight: 52 },
   chipsScroll: { paddingHorizontal: spacing.lg, paddingBottom: 8, gap: 8, flexDirection: "row" },
-  chip: { borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
-  chipGradient: { paddingHorizontal: 14, paddingVertical: 8 },
-  chipText: { fontFamily: typography.primary.medium, fontSize: 13, color: "rgba(255,255,255,0.85)" },
+  chip: {
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 1,
+  },
+  chipText: { fontFamily: typography.primary.medium, fontSize: 13, color: colors.palette.appOrangeDark },
   chatScroll: { flex: 1 },
   chatContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg, flexGrow: 1 },
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 40, paddingHorizontal: 20 },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md, gap: spacing.md },
   aiAvatar: {
-    width: 72, height: 72, borderRadius: 24,
-    backgroundColor: "rgba(108,42,123,0.3)",
-    borderWidth: 2, borderColor: "rgba(108,42,123,0.5)",
-    justifyContent: "center", alignItems: "center", marginBottom: 16,
+    width: 82,
+    height: 82,
+    borderRadius: 26,
+    backgroundColor: colors.palette.appOrangeSoft,
+    borderWidth: 1,
+    borderColor: "rgba(249, 115, 22, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
-  aiAvatarText: { fontSize: 36 },
-  emptyStateTitle: { fontFamily: typography.primary.semiBold, fontSize: 18, color: "#FFFFFF", textAlign: "center", marginBottom: 10 },
-  emptyStateSubtitle: { fontFamily: typography.primary.normal, fontSize: 14, color: "rgba(255,255,255,0.5)", textAlign: "center", lineHeight: 22 },
-  messageRow: { flexDirection: "row", marginBottom: 12, alignItems: "flex-end" },
-  messageRowUser: { justifyContent: "flex-end" },
-  messageRowAi: { justifyContent: "flex-start" },
-  aiAvatarSmall: {
-    width: 32, height: 32, borderRadius: 10,
-    backgroundColor: "rgba(108,42,123,0.3)",
-    justifyContent: "center", alignItems: "center", marginRight: 8,
-  },
-  userBubble: { maxWidth: "80%", borderRadius: 16, overflow: "hidden" },
-  userBubbleGradient: { paddingHorizontal: 14, paddingVertical: 10 },
-  userBubbleText: { fontFamily: typography.primary.normal, fontSize: 14, color: "#FFFFFF", lineHeight: 20 },
-  aiBubble: { maxWidth: "80%" },
-  aiBubbleInner: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  aiBubbleText: { fontFamily: typography.primary.normal, fontSize: 14, color: "rgba(255,255,255,0.85)", lineHeight: 20 },
-  typingDots: { flexDirection: "row", gap: 4, padding: 4 },
-  typingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.palette.imperialGold },
-  inputCard: { paddingHorizontal: spacing.md, paddingTop: 8, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" },
-  inputCardInner: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    flexDirection: "row", alignItems: "flex-end",
-    paddingHorizontal: 16, paddingVertical: 10, gap: 8,
-  },
-  textInput: {
-    flex: 1, fontFamily: typography.primary.normal, fontSize: 15, color: "#FFFFFF",
-    minHeight: 40, maxHeight: 100, paddingTop: 0, paddingBottom: 0,
-  },
-  inputActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  micBtn: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
-  },
-  micBtnActive: { backgroundColor: colors.palette.sunsetOrange + "40", borderColor: colors.palette.sunsetOrange },
-  micIcon: { fontSize: 18 },
-  sendBtn: { borderRadius: 12, overflow: "hidden" },
-  sendBtnDisabled: { opacity: 0.5 },
-  sendBtnGradient: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
-  sendBtnText: { fontSize: 20, color: "#FFFFFF", fontFamily: typography.primary.bold },
-  ctaWrapper: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: 8,
-    paddingBottom: 4,
-    width: "100%",
-  },
-  ctaButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: colors.palette.royalPurple,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  ctaGradient: {
-    paddingVertical: 14,
+  sparkleRing: {
+    position: "absolute",
+    top: -12,
+    right: -12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    elevation: 3,
+    shadowColor: colors.palette.appOrangeDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
-  ctaButtonText: {
+  aiSparkle: { fontSize: 14 },
+  emptyStateTitle: {
     fontFamily: typography.primary.bold,
-    fontSize: 15,
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
+    fontSize: 20,
+    color: colors.palette.appInk,
+    textAlign: "center",
   },
+  emptyStateSubtitle: {
+    fontFamily: typography.primary.normal,
+    fontSize: 14,
+    color: colors.palette.appMuted,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  messageRow: { flexDirection: "row", marginBottom: 12, alignItems: "flex-end" },
+  messageRowUser: { justifyContent: "flex-end" },
+  aiAvatarSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: colors.palette.appOrangeSoft,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  userBubble: {
+    maxWidth: "82%",
+    borderRadius: 18,
+    backgroundColor: colors.palette.appOrange,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    elevation: 2,
+    shadowColor: colors.palette.appOrangeDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  userBubbleText: { fontFamily: typography.primary.normal, fontSize: 14, color: "#FFFFFF", lineHeight: 21 },
+  aiBubble: {
+    maxWidth: "82%",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(25px)",
+        WebkitBackdropFilter: "blur(25px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  aiBubbleLoading: {
+    borderColor: "rgba(249, 115, 22, 0.2)",
+    backgroundColor: "rgba(255, 243, 232, 0.5)",
+  },
+  aiBubbleText: { fontFamily: typography.primary.normal, fontSize: 14, color: colors.palette.appInk, lineHeight: 21 },
+  ctaButton: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  ctaGradient: { paddingVertical: 15, alignItems: "center", justifyContent: "center" },
+  ctaButtonText: { fontFamily: typography.primary.bold, fontSize: 15, color: "#FFFFFF" },
+  inputCard: {
+    paddingHorizontal: spacing.md,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? spacing.xl : spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(249, 115, 22, 0.12)",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+  },
+  inputCardInner: {
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  textInput: {
+    flex: 1,
+    fontFamily: typography.primary.normal,
+    fontSize: 15,
+    color: colors.palette.appInk,
+    minHeight: 40,
+    maxHeight: 100,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: colors.palette.appOrange,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sendBtnDisabled: { backgroundColor: colors.palette.appOrangePale },
+  sendBtnText: { fontSize: 20, color: "#FFFFFF", fontFamily: typography.primary.bold },
 })

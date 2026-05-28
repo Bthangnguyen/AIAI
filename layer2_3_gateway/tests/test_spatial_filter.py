@@ -28,6 +28,15 @@ def test_contract_indoor_preference():
     assert c.weather_preference == "indoor"
 
 
+@pytest.fixture(autouse=True)
+def check_db():
+    import socket
+    try:
+        socket.getaddrinfo("db", None)
+    except socket.gaierror:
+        pytest.skip("Database host 'db' is offline/unresolved.")
+
+
 @pytest.mark.anyio
 async def test_vegetarian_restaurant_strict_exclusion():
     from app.services.spatial_filter import SpatialFilterService

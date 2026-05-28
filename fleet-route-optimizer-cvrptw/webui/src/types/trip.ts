@@ -1,6 +1,13 @@
 import type { OptimizationStats } from "./stats"
 import type { PlanStyle } from "./plan"
 
+export interface TimeWindowSpec {
+  start_min: number
+  end_min: number
+}
+
+export type LLMDataContract = Record<string, any>
+
 export type TravelStyle = "relaxed" | "balanced" | "dense"
 export type DraftStatus = "draft"
 export type MissingIntentField =
@@ -19,7 +26,7 @@ export type MissingIntentField =
   | "group"
   | "hotel"
 export type BuilderMode = "plan" | "build"
-export type PreviewMode = "timeline" | "map" | "split" | "compare"
+export type PreviewMode = "timeline" | "map" | "split"
 export type BuildStatus = "empty" | "building" | "resolving" | "live" | "error"
 
 export interface ValidationNote {

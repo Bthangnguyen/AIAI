@@ -1,6 +1,53 @@
 import type { ItineraryDay, ItineraryDraft } from "@/types/trip"
+import { getPoi } from "@/lib/mockItineraryFallback"
+import { POI_CACHE } from "@/lib/api"
 
 export type MoveDirection = "up" | "down"
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24
+  const m = minutes % 60
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
+}
+
+export function recalculateDayTimes(day: ItineraryDay): ItineraryDay {
+  let currentMin = 480 // 08:00 default
+  if (day.items.length > 0) {
+    const firstTime = day.items[0].time
+    const match = firstTime?.match(/^(\d{1,2}):(\d{2})/)
+    if (match) {
+      currentMin = parseInt(match[1]) * 60 + parseInt(match[2])
+    }
+  }
+
+  const items = day.items.map((item, index) => {
+    // Robust fallback: getPoi (POI_CACHE → HUE_POIS) → direct POI_CACHE
+    const poi = getPoi(item.poiId) ?? POI_CACHE.get(item.poiId)
+    const duration = poi?.estimatedDurationMinutes ?? 60
+    const arrivalTime = minutesToTime(currentMin)
+    
+    // Thời gian di chuyển ước tính mặc định giữa các điểm
+    const travelTime = 15
+    const nextMin = currentMin + duration
+
+    const note = [
+      poi?.name ?? item.note?.split(" · ")[0] ?? "",
+      `${duration} phút`,
+      index < day.items.length - 1 ? `di chuyển tiếp ${travelTime} phút` : null,
+    ].filter(Boolean).join(" · ")
+
+    const updatedItem = {
+      ...item,
+      time: arrivalTime,
+      note,
+    }
+
+    currentMin = nextMin + travelTime
+    return updatedItem
+  })
+
+  return { ...day, items }
+}
 
 export function canMoveDayItem(day: ItineraryDay, itemId: string, direction: MoveDirection): boolean {
   const index = day.items.findIndex((item) => item.id === itemId)
@@ -46,8 +93,9 @@ export function applyManualReorderToDraft(
   if (dayIndex < 0) return draft
 
   const reorderedDay = moveDayItem(draft.days[dayIndex], itemId, direction)
+  const timedDay = recalculateDayTimes(reorderedDay)
   const days = [...draft.days]
-  days[dayIndex] = reorderedDay
+  days[dayIndex] = timedDay
 
   return markDayManual(
     {

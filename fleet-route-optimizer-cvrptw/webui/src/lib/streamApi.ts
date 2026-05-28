@@ -14,12 +14,20 @@ export type StreamStep =
 
 export interface StreamEvent {
   stage: StreamStep | string
+  step?: string
+  status?: string
   contract?: Record<string, unknown>
+  tags?: string[]
+  locked?: string[]
   pois_found?: number
   locked_count?: number
   validation_notes?: string[]
   result?: Record<string, unknown>
   message?: string
+  error_code?: string
+  days?: unknown[]
+  num_days?: number
+  [key: string]: unknown
 }
 
 export interface StreamTripPlanOptions {
@@ -28,6 +36,10 @@ export interface StreamTripPlanOptions {
   hotelLon?: number
   hotelName?: string
   numDays?: number
+  budget?: number
+  destination?: string
+  interests?: string[]
+  contract?: Record<string, unknown>
   onEvent: (event: StreamEvent) => void
   onError: (error: Error) => void
   onDone: () => void
@@ -40,19 +52,29 @@ export async function streamTripPlan(options: StreamTripPlanOptions): Promise<vo
   try {
     const res = await fetch(`${GATEWAY_BASE_URL}/v1/trip/plan_trip_stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+      headers: { 
+        "Content-Type": "application/json", 
+        Accept: "text/event-stream",
+        Authorization: "Bearer mock-session-token-xyz-987",
+      },
       body: JSON.stringify({
         user_prompt: userPrompt,
         hotel_lat: hotelLat,
         hotel_lon: hotelLon,
         hotel_name: hotelName,
         num_days: numDays,
+        budget: options.budget,
+        destination: options.destination ?? "Huế",
+        preferences: options.interests,
+        contract: options.contract,
       }),
       signal,
     })
 
     if (!res.ok || !res.body) {
-      throw new Error(`SSE failed (${res.status})`)
+      let detail = ""
+      try { detail = await res.text() } catch { /* ignore */ }
+      throw new Error(`Không tạo được lịch trình\n\nSSE failed (${res.status}): ${detail}`)
     }
 
     const reader = res.body.getReader()

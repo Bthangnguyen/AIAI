@@ -1,76 +1,40 @@
-/**
- * MainTabNavigator - Dark Royal Hue Tab Bar
- * Design: Glassmorphism dark + Royal Purple accent
- */
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { View, Text, StyleSheet, Platform } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { AppIcon, AppIconName } from "@/components/AppIcon"
 import { MainTabParamList } from "@/navigators/navigationTypes"
-import { HomeScreen } from "@/screens/HomeScreen"
-import { TripHistoryScreen } from "@/screens/TripHistoryScreen"
-import { ProfileScreen } from "@/screens/ProfileScreen"
-import { TripSummaryPlaceholder } from "@/screens/TripSummaryPlaceholder"
 import { ActiveTripScreen } from "@/screens/ActiveTripScreen"
+import { HomeScreen } from "@/screens/HomeScreen"
+import { ProfileScreen } from "@/screens/ProfileScreen"
+import { TripHistoryScreen } from "@/screens/TripHistoryScreen"
 import { colors } from "@/theme/colors"
-import { typography } from "@/theme/typography"
 import { spacing } from "@/theme/spacing"
+import { typography } from "@/theme/typography"
 
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
 interface TabIconProps {
-  icon: string
+  icon: AppIconName
   label: string
   focused: boolean
 }
 
 const TabIcon: React.FC<TabIconProps> = ({ icon, label, focused }) => (
-  <View style={tabStyles.iconContainer}>
-    <Text style={[tabStyles.icon]}>{icon}</Text>
+  <View style={[tabStyles.iconContainer, focused && tabStyles.iconContainerFocused]}>
+    <AppIcon name={icon} size={21} color={focused ? colors.palette.appOrangeDark : colors.palette.appMuted} />
     <Text style={[tabStyles.label, focused && tabStyles.labelFocused]}>{label}</Text>
-    {focused && <View style={tabStyles.activeDot} />}
   </View>
 )
 
-const tabStyles = StyleSheet.create({
-  iconContainer: {
-    alignItems: "center",
-    paddingTop: 4,
-    position: "relative",
-  },
-  icon: {
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  label: {
-    fontFamily: typography.primary.normal,
-    fontSize: 10,
-    color: "rgba(255,255,255,0.4)",
-    letterSpacing: 0.2,
-  },
-  labelFocused: {
-    fontFamily: typography.primary.semiBold,
-    color: colors.palette.imperialGold,
-  },
-  activeDot: {
-    position: "absolute",
-    bottom: -6,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.palette.imperialGold,
-  },
-})
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-
-
 export const MainTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets()
-  const safeBottom = insets.bottom > 0 ? insets.bottom : 8
+  const safeBottom = insets.bottom > 0 ? insets.bottom : 10
   const dynamicTabBarStyle = {
     ...styles.tabBar,
-    height: 56 + safeBottom,
-    paddingBottom: safeBottom,
+    height: Platform.OS === "ios" ? 54 + safeBottom : 64 + safeBottom,
+    paddingBottom: Platform.OS === "ios" ? safeBottom : safeBottom + 2,
   }
 
   return (
@@ -79,70 +43,82 @@ export const MainTabNavigator: React.FC = () => {
         headerShown: false,
         tabBarStyle: dynamicTabBarStyle,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.palette.imperialGold,
-        tabBarInactiveTintColor: "rgba(255,255,255,0.3)",
+        tabBarActiveTintColor: colors.palette.appOrangeDark,
+        tabBarInactiveTintColor: colors.palette.appMuted,
         tabBarItemStyle: { paddingVertical: 4 },
-        tabBarBackground: () => (
-          <View style={styles.tabBarBackground} />
-        ),
+        tabBarBackground: () => <View style={styles.tabBarBackground} />,
       }}
     >
       <Tab.Screen
         name="Explore"
         component={HomeScreen as any}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🏠" label="Trang chủ" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="home" label="Trang chủ" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="MyTrip"
         component={ActiveTripScreen as any}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🗺️" label="Lộ trình" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="route" label="Lộ trình" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="History"
         component={TripHistoryScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📖" label="Lịch sử" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="history" label="Lịch sử" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👤" label="Tài khoản" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="profile" label="Tài khoản" focused={focused} />,
         }}
       />
     </Tab.Navigator>
   )
 }
 
+const tabStyles = StyleSheet.create({
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    minWidth: 62,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  iconContainerFocused: {
+    backgroundColor: "rgba(249, 115, 22, 0.08)",
+  },
+  label: {
+    fontFamily: typography.primary.medium,
+    fontSize: 10,
+    color: colors.palette.appMuted,
+  },
+  labelFocused: {
+    fontFamily: typography.primary.semiBold,
+    color: colors.palette.appOrangeDark,
+  },
+})
+
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: "rgba(11,15,25,0.95)",
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-    height: Platform.OS === "ios" ? 84 : 64,
-    paddingBottom: Platform.OS === "ios" ? 24 : 8,
+    borderTopColor: "rgba(249, 115, 22, 0.12)",
     paddingTop: spacing.xs,
-    shadowColor: "#000",
+    shadowColor: colors.palette.appOrangeDark,
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 20,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 8,
   },
   tabBarBackground: {
     flex: 1,
-    backgroundColor: "rgba(11,15,25,0.97)",
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
   },
 })
+

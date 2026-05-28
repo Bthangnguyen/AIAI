@@ -4,6 +4,40 @@ import { GATEWAY_BASE_URL, gatewayFetch } from "@/lib/client"
 
 export const POI_CACHE = new Map<string, POI>()
 
+// Helper to save POI_CACHE to localStorage
+export function saveCacheToStorage() {
+  if (typeof window !== "undefined") {
+    try {
+      const entries = Array.from(POI_CACHE.entries())
+      localStorage.setItem("tripflow_poi_cache", JSON.stringify(entries))
+    } catch (e) {
+      console.error("Failed to save POI_CACHE to localStorage", e)
+    }
+  }
+}
+
+// Helper to load POI_CACHE from localStorage
+export function loadCacheFromStorage() {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("tripflow_poi_cache")
+      if (stored) {
+        const entries = JSON.parse(stored) as [string, POI][]
+        entries.forEach(([id, poi]) => {
+          POI_CACHE.set(id, poi)
+        })
+      }
+    } catch (e) {
+      console.error("Failed to load POI_CACHE from localStorage", e)
+    }
+  }
+}
+
+// Load cache immediately when importing in browser
+if (typeof window !== "undefined") {
+  loadCacheFromStorage()
+}
+
 interface ChatContract {
   destination?: string | null
   budget_max?: number | null
@@ -17,6 +51,7 @@ interface ChatProcessResult {
   status: "ready" | "clarifying" | string
   reply: string
   updated_contract: ChatContract
+  updated_itinerary?: any
 }
 
 interface BackendPoiResponse {
@@ -48,6 +83,7 @@ interface Layer4Stop {
   departure_time_min?: number
   visit_duration_min?: number
   entrance_fee?: number
+  location?: { latitude: number; longitude: number }
 }
 
 interface Layer4Day {
@@ -91,17 +127,19 @@ function mapBackendPoi(poi: BackendPoiResponse): POI {
     description: poi.description ?? "",
     tags: poi.tags ?? [],
     estimatedDurationMinutes: poi.visit_duration_min ?? 60,
-    estimatedCost: poi.entrance_fee ?? poi.price ?? 0,
+    estimatedCost: (poi.entrance_fee && poi.entrance_fee > 0) ? poi.entrance_fee : (poi.price || 0),
     rating: 4.5,
     lat: poi.latitude,
     lng: poi.longitude,
   }
   POI_CACHE.set(mapped.id, mapped)
+  saveCacheToStorage() // Save cache to storage
   return mapped
 }
 
-function cachePoisFromResponse(pois: BackendPoiResponse[] | undefined) {
+export function cachePoisFromResponse(pois: BackendPoiResponse[] | undefined) {
   pois?.forEach((poi) => mapBackendPoi(poi))
+  saveCacheToStorage() // Save cache to storage
 }
 
 function buildIntent(
@@ -140,12 +178,36 @@ export function mapLayer4ResultToDraft(
   const days: ItineraryDay[] = l4.days.map((day) => {
     const items: ItineraryItem[] = day.stops
       .filter((stop) => !stop.poi_id.startsWith("hotel_day_") && stop.poi_id !== "__rest_break__")
-      .map((stop, index) => ({
-        id: `${day.day_index}-${stop.poi_id}-${stop.arrival_time_min}-${index}`,
-        poiId: stop.poi_id,
-        time: minutesToTime(stop.arrival_time_min),
-        note: stop.poi_name ?? "",
-      }))
+      .map((stop, index) => {
+        // Proactively seed/update POI_CACHE using stop's real coordinates from backend
+        if (stop.poi_id && stop.location) {
+          const cached = POI_CACHE.get(stop.poi_id)
+          POI_CACHE.set(stop.poi_id, {
+            id: stop.poi_id,
+            name: stop.poi_name ?? cached?.name ?? "Unknown",
+            category: cached?.category ?? "general",
+            description: cached?.description ?? "",
+            tags: cached?.tags ?? [],
+            estimatedDurationMinutes: stop.visit_duration_min ?? cached?.estimatedDurationMinutes ?? 60,
+            estimatedCost: (stop.entrance_fee && stop.entrance_fee > 0) 
+              ? stop.entrance_fee 
+              : ((stop as any).price && (stop as any).price > 0)
+                ? (stop as any).price
+                : cached?.estimatedCost ?? 0,
+            rating: cached?.rating ?? 4.5,
+            lat: stop.location.latitude,
+            lng: stop.location.longitude,
+          })
+          saveCacheToStorage()
+        }
+
+        return {
+          id: `${day.day_index}-${stop.poi_id}-${stop.arrival_time_min}-${index}`,
+          poiId: stop.poi_id,
+          time: minutesToTime(stop.arrival_time_min),
+          note: stop.poi_name ?? "",
+        }
+      })
 
     return {
       dayNumber: day.day_index + 1,
@@ -191,11 +253,19 @@ export async function chatProcess(
   message: string,
   history: { role: string; content: string }[],
   currentContract: ChatContract,
+  hasDraft?: boolean,
+  currentItinerary?: any,
 ): Promise<ChatProcessResult> {
   const res = await gatewayFetch("/v1/trip/chat_process", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history, current_contract: currentContract }),
+    body: JSON.stringify({
+      message,
+      history,
+      current_contract: currentContract,
+      has_draft: !!hasDraft,
+      current_itinerary: currentItinerary,
+    }),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -210,6 +280,7 @@ export async function generateRealItinerary(
   budget?: number,
   destination?: string,
   interests?: string[],
+  currentContract?: any,
 ): Promise<ItineraryDraft> {
   const res = await gatewayFetch("/v1/trip/plan_trip", {
     method: "POST",
@@ -220,6 +291,7 @@ export async function generateRealItinerary(
       budget,
       destination: destination ?? "Huế",
       preferences: interests,
+      current_contract: currentContract,
     }),
   })
 

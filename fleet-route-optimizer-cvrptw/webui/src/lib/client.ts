@@ -6,6 +6,7 @@ export async function gatewayFetch(path: string, init?: RequestInit) {
     ...init,
     headers: {
       Accept: "application/json",
+      Authorization: "Bearer mock-session-token-xyz-987",
       ...(init?.headers ?? {}),
     },
   })

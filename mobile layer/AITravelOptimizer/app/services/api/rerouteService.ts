@@ -74,17 +74,10 @@ export const RerouteService = {
     const remainingBudget = itinerary.budget_total ? itinerary.budget_total - itinerary.budget_used : 300000;
     
     return {
-      current_location: {
-        lat: currentLat,
-        lon: currentLon
-      },
+      current_lat: currentLat,
+      current_lon: currentLon,
       current_time_min: getCurrentTimeMin(),
       remaining_poi_ids: remainingIds,
-      locked_remaining_poi_ids: [], // To be implemented when UI allows locking
-      constraints: {
-        budget_remaining: remainingBudget,
-        end_time_min: 1080 // 18:00
-      },
       day_index: currentDayIndex,
       original_itinerary: itinerary,
       user_state: userState

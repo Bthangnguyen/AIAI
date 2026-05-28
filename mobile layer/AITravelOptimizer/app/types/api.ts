@@ -17,6 +17,7 @@ export interface LLMDataContract {
   hotel_lat?: number;
   hotel_lon?: number;
   hotel_name?: string;
+  confirmed_fields?: string[];
 
   // Scheduling hints
   estimated_pois?: number;

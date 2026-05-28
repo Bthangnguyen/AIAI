@@ -23,6 +23,16 @@ const zustandStorage: StateStorage = {
   },
 };
 
+export interface LockedTripHistoryItem {
+  id: string;
+  destination: string;
+  startDate: string;
+  totalDays: number;
+  poiCount: number;
+  itinerary: TravelItinerary;
+  lockedAt: string;
+}
+
 interface TripState {
   // 1. Input từ User
   originalPrompt: string;
@@ -40,6 +50,8 @@ interface TripState {
   // 4. Trip mode: Draft (chưa khóa) vs Live (đã khóa)
   isLocked: boolean;
   setIsLocked: (locked: boolean) => void;
+  lockedTripHistory: LockedTripHistoryItem[];
+  saveLockedTrip: (itinerary: TravelItinerary) => void;
 
   // 5. Visited POIs — persisted across app restarts
   visitedPOIIds: string[];
@@ -77,6 +89,24 @@ export const useTripStore = create<TripState>()(
       // Trip mode
       isLocked: false,
       setIsLocked: (locked) => set({ isLocked: locked }),
+      lockedTripHistory: [],
+      saveLockedTrip: (itinerary) => {
+        const destination = itinerary.days?.[0]?.start_hotel_name || "Chuyến đi đã khóa";
+        const firstDate = itinerary.days?.[0]?.date || new Date().toISOString().slice(0, 10);
+        const poiCount = itinerary.days?.reduce((sum, day) => sum + (day.stops?.length || 0), 0) || 0;
+        const id = `${firstDate}-${destination}-${itinerary.num_days || itinerary.days?.length || 1}`;
+        const item: LockedTripHistoryItem = {
+          id,
+          destination,
+          startDate: firstDate,
+          totalDays: itinerary.num_days || itinerary.days?.length || 1,
+          poiCount,
+          itinerary,
+          lockedAt: new Date().toISOString(),
+        };
+        const withoutDuplicate = get().lockedTripHistory.filter((trip) => trip.id !== id);
+        set({ lockedTripHistory: [item, ...withoutDuplicate] });
+      },
 
       // Visited POIs (persisted via MMKV)
       visitedPOIIds: [],
@@ -101,7 +131,7 @@ export const useTripStore = create<TripState>()(
       })
     }),
     {
-      name: 'ai-travel-trip-storage',
+      name: 'ai-travel-trip-storage-v2',
       storage: createJSONStorage(() => zustandStorage),
       // Persist: prompt, constraints, itinerary, lock state, visited POIs
       // Skip: sseStage, currentLocation (transient)
@@ -110,6 +140,7 @@ export const useTripStore = create<TripState>()(
         extractedConstraints: state.extractedConstraints,
         currentItinerary: state.currentItinerary,
         isLocked: state.isLocked,
+        lockedTripHistory: state.lockedTripHistory,
         visitedPOIIds: state.visitedPOIIds,
       })
     }

@@ -3,108 +3,130 @@
   "llm_contract": {
     "destination": "Huế",
     "budget_max": null,
+    "budget_is_unlimited": false,
     "radius_km": 10.0,
     "num_days": 2,
     "time_window": null,
     "tags": [
-      "culture"
+      "general",
+      "culture",
+      "street_food",
+      "food"
     ],
     "locked_pois": [
       "Đại Nội"
     ],
+    "excluded_pois": [],
     "weather_preference": null,
     "hotel_lat": 16.4637,
     "hotel_lon": 107.5905,
     "hotel_name": "Hue Default Hotel",
+    "hotel_confirmed": false,
+    "default_hotel_ok": false,
+    "transport_modes": [],
+    "group_type": null,
+    "group_size": null,
+    "confirmed_fields": [
+      "destination",
+      "num_days",
+      "interests",
+      "must_visit"
+    ],
+    "last_question_field": null,
+    "confirmation_pending": false,
+    "ready_to_plan": false,
     "estimated_pois": null,
+    "strict_poi_count": false,
     "time_slot": null,
     "trip_duration_hours": null,
     "vibe": null,
     "trip_type": null,
     "preferred_pace": null,
     "walking_tolerance": null,
-    "food_preferences": [
-      "bún bò"
-    ],
+    "food_preferences": [],
     "avoid_tags": [],
-    "target_category_distribution": null
+    "target_category_distribution": null,
+    "distribution_description": null
   },
   "pois": [
     {
-      "uuid": "6d0892cf-83d4-4dff-95aa-134160cfcf96",
-      "name": "Đại Nội Huế",
-      "category": "historical",
-      "description": "Imperial Citadel of Hue - UNESCO World Heritage",
-      "latitude": 16.4678,
-      "longitude": 107.5784,
-      "visit_duration_min": 120,
+      "uuid": "57892f6a-acfb-4153-8d1e-7cd4917e7742",
+      "name": "Vạc đồng Đại Nội",
+      "category": "culture",
+      "category_group": "culture",
+      "description": "Vạc đồng Đại Nội là nhóm vạc đồng thời chúa Nguyễn đặt trong khu vực Đại Nội Huế, thuộc nhóm hiện vật/di sản cung đình.",
+      "latitude": 16.470865,
+      "longitude": 107.576602,
+      "visit_duration_min": 60,
       "price": 0.0,
-      "entrance_fee": 200000.0,
+      "entrance_fee": 0.0,
       "open_time": 420,
       "close_time": 1020,
-      "priority_score": 0.8,
+      "priority_score": 0.6,
       "tags": [
         "culture",
-        "heritage",
-        "UNESCO"
+        "vạc đồng",
+        "đại nội",
+        "đồ đồng",
+        "chúa nguyễn"
       ],
       "is_locked": true,
       "score_breakdown": null,
       "utility_score": 0.5
     },
     {
-      "uuid": "a7b3852a-9d68-48e8-9090-8484f0febae3",
-      "name": "Lăng Minh Mạng",
-      "category": "historical",
-      "description": "Tomb of Emperor Minh Mang with lakes and gardens",
-      "latitude": 16.3875,
-      "longitude": 107.5694,
-      "visit_duration_min": 90,
-      "price": 0.0,
-      "entrance_fee": 150000.0,
+      "uuid": "dfaa776c-d3ed-4b9f-8ad2-c553355b0cb9",
+      "name": "Đại Nội Huế",
+      "category": "culture",
+      "category_group": "culture",
+      "description": "Kinh thành Huế - Di sản văn hóa thế giới UNESCO, trung tâm chính trị và văn hóa triều Nguyễn với kiến trúc cung điện nguy nga cung đình cổ kính.",
+      "latitude": 16.465824,
+      "longitude": 107.578555,
+      "visit_duration_min": 120,
+      "price": 200000.0,
+      "entrance_fee": 200000.0,
       "open_time": 420,
       "close_time": 1020,
-      "priority_score": 0.7500000000000001,
+      "priority_score": 0.8500000000000001,
       "tags": [
-        "culture",
-        "heritage",
-        "tomb"
+        "unesco",
+        "di sản",
+        "văn hóa",
+        "lịch sử",
+        "hoàng cung",
+        "kiến trúc",
+        "triều nguyễn"
       ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5850000000000001
+      "is_locked": true,
+      "score_breakdown": null,
+      "utility_score": 0.5
     },
     {
-      "uuid": "63d8ea41-7ab9-4779-863f-3f5503370099",
-      "name": "Hue Citadel Night Tour",
-      "category": "tour",
-      "description": "Special evening tour of illuminated Imperial City",
-      "latitude": 16.4678,
-      "longitude": 107.5784,
-      "visit_duration_min": 90,
+      "uuid": "e42f4b9f-aded-4678-9b32-8890931f00be",
+      "name": "Chùa Phổ Quang",
+      "category": "culture",
+      "category_group": "culture",
+      "description": "Điểm văn hóa/tâm linh tại Huế, phù hợp tham quan di tích, kiến trúc, lịch sử địa phương và không gian tín ngưỡng.",
+      "latitude": 16.4756,
+      "longitude": 107.585,
+      "visit_duration_min": 35,
       "price": 0.0,
-      "entrance_fee": 150000.0,
-      "open_time": 1080,
-      "close_time": 1320,
-      "priority_score": 0.7500000000000001,
+      "entrance_fee": 0.0,
+      "open_time": 360,
+      "close_time": 1140,
+      "priority_score": 0.6000000000000001,
       "tags": [
         "culture",
-        "night",
-        "heritage"
+        "văn hóa",
+        "tâm linh",
+        "di tích",
+        "kiến trúc huế"
       ],
       "is_locked": false,
       "score_breakdown": {
         "semantic_score": 0.5,
-        "quality_score": 0.7500000000000001,
+        "quality_score": 0.6000000000000001,
+        "distribution_boost": 0.5,
         "localness_score": 0.5,
         "novelty_score": 0.5,
         "comfort_score": 0.5,
@@ -112,526 +134,70 @@
         "distance_score": 0.5,
         "diversity_gain": 1.0
       },
-      "utility_score": 0.5850000000000001
+      "utility_score": 0.5800000000000001
     },
     {
-      "uuid": "68091896-6c56-488a-8c58-7731a2e91fba",
-      "name": "Bún Bò Huế Bà Tuyết",
-      "category": "restaurant",
-      "description": "Famous Bun Bo Hue noodle shop",
-      "latitude": 16.4714,
-      "longitude": 107.5982,
-      "visit_duration_min": 45,
-      "price": 50000.0,
+      "uuid": "2b6bbf02-b659-4e45-be0d-6349b0aa1bca",
+      "name": "Zucca",
+      "category": "food",
+      "category_group": "food",
+      "description": "Zucca là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4701617,
+      "longitude": 107.5951557,
+      "visit_duration_min": 60,
+      "price": 85000.0,
       "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1260,
-      "priority_score": 0.63,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
       "tags": [
-        "street_food",
-        "local",
-        "spicy"
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
       ],
       "is_locked": false,
       "score_breakdown": {
         "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.7,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
         "novelty_score": 0.5,
         "comfort_score": 0.5,
         "budget_score": 0.7,
         "distance_score": 0.5,
-        "diversity_gain": 0.7
+        "diversity_gain": 1.0
       },
-      "utility_score": 0.5794
+      "utility_score": 0.58
     },
     {
-      "uuid": "28722e08-2a35-49f8-841c-823ae25bbff0",
-      "name": "Bánh Bèo Bà Đỏ",
-      "category": "restaurant",
-      "description": "Traditional Hue steamed rice cakes",
-      "latitude": 16.4746,
-      "longitude": 107.5925,
-      "visit_duration_min": 30,
-      "price": 25000.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1200,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "local",
-        "snack"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5794
-    },
-    {
-      "uuid": "ef870bd1-190f-4161-8427-4468dc9f2efe",
-      "name": "Cơm Hến Bà Hoa",
-      "category": "restaurant",
-      "description": "Famous clam rice dish of Hue",
-      "latitude": 16.4671,
-      "longitude": 107.5892,
-      "visit_duration_min": 40,
+      "uuid": "fcfc3086-11f1-4f26-b8d3-488f802ba673",
+      "name": "Street Food Cafes",
+      "category": "cafe",
+      "category_group": "cafe",
+      "description": "Quán cà phê Street Food Cafes mang lại không gian thư giãn, lý tưởng để tận hưởng trà chiều và cà phê đặc sản Huế.",
+      "latitude": 16.4665965,
+      "longitude": 107.598326,
+      "visit_duration_min": 60,
       "price": 30000.0,
       "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1200,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "local",
-        "traditional"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5794
-    },
-    {
-      "uuid": "2d513f92-049e-46df-8934-550020f34fcc",
-      "name": "Quán Hạnh",
-      "category": "restaurant",
-      "description": "Popular vegetarian noodle shop",
-      "latitude": 16.4664,
-      "longitude": 107.5951,
-      "visit_duration_min": 45,
-      "price": 40000.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1260,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "local",
-        "vegetarian"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5794
-    },
-    {
-      "uuid": "b520a02c-1e2d-46d0-916d-2a06a1c23232",
-      "name": "Núi Ngự Bình",
-      "category": "nature",
-      "description": "Mountain hike with panoramic city views",
-      "latitude": 16.439,
-      "longitude": 107.588,
-      "visit_duration_min": 150,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1080,
-      "priority_score": 0.7000000000000001,
-      "tags": [
-        "hiking",
-        "nature",
-        "panorama"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5760000000000001
-    },
-    {
-      "uuid": "10b9fad0-9406-46cf-8756-a5850e7631b3",
-      "name": "Lăng Tự Đức",
-      "category": "historical",
-      "description": "Tomb of Emperor Tu Duc in lush gardens",
-      "latitude": 16.4326,
-      "longitude": 107.5658,
-      "visit_duration_min": 90,
-      "price": 0.0,
-      "entrance_fee": 150000.0,
       "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.7500000000000001,
-      "tags": [
-        "culture",
-        "heritage",
-        "tomb"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5730000000000001
-    },
-    {
-      "uuid": "7b865ddf-d922-4bd4-9f97-549ab39db609",
-      "name": "Lăng Khải Định",
-      "category": "historical",
-      "description": "Ornate tomb with mosaic decorations",
-      "latitude": 16.3989,
-      "longitude": 107.5903,
-      "visit_duration_min": 90,
-      "price": 0.0,
-      "entrance_fee": 150000.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.7500000000000001,
-      "tags": [
-        "culture",
-        "heritage",
-        "art_deco"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5730000000000001
-    },
-    {
-      "uuid": "f0af2a7b-8b85-4b55-abb1-2fd8fd9f167b",
-      "name": "Chợ Đông Ba",
-      "category": "market",
-      "description": "Largest market in Hue for local goods",
-      "latitude": 16.4726,
-      "longitude": 107.5885,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 300,
-      "close_time": 1140,
-      "priority_score": 0.68,
-      "tags": [
-        "market",
-        "street_food",
-        "shopping"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.68,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5724
-    },
-    {
-      "uuid": "11238f5d-c468-4902-aaec-693bfd25e879",
-      "name": "Bảo tàng Hồ Chí Minh Huế",
-      "category": "museum",
-      "description": "Ho Chi Minh Museum branch in Hue",
-      "latitude": 16.4646,
-      "longitude": 107.584,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.6500000000000001,
-      "tags": [
-        "museum",
-        "history",
-        "culture"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5670000000000001
-    },
-    {
-      "uuid": "bbe5a4d2-87d1-47a1-be42-6ee535a8175c",
-      "name": "Nhà hàng Cung Đình Tịnh Gia Viên",
-      "category": "restaurant",
-      "description": "Royal Hue cuisine fine dining experience",
-      "latitude": 16.466,
-      "longitude": 107.5856,
-      "visit_duration_min": 90,
-      "price": 300000.0,
-      "entrance_fee": 0.0,
-      "open_time": 600,
-      "close_time": 1260,
-      "priority_score": 0.6500000000000001,
-      "tags": [
-        "fine_dining",
-        "culture",
-        "royal"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5670000000000001
-    },
-    {
-      "uuid": "ebf7701c-e61d-4ba9-bb12-e2cb15cba39f",
-      "name": "Hue Wellness Spa",
-      "category": "spa",
-      "description": "Luxury spa with traditional Hue treatments",
-      "latitude": 16.4695,
-      "longitude": 107.596,
-      "visit_duration_min": 120,
-      "price": 500000.0,
-      "entrance_fee": 0.0,
-      "open_time": 540,
-      "close_time": 1260,
-      "priority_score": 0.65,
-      "tags": [
-        "spa",
-        "relax",
-        "wellness"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.5670000000000001
-    },
-    {
-      "uuid": "3f01e208-cbeb-4ab0-a96b-0b2416e9b851",
-      "name": "Quán ăn Lạc Thiện",
-      "category": "restaurant",
-      "description": "Long-established vegetarian restaurant",
-      "latitude": 16.4716,
-      "longitude": 107.5855,
-      "visit_duration_min": 45,
-      "price": 35000.0,
-      "entrance_fee": 0.0,
-      "open_time": 600,
-      "close_time": 1260,
-      "priority_score": 0.55,
-      "tags": [
-        "vegetarian",
-        "local",
-        "buddhist"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5650000000000001
-    },
-    {
-      "uuid": "1cb6bc05-f610-4895-9f05-79b3a9de9beb",
-      "name": "Chè Hẻm",
-      "category": "restaurant",
-      "description": "Hidden alley sweet soup shop famous among locals",
-      "latitude": 16.465,
-      "longitude": 107.5908,
-      "visit_duration_min": 30,
-      "price": 20000.0,
-      "entrance_fee": 0.0,
-      "open_time": 540,
       "close_time": 1320,
-      "priority_score": 0.55,
+      "priority_score": 0.5,
       "tags": [
-        "dessert",
-        "local",
-        "sweet"
+        "địa phương",
+        "ẩm thực",
+        "thư giãn",
+        "cà phê",
+        "đồ uống"
       ],
       "is_locked": false,
       "score_breakdown": {
         "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5650000000000001
-    },
-    {
-      "uuid": "a6f1968d-b8d0-4799-930c-c332382a3dce",
-      "name": "Chợ Tây Lộc",
-      "category": "market",
-      "description": "Traditional morning market for Hue locals",
-      "latitude": 16.4746,
-      "longitude": 107.5684,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 300,
-      "close_time": 1020,
-      "priority_score": 0.55,
-      "tags": [
-        "market",
-        "local",
-        "morning"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.7,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5650000000000001
-    },
-    {
-      "uuid": "5acccda5-7e91-4b89-a317-e855ba9e39c7",
-      "name": "Kim Long Garden House",
-      "category": "historical",
-      "description": "Traditional Hue garden house in Kim Long village",
-      "latitude": 16.4539,
-      "longitude": 107.5512,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 50000.0,
-      "open_time": 480,
-      "close_time": 1020,
-      "priority_score": 0.7000000000000001,
-      "tags": [
-        "garden",
-        "heritage",
-        "architecture"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5640000000000001
-    },
-    {
-      "uuid": "b542cdd1-8efc-4dba-8699-34ee7519ba5c",
-      "name": "Đầm Chuồn",
-      "category": "nature",
-      "description": "Tam Giang lagoon eco-tourism with fishing boats",
-      "latitude": 16.505,
-      "longitude": 107.669,
-      "visit_duration_min": 120,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 300,
-      "close_time": 1080,
-      "priority_score": 0.7000000000000001,
-      "tags": [
-        "lagoon",
-        "nature",
-        "fishing"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.7000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5640000000000001
-    },
-    {
-      "uuid": "fff7dbf0-ed72-47e2-a533-bca2ce5747f2",
-      "name": "Chùa Huyền Không Sơn Thượng",
-      "category": "temple",
-      "description": "Beautiful Zen temple in hills west of Hue",
-      "latitude": 16.4839,
-      "longitude": 107.5028,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "temple",
-        "zen",
-        "peaceful"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
+        "quality_score": 0.5,
+        "distribution_boost": 0.5,
         "localness_score": 0.5,
         "novelty_score": 0.5,
         "comfort_score": 0.5,
@@ -639,74 +205,13 @@
         "distance_score": 0.5,
         "diversity_gain": 1.0
       },
-      "utility_score": 0.558
+      "utility_score": 0.5660000000000001
     },
     {
-      "uuid": "86eb41b9-9bd6-442b-afcf-28ab1abe56b7",
-      "name": "Hồ Thủy Tiên Water Park",
-      "category": "abandoned",
-      "description": "Abandoned water park - popular for photography",
-      "latitude": 16.4081,
-      "longitude": 107.5789,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "urban_exploration",
-        "photography",
-        "abandoned"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.558
-    },
-    {
-      "uuid": "1b75754b-5b79-4cb8-a4e0-7b7d9f18cd8e",
-      "name": "Phố đi bộ Nguyễn Đình Chiểu",
-      "category": "entertainment",
-      "description": "Pedestrian night street with food vendors",
-      "latitude": 16.4678,
-      "longitude": 107.5856,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 1080,
-      "close_time": 1380,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "nightlife",
-        "walking",
-        "food"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.558
-    },
-    {
-      "uuid": "f2a437ed-4a38-48bf-be49-d164005e7f03",
-      "name": "Arena Trường Đấu Voi",
-      "category": "historical",
+      "uuid": "4e4ec6d4-8cdc-4388-b89b-cfa54b524cfb",
+      "name": "Hổ Quyền",
+      "category": "culture",
+      "category_group": "culture",
       "description": "Ruins of historic elephant fighting arena",
       "latitude": 16.4429,
       "longitude": 107.5583,
@@ -714,7 +219,7 @@
       "price": 0.0,
       "entrance_fee": 0.0,
       "open_time": 0,
-      "close_time": 1440,
+      "close_time": 1439,
       "priority_score": 0.55,
       "tags": [
         "landmark",
@@ -725,868 +230,2080 @@
       "score_breakdown": {
         "semantic_score": 0.5,
         "quality_score": 0.55,
+        "distribution_boost": 0.5,
         "localness_score": 0.5,
         "novelty_score": 0.7,
         "comfort_score": 0.5,
         "budget_score": 0.7,
         "distance_score": 0.5,
-        "diversity_gain": 0.7
+        "diversity_gain": 0.45
       },
-      "utility_score": 0.557
+      "utility_score": 0.534
     },
     {
-      "uuid": "dde39c74-5956-4853-8711-6b5d8d68d61f",
-      "name": "Thiên An Hill",
-      "category": "nature",
-      "description": "Pine-covered hill with a monastery on top",
-      "latitude": 16.4124,
-      "longitude": 107.596,
+      "uuid": "2a98122d-1f64-47be-924e-10859dc553e4",
+      "name": "Pizza Hut",
+      "category": "food",
+      "category_group": "food",
+      "description": "Pizza Hut là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống v...",
+      "latitude": 16.4605652,
+      "longitude": 107.599476,
       "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1080,
-      "priority_score": 0.6500000000000001,
-      "tags": [
-        "hiking",
-        "nature",
-        "monastery"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "c2014f92-3901-4a76-870f-b2cc50e50743",
-      "name": "Vọng Cảnh Hill",
-      "category": "nature",
-      "description": "Hilltop viewpoint overlooking Perfume River",
-      "latitude": 16.4333,
-      "longitude": 107.565,
-      "visit_duration_min": 90,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1080,
-      "priority_score": 0.6500000000000001,
-      "tags": [
-        "hiking",
-        "panorama",
-        "sunset"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6500000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "8a1fbd1b-096b-400d-83bd-1c3e09e7251f",
-      "name": "Sông Hương Boat Tour",
-      "category": "tour",
-      "description": "Sunset dragon boat cruise on Perfume River",
-      "latitude": 16.4668,
-      "longitude": 107.5925,
-      "visit_duration_min": 120,
-      "price": 200000.0,
-      "entrance_fee": 0.0,
-      "open_time": 480,
-      "close_time": 1020,
-      "priority_score": 0.65,
-      "tags": [
-        "river",
-        "scenic",
-        "boat"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "1f874fe6-07aa-4697-a6e0-bea852c67a37",
-      "name": "Vespa Adventures Hue",
-      "category": "tour",
-      "description": "Guided Vespa tour exploring Hue countryside",
-      "latitude": 16.4678,
-      "longitude": 107.5956,
-      "visit_duration_min": 240,
-      "price": 1200000.0,
-      "entrance_fee": 0.0,
-      "open_time": 480,
-      "close_time": 1020,
-      "priority_score": 0.65,
-      "tags": [
-        "vespa",
-        "adventure",
-        "food_tour"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "780811e5-f087-46c3-bdec-8fb078fde491",
-      "name": "Thanh Toàn Bridge",
-      "category": "historical",
-      "description": "Japanese-style covered tile bridge from 1776",
-      "latitude": 16.4318,
-      "longitude": 107.6358,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 20000.0,
-      "open_time": 420,
-      "close_time": 1080,
-      "priority_score": 0.65,
-      "tags": [
-        "heritage",
-        "architecture",
-        "village"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "280ca7e5-e188-41fd-8e14-d221fcc88c06",
-      "name": "An Định Palace",
-      "category": "historical",
-      "description": "French-influenced royal palace on An Cuu River",
-      "latitude": 16.4586,
-      "longitude": 107.591,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 50000.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.65,
-      "tags": [
-        "heritage",
-        "architecture",
-        "royal"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "0ba2d207-361e-4c50-be4f-eac9a3224220",
-      "name": "Phủ Tùng Thiện Vương",
-      "category": "historical",
-      "description": "Prince's residence and poetry museum",
-      "latitude": 16.4582,
-      "longitude": 107.5815,
-      "visit_duration_min": 40,
-      "price": 0.0,
-      "entrance_fee": 30000.0,
-      "open_time": 480,
-      "close_time": 1020,
-      "priority_score": 0.65,
-      "tags": [
-        "heritage",
-        "architecture",
-        "poetry"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.65,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.555
-    },
-    {
-      "uuid": "66cd5f01-820f-48bf-80e7-4a5c9346cfd6",
-      "name": "Cơm Âm Phủ",
-      "category": "restaurant",
-      "description": "Night-only rice dish served near ghost market",
-      "latitude": 16.4646,
-      "longitude": 107.5944,
-      "visit_duration_min": 40,
-      "price": 35000.0,
-      "entrance_fee": 0.0,
-      "open_time": 1020,
-      "close_time": 1380,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "night",
-        "rice"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5514
-    },
-    {
-      "uuid": "882431fc-b39e-4bf7-8ec6-8b5554cbdad6",
-      "name": "Bánh Khoái Hàng Me",
-      "category": "restaurant",
-      "description": "Famous crispy Hue pancake shop",
-      "latitude": 16.4671,
-      "longitude": 107.5946,
-      "visit_duration_min": 40,
-      "price": 45000.0,
+      "price": 85000.0,
       "entrance_fee": 0.0,
       "open_time": 600,
-      "close_time": 1200,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "pancake",
-        "crispy"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5514
-    },
-    {
-      "uuid": "d1eb6549-eb78-4be8-8bf9-57f67bd89d7c",
-      "name": "Nem Lụi Bà Hạnh",
-      "category": "restaurant",
-      "description": "Best grilled pork skewers in Hue",
-      "latitude": 16.4664,
-      "longitude": 107.5951,
-      "visit_duration_min": 35,
-      "price": 30000.0,
-      "entrance_fee": 0.0,
-      "open_time": 540,
-      "close_time": 1260,
-      "priority_score": 0.63,
-      "tags": [
-        "street_food",
-        "grilled",
-        "skewer"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.63,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.5514
-    },
-    {
-      "uuid": "b679d4a6-ffc5-42d6-991a-2b1c2d0d26d0",
-      "name": "Cà phê Mơ",
-      "category": "cafe",
-      "description": "Hidden garden cafe popular with locals",
-      "latitude": 16.4653,
-      "longitude": 107.591,
-      "visit_duration_min": 40,
-      "price": 25000.0,
-      "entrance_fee": 0.0,
-      "open_time": 480,
-      "close_time": 1380,
-      "priority_score": 0.55,
-      "tags": [
-        "cafe",
-        "garden",
-        "quiet"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.549
-    },
-    {
-      "uuid": "3d376117-3500-4735-a627-f66625506160",
-      "name": "Đập đá Vĩ Dạ",
-      "category": "landmark",
-      "description": "Iconic location from famous Vietnamese poem",
-      "latitude": 16.4619,
-      "longitude": 107.5956,
-      "visit_duration_min": 30,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.55,
-      "tags": [
-        "landmark",
-        "poetry",
-        "nostalgia"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.549
-    },
-    {
-      "uuid": "1a08e5bb-a10e-4db7-ad3c-08e85df8cf26",
-      "name": "Công viên Thương Bạc",
-      "category": "park",
-      "description": "Riverside park near Truong Tien Bridge",
-      "latitude": 16.4682,
-      "longitude": 107.5828,
-      "visit_duration_min": 30,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.55,
-      "tags": [
-        "park",
-        "relax",
-        "riverside"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.549
-    },
-    {
-      "uuid": "2fc1c868-c79b-492f-8306-ac4f4b29199c",
-      "name": "Làng Hương Thủy Xuân",
-      "category": "cultural",
-      "description": "Traditional incense making village",
-      "latitude": 16.4385,
-      "longitude": 107.5684,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 480,
-      "close_time": 1080,
-      "priority_score": 0.55,
-      "tags": [
-        "craft",
-        "incense",
-        "village"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 1.0
-      },
-      "utility_score": 0.549
-    },
-    {
-      "uuid": "a3226593-e2bf-4375-84e4-2df34ac794a2",
-      "name": "Hồ Tịnh Tâm",
-      "category": "nature",
-      "description": "Tranquil lotus pond inside Imperial City walls",
-      "latitude": 16.476,
-      "longitude": 107.5794,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "nature",
-        "garden",
-        "relax"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "f1820383-551f-4361-8a49-060eb7493a27",
-      "name": "Bảo tàng Cổ vật Cung đình Huế",
-      "category": "museum",
-      "description": "Royal antiquities museum inside the Citadel",
-      "latitude": 16.4687,
-      "longitude": 107.5815,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 50000.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "museum",
-        "culture",
-        "artifact"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "767c0fae-2a5a-477c-8c71-08270134d3b7",
-      "name": "Chùa Từ Hiếu",
-      "category": "temple",
-      "description": "Zen Buddhist monastery where Thich Nhat Hanh lived",
-      "latitude": 16.4408,
-      "longitude": 107.5741,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "temple",
-        "spiritual",
-        "zen"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "8f11254d-f6e1-4de0-b9f2-b19b170899c5",
-      "name": "Hue Imperial Museum of Fine Arts",
-      "category": "museum",
-      "description": "Fine arts museum in Long An Palace",
-      "latitude": 16.4687,
-      "longitude": 107.5815,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 30000.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "art",
-        "museum",
-        "culture"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "d620b19d-29e7-49f9-a717-b807723be566",
-      "name": "Alba Spa Hue",
-      "category": "spa",
-      "description": "Five-star spa in the heart of Hue",
-      "latitude": 16.4678,
-      "longitude": 107.5956,
-      "visit_duration_min": 90,
-      "price": 400000.0,
-      "entrance_fee": 0.0,
-      "open_time": 540,
-      "close_time": 1260,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "spa",
-        "massage",
-        "luxury"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "a64f6cd4-53b4-4e0a-b2a7-5238d92d5cdd",
-      "name": "Chùa Thiên Mụ",
-      "category": "temple",
-      "description": "Iconic 7-story pagoda on Perfume River",
-      "latitude": 16.4536,
-      "longitude": 107.5448,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 360,
-      "close_time": 1080,
-      "priority_score": 0.6000000000000001,
-      "tags": [
-        "temple",
-        "spiritual",
-        "panorama"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.6000000000000001,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.546
-    },
-    {
-      "uuid": "5bf8fd79-d69d-4d4b-9fc9-02ea91cf27b1",
-      "name": "Trường Quốc Học Huế",
-      "category": "historical",
-      "description": "Historic school where Ho Chi Minh studied",
-      "latitude": 16.4595,
-      "longitude": 107.5838,
-      "visit_duration_min": 30,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.55,
-      "tags": [
-        "education",
-        "history",
-        "landmark"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.537
-    },
-    {
-      "uuid": "09de1a13-52d2-4560-a706-4c64e02fc24a",
-      "name": "Điện Hòn Chén",
-      "category": "temple",
-      "description": "Riverside temple dedicated to goddess Po Nagar",
-      "latitude": 16.4258,
-      "longitude": 107.5211,
-      "visit_duration_min": 60,
-      "price": 0.0,
-      "entrance_fee": 30000.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.55,
-      "tags": [
-        "temple",
-        "spiritual",
-        "river"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.537
-    },
-    {
-      "uuid": "d899190a-9235-48c0-ba91-c3c8b2c6692e",
-      "name": "Highlands Coffee Trường Tiền",
-      "category": "cafe",
-      "description": "Modern cafe with Truong Tien Bridge view",
-      "latitude": 16.4685,
-      "longitude": 107.5878,
-      "visit_duration_min": 30,
-      "price": 40000.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
-      "close_time": 1380,
-      "priority_score": 0.55,
-      "tags": [
-        "cafe",
-        "modern",
-        "bridge_view"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.537
-    },
-    {
-      "uuid": "6d2dbf2a-234d-4b74-9dda-3ae20ea8b033",
-      "name": "Chùa Báo Quốc",
-      "category": "temple",
-      "description": "Historic Buddhist temple from 1670",
-      "latitude": 16.4589,
-      "longitude": 107.5807,
-      "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
-      "close_time": 1020,
-      "priority_score": 0.55,
-      "tags": [
-        "temple",
-        "spiritual",
-        "historic"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.537
-    },
-    {
-      "uuid": "0e1fe047-d0f7-4f7e-a80f-3b513d25b10d",
-      "name": "Cầu Trường Tiền",
-      "category": "landmark",
-      "description": "Historic bridge spanning Perfume River",
-      "latitude": 16.4689,
-      "longitude": 107.5886,
-      "visit_duration_min": 30,
-      "price": 0.0,
-      "entrance_fee": 0.0,
-      "open_time": 0,
-      "close_time": 1440,
-      "priority_score": 0.55,
-      "tags": [
-        "landmark",
-        "photo",
-        "riverside"
-      ],
-      "is_locked": false,
-      "score_breakdown": {
-        "semantic_score": 0.5,
-        "quality_score": 0.55,
-        "localness_score": 0.5,
-        "novelty_score": 0.5,
-        "comfort_score": 0.5,
-        "budget_score": 0.7,
-        "distance_score": 0.5,
-        "diversity_gain": 0.7
-      },
-      "utility_score": 0.537
-    },
-    {
-      "uuid": "2463ca26-c045-410c-9fb7-96b3a50b404b",
-      "name": "Cà phê Sơn",
-      "category": "cafe",
-      "description": "Rooftop cafe with Perfume River views",
-      "latitude": 16.4527,
-      "longitude": 107.5512,
-      "visit_duration_min": 45,
-      "price": 30000.0,
-      "entrance_fee": 0.0,
-      "open_time": 420,
       "close_time": 1320,
-      "priority_score": 0.55,
+      "priority_score": 0.6,
       "tags": [
-        "cafe",
-        "view",
-        "relax"
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
       ],
       "is_locked": false,
       "score_breakdown": {
         "semantic_score": 0.5,
-        "quality_score": 0.55,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
         "localness_score": 0.5,
         "novelty_score": 0.5,
         "comfort_score": 0.5,
         "budget_score": 0.7,
         "distance_score": 0.5,
-        "diversity_gain": 0.7
+        "diversity_gain": 0.45
       },
-      "utility_score": 0.537
+      "utility_score": 0.525
     },
     {
-      "uuid": "fd9db46d-3233-4eba-ad7f-fb47a647318a",
-      "name": "Trung tâm Nghệ thuật Điềm Phùng Thị",
-      "category": "museum",
-      "description": "Art center with sculptures by Diem Phung Thi",
-      "latitude": 16.4664,
-      "longitude": 107.5846,
+      "uuid": "50863668-6e99-4c0a-a4ce-f0ce2980a5b8",
+      "name": "Gardénia Kitchen",
+      "category": "food",
+      "category_group": "food",
+      "description": "Gardénia Kitchen là quán streetfood/quán địa phương tại Huế, nổi bật với chè Huế/đồ ngọt; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4611245,
+      "longitude": 107.5891798,
       "visit_duration_min": 45,
-      "price": 0.0,
-      "entrance_fee": 20000.0,
-      "open_time": 480,
-      "close_time": 1020,
-      "priority_score": 0.5,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
       "tags": [
-        "art",
-        "museum",
-        "sculpture"
+        "streetfood",
+        "chè huế",
+        "dessert",
+        "ăn vặt",
+        "địa phương",
+        "chè huế/đồ ngọt",
+        "huế"
       ],
       "is_locked": false,
       "score_breakdown": {
         "semantic_score": 0.5,
-        "quality_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
         "localness_score": 0.5,
         "novelty_score": 0.5,
         "comfort_score": 0.5,
         "budget_score": 0.7,
         "distance_score": 0.5,
-        "diversity_gain": 0.7
+        "diversity_gain": 0.45
       },
-      "utility_score": 0.528
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "e4012b9d-96c7-4eb0-a31b-677d74ffead4",
+      "name": "Bánh Ép 3 Thị",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bánh Ép 3 Thị là quán streetfood/quán địa phương tại Huế, nổi bật với bánh ép...",
+      "latitude": 16.4707944,
+      "longitude": 107.5688418,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "[\"streetfood\"",
+        "\"quán địa phương\"",
+        "\"bánh ép\"",
+        "\"ăn vặt huế\"",
+        "\"ẩm thực\"",
+        "\"bánh é..."
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "886665ae-1b3b-41ae-8c7e-ad2de9fe985e",
+      "name": "Chè Thanh",
+      "category": "food",
+      "category_group": "food",
+      "description": "Chè Thanh là quán streetfood/quán địa phương tại Huế, nổi bật với chè Huế/đồ ngọt; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.476711,
+      "longitude": 107.582452,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "chè huế",
+        "dessert",
+        "ăn vặt",
+        "địa phương",
+        "chè huế/đồ ngọt",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "431a9623-7a3d-4d79-9468-cc11647cbade",
+      "name": "Little Italy",
+      "category": "food",
+      "category_group": "food",
+      "description": "Little Italy là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4678372,
+      "longitude": 107.5947077,
+      "visit_duration_min": 45,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "a84cc6b2-b143-4c07-8397-3ba34479cef8",
+      "name": "O Chi - Bún Bò Huế",
+      "category": "food",
+      "category_group": "food",
+      "description": "O Chi - Bún Bò Huế là quán streetfood/quán địa phương tại Huế, nổi bật với bún bò Huế; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4775891,
+      "longitude": 107.5834846,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "900e1abc-611f-4574-af78-050c0343c343",
+      "name": "Bún Nghệ O Két",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Nghệ O Két là quán streetfood/quán địa phương tại Huế, nổi bật với bún nghệ; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4626942,
+      "longitude": 107.5995817,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún nghệ",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "0f997982-aae5-4eb8-bcd1-4408e64d61af",
+      "name": "Chè Thái Trang Trang",
+      "category": "food",
+      "category_group": "food",
+      "description": "Chè Thái Trang Trang là quán streetfood/quán địa phương tại Huế, nổi bật với chè Huế/đồ ngọt; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4565027,
+      "longitude": 107.5905932,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "chè huế",
+        "dessert",
+        "ăn vặt",
+        "địa phương",
+        "chè huế/đồ ngọt",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "c019c851-13b7-4edb-aadb-2daa822a3d67",
+      "name": "Al Pomodoro",
+      "category": "food",
+      "category_group": "food",
+      "description": "Al Pomodoro là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.475507,
+      "longitude": 107.5954624,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "3e530136-e80e-4b51-a7cd-88e2aba1d9c4",
+      "name": "Risotto Restaurant",
+      "category": "food",
+      "category_group": "food",
+      "description": "Risotto Restaurant là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4708647,
+      "longitude": 107.5960722,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "d305d510-a0ca-407b-8912-517f40282230",
+      "name": "Bánh Mì Ba Bu",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bánh Mì Ba Bu là quán streetfood/quán địa phương tại Huế, nổi bật với bánh mì...",
+      "latitude": 16.4660378,
+      "longitude": 107.5947277,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "bánh mì",
+        "ăn nhanh",
+        "địa phương",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "df8c1e91-89d4-4714-ac0b-bc84f5f632a1",
+      "name": "Quán Cẩm - Bún Bò Huế",
+      "category": "food",
+      "category_group": "food",
+      "description": "Quán Cẩm - Bún Bò Huế là quán streetfood/quán địa phương tại Huế, nổi bật với...",
+      "latitude": 16.4699163,
+      "longitude": 107.5932697,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "218ec9f7-bf81-4807-8f7a-a87376fd0429",
+      "name": "HP3 BBQ - AEON MALL Huế",
+      "category": "food",
+      "category_group": "food",
+      "description": "HP3 BBQ - AEON MALL Huế là nhà hàng/quán ăn tại Huế, phục vụ BBQ/món nướng; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4547217,
+      "longitude": 107.614836,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "bbq",
+        "món nướng",
+        "ăn nhóm",
+        "bbq/món nướng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "99452f95-4811-4a8a-b7a6-9cd4702f0a79",
+      "name": "Loving Hut",
+      "category": "food",
+      "category_group": "food",
+      "description": "Loving Hut là quán/nhà hàng chay tại Huế, phục vụ món chay; phù hợp người ăn chay và trải nghiệm ẩm thực thanh đạm.",
+      "latitude": 16.4505499,
+      "longitude": 107.6047746,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "quán chay",
+        "vegetarian",
+        "món chay",
+        "ẩm thực chay",
+        "vegetarian_restaurant",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "dc745e0e-762e-4986-87ab-0f9b9fae9352",
+      "name": "Nhi's Crepe & Pizza",
+      "category": "food",
+      "category_group": "food",
+      "description": "Nhi's Crepe & Pizza là nhà hàng/quán ăn tại Huế, phục vụ món Ý/pizza; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4607613,
+      "longitude": 107.5900726,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "món ý",
+        "pizza",
+        "western food",
+        "món ý/pizza",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "b32ee119-a4e1-4da6-b488-3f2d3bbc941f",
+      "name": "Chè Cầm",
+      "category": "food",
+      "category_group": "food",
+      "description": "Chè Cầm là quán streetfood/quán địa phương tại Huế, nổi bật với chè Huế/đồ ngọt; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4746333,
+      "longitude": 107.5953934,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "chè huế",
+        "dessert",
+        "ăn vặt",
+        "địa phương",
+        "chè huế/đồ ngọt",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "117d041a-7650-4493-a9f2-8c518c6086fd",
+      "name": "Mì Ốp La Hẻm 33",
+      "category": "food",
+      "category_group": "food",
+      "description": "Mì Ốp La Hẻm 33 là quán streetfood/quán địa phương tại Huế, nổi bật với mì ốp la; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4657804,
+      "longitude": 107.5981189,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "ăn sáng",
+        "mì ốp la",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "e6f4596e-b65f-4c92-9f0c-00e8cbec0d9c",
+      "name": "Nem Lụi Ku Huế",
+      "category": "food",
+      "category_group": "food",
+      "description": "Nem Lụi Ku Huế là quán streetfood/quán địa phương tại Huế, nổi bật với nem lụi; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4756153,
+      "longitude": 107.5822085,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "nem lụi",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "6defcf97-db96-49eb-9bd3-9b88fe5e69db",
+      "name": "Quán Số I - Bún Bò Huế",
+      "category": "food",
+      "category_group": "food",
+      "description": "Quán Số I - Bún Bò Huế là quán streetfood/quán địa phương tại Huế, nổi bật với bún bò Huế; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4618788,
+      "longitude": 107.5909846,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "63245b81-c8d4-4ad9-b0f7-432852b457fb",
+      "name": "Bún Bò Huế Bà Nga",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Bò Huế Bà Nga là quán streetfood/quán địa phương tại Huế, nổi bật với bún...",
+      "latitude": 16.4746479,
+      "longitude": 107.5827972,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "459bee83-1665-4e16-a1fc-c54cfca08ebf",
+      "name": "Spice Viet",
+      "category": "food",
+      "category_group": "food",
+      "description": "Spice Viet là nhà hàng/quán ăn tại Huế, phục vụ món ăn/đặc sản; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4608913,
+      "longitude": 107.5915617,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "ẩm thực",
+        "nhà hàng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "af6847f5-52f3-40f4-bef6-ae9d072d5ae1",
+      "name": "Bánh Ép O Thọ",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bánh Ép O Thọ là quán streetfood/quán địa phương tại Huế, nổi bật với bánh ép...",
+      "latitude": 16.450564,
+      "longitude": 107.5955153,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "[\"streetfood\"",
+        "\"quán địa phương\"",
+        "\"bánh ép\"",
+        "\"ăn vặt huế\"",
+        "\"ẩm thực\"",
+        "\"bánh é..."
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "740fd526-fa06-465a-be20-16a3912765db",
+      "name": "Lưu Ngọc - Nem Lụi, Bánh Nậm, Bèo, Lọc",
+      "category": "food",
+      "category_group": "food",
+      "description": "Lưu Ngọc - Nem Lụi, Bánh Nậm, Bèo, Lọc là quán streetfood/quán địa phương tại Huế, nổi bật với bánh bèo, bánh nậm, bánh lọc; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4587121,
+      "longitude": 107.5624358,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bánh huế",
+        "bánh bèo",
+        "bánh nậm",
+        "bánh lọc",
+        "ẩm thực",
+        "bánh bèo, bánh nậm, bánh lọc",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "959c67ca-552e-4723-9569-0cd70f3720ec",
+      "name": "Bún Bò Huế Bà Gái",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Bò Huế Bà Gái là quán streetfood/quán địa phương tại Huế, nổi bật với bún bò Huế; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4638869,
+      "longitude": 107.5895163,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "8b00623d-f9b8-458c-aa89-bf913e27824f",
+      "name": "Quán Tài Phú - Nem Lụi",
+      "category": "food",
+      "category_group": "food",
+      "description": "Quán Tài Phú - Nem Lụi là quán streetfood/quán địa phương tại Huế, nổi bật với nem lụi; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4581678,
+      "longitude": 107.5809316,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 480,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "nem lụi",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "eaaf34e8-eba0-43ac-943d-b8d80bc547fa",
+      "name": "A Lầu - Dzách Lầu",
+      "category": "food",
+      "category_group": "food",
+      "description": "A Lầu - Dzách Lầu là nhà hàng/quán ăn tại Huế, phục vụ lẩu; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4655821,
+      "longitude": 107.5947465,
+      "visit_duration_min": 45,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "lẩu",
+        "ăn nhóm",
+        "ẩm thực",
+        "local_eatery",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "0bade5e3-a57f-4df7-9109-b864ae38cb23",
+      "name": "Chị Tuyền - Nem Lụi & Bún Thịt Nướng",
+      "category": "food",
+      "category_group": "food",
+      "description": "Chị Tuyền - Nem Lụi & Bún Thịt Nướng là quán streetfood/quán địa phương tại Huế, nổi bật với bún thịt nướng; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4745861,
+      "longitude": 107.5974687,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún thịt nướng",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "af6f2216-7440-43ed-9e8c-dec9d68f0247",
+      "name": "Bún Bò Bà Nga",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Bò Bà Nga là quán streetfood/quán địa phương tại Huế, nổi bật với bún bò Huế; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4779879,
+      "longitude": 107.5833758,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún bò huế",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "beb0db5e-d0d3-4ffa-99ef-4d6ae711940f",
+      "name": "Gecko restaurant",
+      "category": "food",
+      "category_group": "food",
+      "description": "Gecko restaurant là nhà hàng/quán ăn tại Huế, phục vụ món ăn/đặc sản; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4693741,
+      "longitude": 107.5943388,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "ẩm thực",
+        "nhà hàng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "6c5f1afb-08a4-4bb3-a2ef-39321fd8b3b4",
+      "name": "Chay Corner Vegetarian",
+      "category": "food",
+      "category_group": "food",
+      "description": "Chay Corner Vegetarian là quán/nhà hàng chay tại Huế, phục vụ món chay; phù hợp người ăn chay và trải nghiệm ẩm thực thanh đạm.",
+      "latitude": 16.438412,
+      "longitude": 107.5777566,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "quán chay",
+        "vegetarian",
+        "món chay",
+        "ẩm thực chay",
+        "vegetarian_restaurant",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "d8895499-119f-4d1a-a4ce-12f3982e8830",
+      "name": "Bún Mắm Nêm O Bê",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Mắm Nêm O Bê là quán streetfood/quán địa phương tại Huế, nổi bật với bún mắm nêm; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4736575,
+      "longitude": 107.588223,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún mắm nêm",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "3fd3c0ee-5d51-4ee5-a920-dd9d9451eab1",
+      "name": "Loan - Bánh Canh Cá Lóc",
+      "category": "food",
+      "category_group": "food",
+      "description": "Loan - Bánh Canh Cá Lóc là quán streetfood/quán địa phương tại Huế, nổi bật với bánh canh; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4560038,
+      "longitude": 107.5809063,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bánh canh",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "54b70664-6421-42e9-91ce-47f09a37df17",
+      "name": "Lotteria",
+      "category": "food",
+      "category_group": "food",
+      "description": "Lotteria là chuỗi fast food/restaurant tại Huế, phù hợp ăn nhanh, tiện lợi và đi nhóm.",
+      "latitude": 16.4607854,
+      "longitude": 107.5993882,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "fastfood_chain",
+        "restaurant",
+        "ăn nhanh",
+        "chuỗi cửa hàng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "7383a681-754c-4a05-90ba-cf329eb08e0e",
+      "name": "Bánh Khoái Chị Hoa",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bánh Khoái Chị Hoa là quán streetfood/quán địa phương tại Huế, nổi bật với bá...",
+      "latitude": 16.47732,
+      "longitude": 107.5836513,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bánh khoái",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "c9e69759-98ca-4015-a963-687925091ec5",
+      "name": "Saké Restaurant",
+      "category": "food",
+      "category_group": "food",
+      "description": "Saké Restaurant là nhà hàng/quán ăn tại Huế, phục vụ sushi/món Nhật; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4349658,
+      "longitude": 107.566319,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "món nhật",
+        "sushi",
+        "sushi/món nhật",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "b02786b4-e289-4f9f-aa5a-d302251beccf",
+      "name": "Mì Ốp La",
+      "category": "food",
+      "category_group": "food",
+      "description": "Mì Ốp La là quán streetfood/quán địa phương tại Huế, nổi bật với mì ốp la; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4676144,
+      "longitude": 107.6038447,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "ăn sáng",
+        "mì ốp la",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "6b4d0dbf-6b83-40a3-939e-2b248d18bfb3",
+      "name": "Bánh Ép Huế 2K",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bánh Ép Huế 2K là quán streetfood/quán địa phương tại Huế, nổi bật với bánh é...",
+      "latitude": 16.4359111,
+      "longitude": 107.5631312,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "[\"streetfood\"",
+        "\"quán địa phương\"",
+        "\"bánh ép\"",
+        "\"ăn vặt huế\"",
+        "\"ẩm thực\"",
+        "\"bánh é..."
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "890de994-cb9e-4b46-963c-354cab2c4182",
+      "name": "Quán Nhỏ - Cơm Hến",
+      "category": "food",
+      "category_group": "food",
+      "description": "Quán Nhỏ - Cơm Hến là quán streetfood/quán địa phương tại Huế, nổi bật với cơm hến/bún hến; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4648238,
+      "longitude": 107.5892334,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "cơm hến",
+        "bún hến",
+        "món huế",
+        "ẩm thực",
+        "cơm hến/bún hến",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "cc64f419-e646-4128-b60c-34d4d7735f46",
+      "name": "Jalapeño Restaurant",
+      "category": "food",
+      "category_group": "food",
+      "description": "Jalapeño Restaurant là nhà hàng/quán ăn tại Huế, phục vụ món ăn/đặc sản; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4690075,
+      "longitude": 107.5946481,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "ẩm thực",
+        "nhà hàng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "6a7db484-597f-4774-882c-549adeefd782",
+      "name": "Quán Chay Tịnh",
+      "category": "food",
+      "category_group": "food",
+      "description": "Quán Chay Tịnh là quán/nhà hàng chay tại Huế, phục vụ món chay; phù hợp người...",
+      "latitude": 16.4686656,
+      "longitude": 107.5969034,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "[\"restaurant\"",
+        "\"quán chay\"",
+        "\"vegetarian\"",
+        "\"món chay\"",
+        "\"ẩm thực chay\"",
+        "\"vegeta..."
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "00ba4937-78d1-47e9-abb2-ecb7a24827fa",
+      "name": "Bún Thịt Nướng 20K",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bún Thịt Nướng 20K là quán streetfood/quán địa phương tại Huế, nổi bật với bún thịt nướng; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4431899,
+      "longitude": 107.5227557,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "bún thịt nướng",
+        "món huế",
+        "ẩm thực",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "933a918d-c72d-4c92-bf16-4e40cf6faafd",
+      "name": "Lẩu Thái Tomyum",
+      "category": "food",
+      "category_group": "food",
+      "description": "Lẩu Thái Tomyum là nhà hàng/quán ăn tại Huế, phục vụ lẩu; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4639814,
+      "longitude": 107.5731667,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "lẩu",
+        "ăn nhóm",
+        "ẩm thực",
+        "local_eatery",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "412cdced-ea51-43e6-8e6d-1c6be9ef0996",
+      "name": "Bistrot 34",
+      "category": "food",
+      "category_group": "food",
+      "description": "Bistrot 34 là nhà hàng/quán ăn tại Huế, phục vụ món ăn/đặc sản; phù hợp ăn uống và trải nghiệm ẩm thực địa phương.",
+      "latitude": 16.4691635,
+      "longitude": 107.5846892,
+      "visit_duration_min": 60,
+      "price": 85000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "restaurant",
+        "ẩm thực",
+        "nhà hàng",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
+    },
+    {
+      "uuid": "145a6117-e47e-40a0-a7d0-97b0d65f28ff",
+      "name": "Cơm Hến 05 Hàn Mặc Tử",
+      "category": "food",
+      "category_group": "food",
+      "description": "Cơm Hến 05 Hàn Mặc Tử là quán streetfood/quán địa phương tại Huế, nổi bật với cơm hến/bún hến; phù hợp trải nghiệm ẩm thực bình dân.",
+      "latitude": 16.4743228,
+      "longitude": 107.5957707,
+      "visit_duration_min": 45,
+      "price": 50000.0,
+      "entrance_fee": 0.0,
+      "open_time": 600,
+      "close_time": 1320,
+      "priority_score": 0.6,
+      "tags": [
+        "streetfood",
+        "quán địa phương",
+        "cơm hến",
+        "bún hến",
+        "món huế",
+        "ẩm thực",
+        "cơm hến/bún hến",
+        "huế"
+      ],
+      "is_locked": false,
+      "score_breakdown": {
+        "semantic_score": 0.5,
+        "quality_score": 0.6,
+        "distribution_boost": 0.5,
+        "localness_score": 0.5,
+        "novelty_score": 0.5,
+        "comfort_score": 0.5,
+        "budget_score": 0.7,
+        "distance_score": 0.5,
+        "diversity_gain": 0.45
+      },
+      "utility_score": 0.525
     }
   ],
-  "locked_pois": 1,
+  "locked_pois": 2,
   "layer4_result": {
-    "status": "error",
-    "num_days": 0,
-    "days": [],
-    "total_pois_visited": 0,
-    "total_pois_dropped": 0,
-    "total_entrance_fee": 0.0,
-    "total_travel_min": 0,
-    "total_distance_km": 0.0,
+    "status": "success",
+    "num_days": 2,
+    "days": [
+      {
+        "day_index": 0,
+        "date": "Day 1",
+        "start_hotel_name": "Hue Default Hotel",
+        "start_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "end_hotel_name": "Hue Default Hotel",
+        "end_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "stops": [
+          {
+            "poi_id": "890de994-cb9e-4b46-963c-354cab2c4182",
+            "poi_name": "Quán Nhỏ - Cơm Hến",
+            "location": {
+              "latitude": 16.4648238,
+              "longitude": 107.5892334
+            },
+            "arrival_time_min": 600,
+            "departure_time_min": 645,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 2,
+            "travel_time_to_next_min": 5,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "dfaa776c-d3ed-4b9f-8ad2-c553355b0cb9",
+            "poi_name": "Đại Nội Huế",
+            "location": {
+              "latitude": 16.465824,
+              "longitude": 107.578555
+            },
+            "arrival_time_min": 650,
+            "departure_time_min": 770,
+            "visit_duration_min": 120,
+            "travel_time_from_prev_min": 5,
+            "travel_time_to_next_min": 6,
+            "entrance_fee": 200000.0
+          },
+          {
+            "poi_id": "__rest_break__",
+            "poi_name": "Nghỉ ngơi",
+            "location": {
+              "latitude": 16.4587121,
+              "longitude": 107.5624358
+            },
+            "arrival_time_min": 776,
+            "departure_time_min": 796,
+            "visit_duration_min": 20,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "740fd526-fa06-465a-be20-16a3912765db",
+            "poi_name": "Lưu Ngọc - Nem Lụi, Bánh Nậm, Bèo, Lọc",
+            "location": {
+              "latitude": 16.4587121,
+              "longitude": 107.5624358
+            },
+            "arrival_time_min": 796,
+            "departure_time_min": 841,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 7,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "4e4ec6d4-8cdc-4388-b89b-cfa54b524cfb",
+            "poi_name": "Hổ Quyền",
+            "location": {
+              "latitude": 16.4429,
+              "longitude": 107.5583
+            },
+            "arrival_time_min": 848,
+            "departure_time_min": 878,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 7,
+            "travel_time_to_next_min": 11,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "8b00623d-f9b8-458c-aa89-bf913e27824f",
+            "poi_name": "Quán Tài Phú - Nem Lụi",
+            "location": {
+              "latitude": 16.4581678,
+              "longitude": 107.5809316
+            },
+            "arrival_time_min": 932,
+            "departure_time_min": 977,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 11,
+            "travel_time_to_next_min": 4,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "50863668-6e99-4c0a-a4ce-f0ce2980a5b8",
+            "poi_name": "Gardénia Kitchen",
+            "location": {
+              "latitude": 16.4611245,
+              "longitude": 107.5891798
+            },
+            "arrival_time_min": 1057,
+            "departure_time_min": 1102,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 4,
+            "travel_time_to_next_min": 2,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "__rest_break__",
+            "poi_name": "Nghỉ ngơi",
+            "location": {
+              "latitude": 16.4607613,
+              "longitude": 107.5900726
+            },
+            "arrival_time_min": 1166,
+            "departure_time_min": 1186,
+            "visit_duration_min": 20,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "dc745e0e-762e-4986-87ab-0f9b9fae9352",
+            "poi_name": "Nhi's Crepe & Pizza",
+            "location": {
+              "latitude": 16.4607613,
+              "longitude": 107.5900726
+            },
+            "arrival_time_min": 1186,
+            "departure_time_min": 1246,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 3,
+            "entrance_fee": 85000.0
+          }
+        ],
+        "total_travel_min": 37,
+        "total_visit_min": 390,
+        "total_distance_km": 12.24,
+        "total_entrance_fee": 485000.0,
+        "num_pois": 7,
+        "narrative_title": null,
+        "narrative_description": null,
+        "plan_reasoning": null
+      },
+      {
+        "day_index": 1,
+        "date": "Day 2",
+        "start_hotel_name": "Hue Default Hotel",
+        "start_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "end_hotel_name": "Hue Default Hotel",
+        "end_hotel_location": {
+          "latitude": 16.4637,
+          "longitude": 107.5905
+        },
+        "stops": [
+          {
+            "poi_id": "959c67ca-552e-4723-9569-0cd70f3720ec",
+            "poi_name": "Bún Bò Huế Bà Gái",
+            "location": {
+              "latitude": 16.4638869,
+              "longitude": 107.5895163
+            },
+            "arrival_time_min": 540,
+            "departure_time_min": 585,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 2,
+            "travel_time_to_next_min": 7,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "57892f6a-acfb-4153-8d1e-7cd4917e7742",
+            "poi_name": "Vạc đồng Đại Nội",
+            "location": {
+              "latitude": 16.470865,
+              "longitude": 107.576602
+            },
+            "arrival_time_min": 615,
+            "departure_time_min": 675,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 7,
+            "travel_time_to_next_min": 4,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "886665ae-1b3b-41ae-8c7e-ad2de9fe985e",
+            "poi_name": "Chè Thanh",
+            "location": {
+              "latitude": 16.476711,
+              "longitude": 107.582452
+            },
+            "arrival_time_min": 690,
+            "departure_time_min": 735,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 4,
+            "travel_time_to_next_min": 2,
+            "entrance_fee": 50000.0
+          },
+          {
+            "poi_id": "__rest_break__",
+            "poi_name": "Nghỉ ngơi",
+            "location": {
+              "latitude": 16.4756,
+              "longitude": 107.585
+            },
+            "arrival_time_min": 810,
+            "departure_time_min": 830,
+            "visit_duration_min": 20,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "e42f4b9f-aded-4678-9b32-8890931f00be",
+            "poi_name": "Chùa Phổ Quang",
+            "location": {
+              "latitude": 16.4756,
+              "longitude": 107.585
+            },
+            "arrival_time_min": 830,
+            "departure_time_min": 865,
+            "visit_duration_min": 35,
+            "travel_time_from_prev_min": 0,
+            "travel_time_to_next_min": 7,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "2b6bbf02-b659-4e45-be0d-6349b0aa1bca",
+            "poi_name": "Zucca",
+            "location": {
+              "latitude": 16.4701617,
+              "longitude": 107.5951557
+            },
+            "arrival_time_min": 900,
+            "departure_time_min": 960,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 7,
+            "travel_time_to_next_min": 3,
+            "entrance_fee": 85000.0
+          },
+          {
+            "poi_id": "fcfc3086-11f1-4f26-b8d3-488f802ba673",
+            "poi_name": "Street Food Cafes",
+            "location": {
+              "latitude": 16.4665965,
+              "longitude": 107.598326
+            },
+            "arrival_time_min": 990,
+            "departure_time_min": 1050,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 3,
+            "travel_time_to_next_min": 4,
+            "entrance_fee": 30000.0
+          },
+          {
+            "poi_id": "__food_walk_1__",
+            "poi_name": "Đi dạo / nghỉ nhẹ",
+            "location": {
+              "latitude": 16.4665965,
+              "longitude": 107.598326
+            },
+            "arrival_time_min": 1065,
+            "departure_time_min": 1095,
+            "visit_duration_min": 30,
+            "travel_time_from_prev_min": 3,
+            "travel_time_to_next_min": 0,
+            "entrance_fee": 0.0
+          },
+          {
+            "poi_id": "459bee83-1665-4e16-a1fc-c54cfca08ebf",
+            "poi_name": "Spice Viet",
+            "location": {
+              "latitude": 16.4608913,
+              "longitude": 107.5915617
+            },
+            "arrival_time_min": 1110,
+            "departure_time_min": 1170,
+            "visit_duration_min": 60,
+            "travel_time_from_prev_min": 4,
+            "travel_time_to_next_min": 2,
+            "entrance_fee": 85000.0
+          },
+          {
+            "poi_id": "6defcf97-db96-49eb-9bd3-9b88fe5e69db",
+            "poi_name": "Quán Số I - Bún Bò Huế",
+            "location": {
+              "latitude": 16.4618788,
+              "longitude": 107.5909846
+            },
+            "arrival_time_min": 1200,
+            "departure_time_min": 1245,
+            "visit_duration_min": 45,
+            "travel_time_from_prev_min": 2,
+            "travel_time_to_next_min": 2,
+            "entrance_fee": 50000.0
+          }
+        ],
+        "total_travel_min": 31,
+        "total_visit_min": 410,
+        "total_distance_km": 9.26,
+        "total_entrance_fee": 350000.0,
+        "num_pois": 8,
+        "narrative_title": null,
+        "narrative_description": null,
+        "plan_reasoning": null
+      }
+    ],
+    "total_pois_visited": 15,
+    "total_pois_dropped": 34,
+    "total_entrance_fee": 835000.0,
+    "total_travel_min": 68,
+    "total_distance_km": 21.5,
     "budget_total": null,
-    "budget_used": 0.0,
-    "dropped_pois": null,
-    "solver": null,
-    "message": "Solver failed to find a solution"
+    "budget_used": 835000.0,
+    "dropped_pois": [
+      {
+        "poi_id": "2a98122d-1f64-47be-924e-10859dc553e4",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "e4012b9d-96c7-4eb0-a31b-677d74ffead4",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "431a9623-7a3d-4d79-9468-cc11647cbade",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "a84cc6b2-b143-4c07-8397-3ba34479cef8",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "900e1abc-611f-4574-af78-050c0343c343",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "0f997982-aae5-4eb8-bcd1-4408e64d61af",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "c019c851-13b7-4edb-aadb-2daa822a3d67",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "3e530136-e80e-4b51-a7cd-88e2aba1d9c4",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "d305d510-a0ca-407b-8912-517f40282230",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "df8c1e91-89d4-4714-ac0b-bc84f5f632a1",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "218ec9f7-bf81-4807-8f7a-a87376fd0429",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "99452f95-4811-4a8a-b7a6-9cd4702f0a79",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "b32ee119-a4e1-4da6-b488-3f2d3bbc941f",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "117d041a-7650-4493-a9f2-8c518c6086fd",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "e6f4596e-b65f-4c92-9f0c-00e8cbec0d9c",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "63245b81-c8d4-4ad9-b0f7-432852b457fb",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "af6847f5-52f3-40f4-bef6-ae9d072d5ae1",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "eaaf34e8-eba0-43ac-943d-b8d80bc547fa",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "0bade5e3-a57f-4df7-9109-b864ae38cb23",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "af6f2216-7440-43ed-9e8c-dec9d68f0247",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "beb0db5e-d0d3-4ffa-99ef-4d6ae711940f",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "6c5f1afb-08a4-4bb3-a2ef-39321fd8b3b4",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "d8895499-119f-4d1a-a4ce-12f3982e8830",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "3fd3c0ee-5d51-4ee5-a920-dd9d9451eab1",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "54b70664-6421-42e9-91ce-47f09a37df17",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "7383a681-754c-4a05-90ba-cf329eb08e0e",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "c9e69759-98ca-4015-a963-687925091ec5",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "b02786b4-e289-4f9f-aa5a-d302251beccf",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "6b4d0dbf-6b83-40a3-939e-2b248d18bfb3",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "cc64f419-e646-4128-b60c-34d4d7735f46",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "6a7db484-597f-4774-882c-549adeefd782",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "00ba4937-78d1-47e9-abb2-ecb7a24827fa",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "933a918d-c72d-4c92-bf16-4e40cf6faafd",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "412cdced-ea51-43e6-8e6d-1c6be9ef0996",
+        "reason": "solver_dropped"
+      },
+      {
+        "poi_id": "145a6117-e47e-40a0-a7d0-97b0d65f28ff",
+        "reason": "solver_dropped"
+      }
+    ],
+    "solver": "ortools",
+    "message": null,
+    "trip_narrative": null,
+    "validation_notes": [
+      "[info] Ngày 0: 223min liên tục không nghỉ (sau Lưu Ngọc - Nem Lụi, Bánh Nậm, Bèo, Lọc)",
+      "[info] Ngày 0: 204min liên tục không nghỉ (sau Nhi's Crepe & Pizza)",
+      "[info] Ngày 1: 200min liên tục không nghỉ (sau Chùa Phổ Quang)"
+    ],
+    "hotel_fallback": true
   },
-  "message": "Route optimized"
+  "message": "Tối ưu lịch trình thành công!"
 }

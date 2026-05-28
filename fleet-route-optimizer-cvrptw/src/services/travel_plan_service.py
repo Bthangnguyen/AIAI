@@ -128,6 +128,10 @@ class TravelPlanService:
         rest_interval = getattr(request.constraints, "rest_interval_min", 180)
         rest_duration = getattr(request.constraints, "rest_duration_min", 20)
         for i, day in enumerate(days_result):
+            plan = next((p for p in day_plans if p.day_index == day.day_index), None)
+            day = rest_inserter.apply_day_rhythm(day, poi_map, plan)
+            day = rest_inserter.insert_meal_breaks(day, poi_map)
+            day = rest_inserter.insert_food_tour_pacing(day, poi_map, plan)
             days_result[i] = rest_inserter.insert_breaks(
                 day, poi_map,
                 rest_interval_min=rest_interval,

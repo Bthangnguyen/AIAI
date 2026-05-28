@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { Circle, Compass, MapPinned, Route, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -105,7 +105,7 @@ export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange
       <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-16 pt-12 sm:pt-16">
         <section className="mx-auto max-w-4xl text-center">
           <p className="mb-5 inline-flex rounded-full bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-orange-600 shadow-lg shadow-orange-950/5">AI travel builder</p>
-          <h1 className="max-w-3xl text-5xl font-black tracking-tight text-orange-950 sm:text-7xl">Build your trip in minutes.</h1>
+          <h1 className="text-5xl font-black tracking-tight text-orange-950 sm:text-7xl">Build your trip in minutes.</h1>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-orange-700 sm:text-4xl">Tạo lịch trình du lịch trong vài phút.</h2>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-orange-950/72 sm:text-xl">
             Mô tả chuyến đi bằng tiếng Việt. TripFlow AI sẽ tạo lịch trình nháp theo ngày, ngân sách và sở thích của bạn.

@@ -10,16 +10,16 @@ import { SavedTripsPage } from "@/components/SavedTripsPage"
 import { Toast, type ToastVariant } from "@/components/Toast"
 import { buildItineraryViaStream } from "@/lib/buildItinerary"
 import { buildFollowUpQuestion } from "@/lib/clarification"
-import { searchPois, getPoi } from "@/lib/mockItineraryFallback"
-import { searchPoisBackend, reRouteDay, POI_CACHE, chatProcess } from "@/lib/api"
+import { searchPois, getPoi, draftTotals } from "@/lib/mockItineraryFallback"
+import { searchPoisBackend, reRouteDay, POI_CACHE, chatProcess, generateRealItinerary } from "@/lib/api"
 import { processReRouteResult } from "@/lib/reRouteFlow"
 import { getSavedDrafts, saveDraft } from "@/lib/storage"
 import type { AIMessage } from "@/components/AITripChatPanel"
 import { fetchPlanAlternatives } from "@/lib/planAlternatives"
 import { applyPlanVariant, planStyleLabel } from "@/lib/applyPlanVariant"
-import { applyManualReorderToDraft, clearDayManual, poiIdsInDayOrder } from "@/lib/reorderDayItems"
+import { applyManualReorderToDraft, clearDayManual, poiIdsInDayOrder, recalculateDayTimes } from "@/lib/reorderDayItems"
 import type { MoveDirection } from "@/lib/reorderDayItems"
-import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, POI, PreviewMode, TripIntent } from "@/types/trip"
+import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, LLMDataContract, POI, PreviewMode, TripIntent } from "@/types/trip"
 import type { PlanVariant } from "@/types/plan"
 
 type Screen = "home" | "builder" | "saved" | "mobile"
@@ -37,6 +37,34 @@ interface ChatContractPayload {
   num_days: number
   tags: string[]
   locked_pois: string[]
+}
+
+function normalizeContract(input: LLMDataContract | TripIntent): LLMDataContract {
+  if (input && "rawPrompt" in input) {
+    return {
+      destination: (input as TripIntent).destination ?? "Huế",
+      num_days: (input as TripIntent).days ?? 1,
+      budget_max: (input as TripIntent).budget ?? null,
+      tags: (input as TripIntent).interests ?? [],
+      locked_pois: (input as TripIntent).lockedPoiNames ?? [],
+    }
+  }
+  return { ...input }
+}
+
+function intentFromContract(contract: LLMDataContract, rawPrompt: string): TripIntent {
+  return {
+    destination: contract.destination ?? "Huế",
+    days: contract.num_days ?? 1,
+    budget: contract.budget_max ?? undefined,
+    interests: contract.tags ?? [],
+    lockedPoiNames: contract.locked_pois ?? [],
+    rawPrompt,
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export default function Page() {
@@ -77,50 +105,52 @@ export default function Page() {
   }, [])
 
   useEffect(() => {
-    if (!draft || status !== "live") {
-      setPlanVariants(null)
-      setPlanVariantsError(null)
-      alternativesFetchedForDraftId.current = null
-      return
-    }
-
-    if (alternativesFetchedForDraftId.current === draft.id) {
-      return
-    }
-
-    let cancelled = false
-    setPlanVariantsLoading(true)
-    setPlanVariantsError(null)
-
-    void fetchPlanAlternatives(draft)
-      .then((result) => {
-        if (cancelled) return
-        setPlanVariants(result.plans)
-        alternativesFetchedForDraftId.current = draft.id
-      })
-      .catch((e) => {
-        if (cancelled) return
-        setPlanVariants(null)
-        setPlanVariantsError(e instanceof Error ? e.message : String(e))
-      })
-      .finally(() => {
-        if (!cancelled) setPlanVariantsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [draft, status])
-
-  function handleApplyPlanVariant(variant: PlanVariant) {
     if (!draft) return
-    const next = applyPlanVariant(draft, variant)
-    setDraft(next)
-    setViewMode("split")
-    setSelectedPoiId(next.days[0]?.items[0]?.poiId ?? null)
-    setFitSignal((value) => value + 1)
-    showToast(`Đã áp dụng lộ trình ${planStyleLabel(variant.style)}.`, "success")
-  }
+    const totals = draftTotals(draft)
+    
+    // Check if stats are already synchronized to prevent infinite rendering loops
+    const currentBudgetUsed = draft.budgetUsed
+    const currentCustomersServed = draft.optimizationStats?.customersServed
+    const currentStatsBudgetUsed = draft.optimizationStats?.budgetUsed
+    
+    if (
+      currentBudgetUsed === totals.estimatedCost &&
+      currentCustomersServed === totals.poiCount &&
+      currentStatsBudgetUsed === totals.estimatedCost
+    ) {
+      return
+    }
+
+    const stats = draft.optimizationStats ? {
+      ...draft.optimizationStats,
+      customersServed: totals.poiCount,
+      budgetUsed: totals.estimatedCost,
+      totalPoisAvailable: Math.max(draft.optimizationStats.totalPoisAvailable, totals.poiCount),
+    } : {
+      totalDistanceKm: 0,
+      customersServed: totals.poiCount,
+      totalPoisAvailable: totals.poiCount,
+      totalLoadUsed: 0,
+      totalLoadCapacity: 0,
+      saturationPercent: 0,
+      vehiclesUsed: draft.days.length,
+      totalVehicles: draft.days.length,
+      budgetUsed: totals.estimatedCost,
+      budgetMax: draft.budget ?? 0,
+      avgTravelTimePerVehicleMin: 0,
+      avgTotalTimePerVehicleMin: 0,
+      solverTimeSeconds: 0,
+    }
+
+    setDraft({
+      ...draft,
+      budgetUsed: totals.estimatedCost,
+      optimizationStats: stats,
+    })
+  }, [draft])
+
+
+
 
   useEffect(() => {
     if (!toastMessage) return
@@ -327,52 +357,51 @@ export default function Page() {
       }
     }
 
-    if (!draft) {
-      setIsRunning(true)
-      setBuildErrorMessage(null)
-
-      try {
-        const historyList = messages.map((m) => ({ role: m.role, content: m.content }))
-        const res = await chatProcess(message, historyList, contractFromIntent(intent))
-        const updatedIntent: TripIntent = {
-          destination: res.updated_contract.destination || undefined,
-          days: res.updated_contract.num_days,
-          budget: res.updated_contract.budget_max || undefined,
-          interests: res.updated_contract.tags || [],
-          lockedPoiNames: res.updated_contract.locked_pois || [],
-          rawPrompt: intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message,
-        }
-
-        if (res.status === "ready") {
-          const nextDraft = await buildItineraryFromIntent(updatedIntent)
-          applyDraftSuccess(nextDraft, [res.reply, `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày.`])
-        } else {
-          handleClarifyingResponse(res, updatedIntent)
-        }
-      } catch (e) {
-        const errMessage = e instanceof Error ? e.message : String(e)
-        setBuildErrorMessage(errMessage)
-        setStatus("error")
-        showToast("Lỗi xử lý chat: " + errMessage, "error")
-      } finally {
-        setIsRunning(false)
-      }
-      return
-    }
-
     setIsRunning(true)
-    setStatus("building")
+    setBuildErrorMessage(null)
+
     try {
-      const mergedIntent: TripIntent = {
-        ...(intent ?? { interests: [], lockedPoiNames: [], rawPrompt: "" }),
-        rawPrompt: `${intent?.rawPrompt || ""} ${message}`.trim(),
+      const historyList = messages.map((m) => ({ role: m.role, content: m.content }))
+      const currentContractInput = contract || contractFromIntent(intent)
+      const hasDraft = !!draft
+      const currentItineraryBackend = draft ? buildOriginalItinerary(draft) : null
+
+      const res = await chatProcess(
+        message,
+        historyList,
+        currentContractInput,
+        hasDraft,
+        currentItineraryBackend
+      )
+
+      const updatedIntent: TripIntent = {
+        destination: res.updated_contract.destination || undefined,
+        days: res.updated_contract.num_days,
+        budget: res.updated_contract.budget_max || undefined,
+        interests: res.updated_contract.tags || [],
+        lockedPoiNames: res.updated_contract.locked_pois || [],
+        rawPrompt: intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message,
       }
-      const nextDraft = await buildItineraryFromIntent(mergedIntent)
-      applyDraftSuccess(nextDraft, [`Đã cập nhật lịch trình theo yêu cầu mới.`])
+
+      setContract(res.updated_contract)
+
+      if (res.updated_itinerary) {
+        const nextDraft = mapLayer4ResultToDraft(
+          res.updated_itinerary,
+          updatedIntent,
+          res.updated_contract.destination || "Huế"
+        )
+        applyDraftSuccess(nextDraft, [res.reply])
+      } else if (res.status === "ready") {
+        await buildItineraryFromContract(res.updated_contract, updatedIntent.rawPrompt || message, res.reply)
+      } else {
+        handleClarifyingResponse(res, updatedIntent)
+      }
     } catch (e) {
       const errMessage = e instanceof Error ? e.message : String(e)
-      showToast("Lỗi xử lý: " + errMessage, "error")
-      setStatus("live")
+      setBuildErrorMessage(errMessage)
+      setStatus(draft ? "live" : "error")
+      showToast("Lỗi xử lý chat: " + errMessage, "error")
     } finally {
       setIsRunning(false)
     }
@@ -441,7 +470,7 @@ export default function Page() {
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
+      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
       setDraft({ ...draft, days: newDays })
       setSelectedPoiId(poi.id)
       setMessages((items) => [...items, { role: "assistant", content: `Đã thêm ${poi.name} và tối ưu lại (qua OR-Tools).` }])
@@ -469,7 +498,7 @@ export default function Page() {
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
+      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
       setDraft({ ...draft, days: newDays })
       setMessages((items) => [...items, { role: "assistant", content: "Đã xóa một địa điểm và tối ưu lại lịch trình." }])
       showToast(reroute.message, reroute.toastVariant)
@@ -496,7 +525,7 @@ export default function Page() {
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
+      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
       setDraft(clearDayManual({ ...draft, days: newDays, updatedAt: new Date().toISOString() }, dayNumber))
       setMessages((items) => [...items, { role: "assistant", content: `Đã tối ưu lại ngày ${dayNumber}.` }])
       showToast(reroute.message, reroute.toastVariant)
@@ -529,7 +558,7 @@ export default function Page() {
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = { ...newDays[dayIndex], items: reroute.items }
+      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
       const resultOrder = reroute.items.map((item) => item.poiId)
       const orderPreserved = orderedIds.length === resultOrder.length && orderedIds.every((id, index) => id === resultOrder[index])
 
@@ -625,7 +654,6 @@ export default function Page() {
             messages={messages}
             isRunning={isRunning}
             activeStep={activeStep}
-            followUp={followUp}
             mode={mode}
             viewMode={viewMode}
             status={status}
@@ -641,10 +669,6 @@ export default function Page() {
             onSuggestFix={handleSuggestFix}
             osrmDegraded={osrmDegraded}
             onOsrmDegradedChange={setOsrmDegraded}
-            planVariants={planVariants}
-            planVariantsLoading={planVariantsLoading}
-            planVariantsError={planVariantsError}
-            onApplyPlanVariant={handleApplyPlanVariant}
             onModeChange={setMode}
             onViewModeChange={setViewMode}
             onBack={backHome}

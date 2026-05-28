@@ -1,9 +1,9 @@
 import EventSource from "react-native-sse"
 import type { ReRoutePayload, ReRouteResponse } from "@/navigators/navigationTypes"
-import type { ChatMessage, ChatProcessResponse } from "../../types/api"
+import type { ChatMessage, ChatProcessResponse, LLMDataContract } from "../../types/api"
 import { FeatureFlags } from "@/config/features"
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001"
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8001"
 
 export const TripService = {
   /**
@@ -29,10 +29,22 @@ export const TripService = {
     hotelLon: number | undefined,
     hotelName: string | undefined,
     numDays: number | undefined,
-    onMessage: (data: any) => void,
-    onError: (error: any) => void,
-    onDone: () => void,
+    contractOrOnMessage: LLMDataContract | ((data: any) => void) | undefined,
+    onMessageOrOnError?: ((data: any) => void) | ((error: any) => void),
+    onErrorOrOnDone?: ((error: any) => void) | (() => void),
+    onDoneMaybe?: () => void,
   ) {
+    const contract = typeof contractOrOnMessage === "function" ? undefined : contractOrOnMessage
+    const onMessage = (typeof contractOrOnMessage === "function" ? contractOrOnMessage : onMessageOrOnError) as
+      | ((data: any) => void)
+      | undefined
+    const onError = (typeof contractOrOnMessage === "function" ? onMessageOrOnError : onErrorOrOnDone) as
+      | ((error: any) => void)
+      | undefined
+    const onDone = (typeof contractOrOnMessage === "function" ? onErrorOrOnDone : onDoneMaybe) as
+      | (() => void)
+      | undefined
+
     const url = `${API_BASE_URL}/v1/trip/plan_trip_stream`
     const eventSource = new EventSource(url, {
       method: "POST",
@@ -43,18 +55,19 @@ export const TripService = {
         hotel_lon: hotelLon,
         hotel_name: hotelName,
         num_days: numDays,
+        contract,
       }),
     })
 
     eventSource.addEventListener("message", (event: any) => {
       if (event.data === "[DONE]") {
         eventSource.close()
-        onDone()
+        onDone?.()
         return
       }
       try {
         const parsedData = JSON.parse(event.data)
-        onMessage(parsedData)
+        onMessage?.(parsedData)
       } catch (e) {
         console.error("Error parsing SSE data", e)
       }
@@ -62,7 +75,7 @@ export const TripService = {
 
     eventSource.addEventListener("error", (error: any) => {
       console.error("SSE Error:", error)
-      onError(error)
+      onError?.(error)
       eventSource.close()
     })
 

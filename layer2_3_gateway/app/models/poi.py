@@ -48,6 +48,7 @@ class PointOfInterest(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
+    category_group: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # GeoAlchemy2: POINT(lon, lat) in SRID 4326 — Geography type

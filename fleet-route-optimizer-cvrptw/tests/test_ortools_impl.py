@@ -21,7 +21,7 @@ class TestORToolsImpl:
         solver = ORToolsSolverImpl(problem_data)
         time_matrix = solver._compute_time_matrix()
         
-        # 30.5 min travel + 60 min visit = 90.5 min -> 9050 scaled
-        assert time_matrix[0][1] == 9050
-        # 30.5 min travel + 0 min visit (depot) = 30.5 min -> 3050 scaled
-        assert time_matrix[1][0] == 3050
+        # 30.5 min travel + 0 min visit (depot source) = 30.5 min -> 3050 scaled
+        assert time_matrix[0][1] == 3050
+        # 30.5 min travel + 60 min visit (POI 1 source) = 90.5 min -> 9050 scaled
+        assert time_matrix[1][0] == 9050

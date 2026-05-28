@@ -5,5 +5,4 @@ __all__ = [
     "SpatialFilterService",
     "LLMExtractorService",
     "Layer4Client",
-    "UtilityScorer",
 ]

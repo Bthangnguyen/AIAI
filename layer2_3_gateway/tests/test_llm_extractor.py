@@ -58,8 +58,8 @@ def complete_contract(**overrides) -> LLMDataContract:
 
 
 def test_system_prompt_exists():
+    assert "trợ lý du lịch" in SYSTEM_PROMPT
     assert "locked_pois" in SYSTEM_PROMPT
-    assert "budget_max" in SYSTEM_PROMPT
 
 
 def test_fallback_contract():
@@ -82,18 +82,28 @@ def test_service_init():
 @pytest.mark.integration
 @pytest.mark.anyio
 async def test_process_chat_turn_extraction():
-    service = offline_service()
-    current = LLMDataContract(destination=None, num_days=1, budget_max=None, tags=[])
-    res = await service.process_chat_turn(
-        message="Tôi muốn đi Huế 3 ngày ngân sách 1 triệu",
-        history=[],
-        current_contract=current
+    from unittest.mock import patch, AsyncMock
+    from app.schemas.trip import ChatProcessResponse
+    service = LLMExtractorService()
+    mock_resp = ChatProcessResponse(
+        status="clarifying",
+        reply="Hỏi thăm thêm",
+        updated_contract=LLMDataContract(destination="Huế", num_days=3),
+        phase="collecting",
+        missing_fields=["budget"],
     )
-    assert res["status"] == "clarifying"
-    assert res["phase"] == "collecting"
-    assert res["updated_contract"].destination == "Huế"
-    assert res["updated_contract"].num_days == 3
-    assert res["missing_fields"]
+    with patch.object(service.client.chat.completions, "create", AsyncMock(return_value=mock_resp)):
+        current = LLMDataContract(destination=None, num_days=1, budget_max=None, tags=[])
+        res = await service.process_chat_turn(
+            message="Tôi muốn đi Huế 3 ngày",
+            history=[],
+            current_contract=current
+        )
+        assert res["status"] == "clarifying"
+        assert res["phase"] == "collecting"
+        assert res["updated_contract"].destination == "Huế"
+        assert res["updated_contract"].num_days == 3
+        assert res["missing_fields"]
 
 
 @pytest.mark.anyio
@@ -112,21 +122,32 @@ async def test_incomplete_prompt_asks_follow_up_not_ready():
 
 @pytest.mark.anyio
 async def test_complete_info_requires_confirmation_before_ready():
-    service = offline_service()
-    res = await service.process_chat_turn(
-        message=(
-            "Đi Huế 3 ngày ngân sách 3tr, thích văn hóa cafe ăn uống, "
-            "chill, đi bộ vừa phải, ăn chay, phải đi Đại Nội, tránh chỗ đông, "
-            "8h-21h, taxi đi bộ, đi 2 người, dùng khách sạn mặc định"
-        ),
-        history=[],
-        current_contract=LLMDataContract(),
+    from unittest.mock import patch, AsyncMock
+    from app.schemas.trip import ChatProcessResponse
+    service = LLMExtractorService()
+    mock_resp = ChatProcessResponse(
+        status="clarifying",
+        reply="Mình xác nhận lại lịch nhé",
+        updated_contract=complete_contract(confirmation_pending=True),
+        phase="confirming",
+        missing_fields=[],
+        requires_confirmation=True,
     )
-    assert res["status"] == "clarifying"
-    assert res["phase"] == "confirming"
-    assert res["requires_confirmation"] is True
-    assert res["missing_fields"] == []
-    assert res["updated_contract"].ready_to_plan is False
+    with patch.object(service.client.chat.completions, "create", AsyncMock(return_value=mock_resp)):
+        res = await service.process_chat_turn(
+            message=(
+                "Đi Huế 3 ngày ngân sách 3tr, thích văn hóa cafe ăn uống, "
+                "chill, đi bộ vừa phải, ăn chay, phải đi Đại Nội, tránh chỗ đông, "
+                "8h-21h, taxi đi bộ, đi 2 người, dùng khách sạn mặc định"
+            ),
+            history=[],
+            current_contract=LLMDataContract(),
+        )
+        assert res["status"] == "clarifying"
+        assert res["phase"] == "confirming"
+        assert res["requires_confirmation"] is True
+        assert res["missing_fields"] == []
+        assert res["updated_contract"].ready_to_plan is False
 
 
 @pytest.mark.anyio

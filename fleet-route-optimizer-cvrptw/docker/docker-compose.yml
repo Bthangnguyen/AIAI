@@ -9,6 +9,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ../src:/app/src
       # Mount results directory to persist outputs
       - ../results:/app/results
       # Mount distance cache to persist between restarts

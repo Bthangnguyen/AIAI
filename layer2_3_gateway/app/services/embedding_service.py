@@ -17,7 +17,20 @@ class EmbeddingService:
     """Generates vector embeddings for POI text."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self._api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+        provider = os.getenv("LLM_PROVIDER", "openai")
+        if provider == "openrouter":
+            self._api_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
+            self._base_url = "https://openrouter.ai/api/v1"
+            self._model = "openai/text-embedding-3-small"
+        elif provider == "shopaikey":
+            self._api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+            self._base_url = "https://api.shopaikey.com/v1"
+            self._model = "text-embedding-3-small"
+        else:
+            self._api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+            self._base_url = None
+            self._model = "text-embedding-3-small"
+
         self._sync_client = None
         self._async_client = None
 
@@ -25,14 +38,14 @@ class EmbeddingService:
     def sync_client(self) -> OpenAI:
         """Lazy-init sync client (for ingestion scripts)."""
         if self._sync_client is None:
-            self._sync_client = OpenAI(api_key=self._api_key)
+            self._sync_client = OpenAI(api_key=self._api_key, base_url=self._base_url)
         return self._sync_client
 
     @property
     def async_client(self) -> AsyncOpenAI:
         """Lazy-init async client (for FastAPI Gateway)."""
         if self._async_client is None:
-            self._async_client = AsyncOpenAI(api_key=self._api_key)
+            self._async_client = AsyncOpenAI(api_key=self._api_key, base_url=self._base_url)
         return self._async_client
 
     # --- Sync methods (Ingestion) ---
@@ -40,7 +53,7 @@ class EmbeddingService:
     def embed_text(self, text: str) -> List[float]:
         """Convert a single text string to 1536-dim vector (sync)."""
         response = self.sync_client.embeddings.create(
-            model=EMBEDDING_MODEL, input=text,
+            model=self._model, input=text,
         )
         return response.data[0].embedding
 
@@ -50,7 +63,7 @@ class EmbeddingService:
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
             response = self.sync_client.embeddings.create(
-                model=EMBEDDING_MODEL, input=batch,
+                model=self._model, input=batch,
             )
             all_embeddings.extend([d.embedding for d in response.data])
         return all_embeddings
@@ -60,7 +73,7 @@ class EmbeddingService:
     async def aembed_text(self, text: str) -> List[float]:
         """Convert text to vector (async, non-blocking for FastAPI)."""
         response = await self.async_client.embeddings.create(
-            model=EMBEDDING_MODEL, input=text,
+            model=self._model, input=text,
         )
         return response.data[0].embedding
 
@@ -80,3 +93,21 @@ class EmbeddingService:
         if description:
             parts.append(description)
         return " | ".join(parts)
+
+    @staticmethod
+    def build_distribution_query_text(
+        distribution_description: str,
+        tags: List[str],
+        destination: str = "Huế",
+    ) -> str:
+        """Build rich query text from LLM distribution description for semantic search.
+
+        Example output:
+            "Du lịch Huế. Ẩm thực đường phố: bún bò, bánh khoái, cơm hến, chè Huế."
+        """
+        parts = [f"Du lịch {destination}"]
+        if distribution_description:
+            parts.append(distribution_description)
+        if tags:
+            parts.append(", ".join(tags))
+        return ". ".join(parts)

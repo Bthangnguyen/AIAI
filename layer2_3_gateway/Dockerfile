@@ -12,7 +12,7 @@ WORKDIR /home/code
 
 # allow controlling the poetry installation of dependencies via external args
 ARG INSTALL_ARGS="--no-root  --only main"
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
 # install without virtualenv, since we are inside a container
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \

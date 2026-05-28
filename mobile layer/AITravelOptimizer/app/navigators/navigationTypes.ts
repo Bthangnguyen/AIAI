@@ -28,6 +28,8 @@ export type TravelItineraryStop = {
   visit_duration_min: number
   travel_time_from_prev_min: number
   entrance_fee: number
+  category?: string
+  description?: string
 }
 
 export type TravelItineraryDay = {
@@ -67,14 +69,16 @@ export type TravelItinerary = {
 
 /** Payload sent to Gateway POST /v1/trip/re_route */
 export type ReRoutePayload = {
-  current_location: {
+  current_lat: number
+  current_lon: number
+  current_location?: {
     lat: number
     lon: number
   }
   current_time_min: number
   remaining_poi_ids: string[]
-  locked_remaining_poi_ids: string[]
-  constraints: {
+  locked_remaining_poi_ids?: string[]
+  constraints?: {
     budget_remaining: number
     end_time_min: number
   }
@@ -126,6 +130,7 @@ export type AppStackParamList = {
     hotelLat?: number
     hotelLon?: number
     numDays?: number
+    contract?: any
   }
   MapTimeline: {
     itinerary: TravelItinerary
@@ -142,6 +147,7 @@ export type AppStackParamList = {
     closeTime?: string
     lat?: number
     lon?: number
+    category?: string
   }
   ItineraryForm: undefined
   TripSummary: { itinerary: TravelItinerary }

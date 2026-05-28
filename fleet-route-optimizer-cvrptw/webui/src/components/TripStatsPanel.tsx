@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react"
 import { Activity, Clock, MapPin, Route, Target, Wallet } from "lucide-react"
 import type { OptimizationStats } from "@/types/stats"
+import type { ItineraryDraft } from "@/types/trip"
+import { getPoi } from "@/lib/mockItineraryFallback"
+import { POI_CACHE } from "@/lib/api"
 
 interface TripStatsPanelProps {
   stats: OptimizationStats
+  draft?: ItineraryDraft
 }
 
 function AnimatedNumber({ value, suffix = "", decimals = 0 }: { value: number; suffix?: string; decimals?: number }) {
@@ -48,7 +52,47 @@ function ProgressBar({ value, max, color = "bg-orange-500" }: { value: number; m
   )
 }
 
-export function TripStatsPanel({ stats }: TripStatsPanelProps) {
+function formatMinutesShort(minutes: number): string {
+  if (!minutes || minutes <= 0) return "--"
+  const hours = Math.floor(minutes / 60)
+  const mins = Math.round(minutes % 60)
+  return `${hours}h${mins.toString().padStart(2, "0")}`
+}
+
+function parseTimeToMinutes(value: string): number {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return 0
+  return Number(match[1]) * 60 + Number(match[2])
+}
+
+function deriveAverageDayMinutes(draft?: ItineraryDraft): number {
+  if (!draft?.days.length) return 0
+  const spans = draft.days.map((day) => {
+    if (!day.items.length) return 0
+    const first = Math.min(...day.items.map((item) => parseTimeToMinutes(item.time)))
+    const last = Math.max(...day.items.map((item) => {
+      const poi = getPoi(item.poiId) ?? POI_CACHE.get(item.poiId)
+      return parseTimeToMinutes(item.time) + (poi?.estimatedDurationMinutes ?? 0)
+    }))
+    return Math.max(0, last - first)
+  })
+  return Math.round(spans.reduce((sum, value) => sum + value, 0) / Math.max(1, spans.length))
+}
+
+function deriveAverageTravelMinutes(draft?: ItineraryDraft): number {
+  if (!draft?.days.length) return 0
+  const totalTravel = draft.days.reduce((sum, day) => {
+    return sum + day.items.reduce((daySum, item) => {
+      const match = item.note.match(/di chuyển tiếp\s+(\d+)\s+phút/i)
+      return daySum + (match ? Number(match[1]) : 0)
+    }, 0)
+  }, 0)
+  return Math.round(totalTravel / Math.max(1, draft.days.length))
+}
+
+export function TripStatsPanel({ stats, draft }: TripStatsPanelProps) {
+  const avgTotalTime = stats.avgTotalTimePerVehicleMin || deriveAverageDayMinutes(draft)
+  const avgTravelTime = stats.avgTravelTimePerVehicleMin || deriveAverageTravelMinutes(draft)
   return (
     <div className="rounded-2xl border border-orange-300 bg-gradient-to-br from-orange-50 to-white p-5 shadow-lg">
       <div className="mb-4 flex items-center gap-2">
@@ -72,10 +116,8 @@ export function TripStatsPanel({ stats }: TripStatsPanelProps) {
           {stats.budgetMax > 0 ? <ProgressBar value={stats.budgetUsed} max={stats.budgetMax} /> : null}
         </StatCard>
         <StatCard icon={Clock} label="Thời gian/ngày">
-          <AnimatedNumber value={Math.floor(stats.avgTotalTimePerVehicleMin / 60)} suffix="h" />
-          <span className="ml-1 text-sm font-bold text-orange-500">
-            <AnimatedNumber value={stats.avgTotalTimePerVehicleMin % 60} suffix="m" />
-          </span>
+          <span>{formatMinutesShort(avgTotalTime)}</span>
+          <p className="mt-1 text-[11px] font-bold text-orange-500">Di chuyển ~{formatMinutesShort(avgTravelTime)}</p>
         </StatCard>
       </div>
       <div className="mt-3 flex items-center gap-4 rounded-xl bg-white/80 px-4 py-2.5 text-xs text-orange-950/60">

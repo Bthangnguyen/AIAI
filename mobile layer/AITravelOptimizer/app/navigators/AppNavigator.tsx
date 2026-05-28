@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The app navigator (formerly "AppNavigator" and "MainNavigator") is used for the primary
  * navigation flows of your app.
  * Generally speaking, it will contain an auth flow (registration, login, forgot password)
@@ -48,7 +48,7 @@ const AppStack = () => {
         headerShown: false,
         navigationBarColor: colors.background,
         contentStyle: {
-          backgroundColor: '#0B0F19',
+          backgroundColor: colors.background,
         },
       }}
       initialRouteName={isAuthenticated ? "MainTabs" : "Onboarding"}

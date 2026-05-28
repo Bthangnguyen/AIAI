@@ -80,9 +80,9 @@ export const LoadingScreen: FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <LinearGradient
-        colors={[colors.palette.deepSlate, "#111827", "#1a0a2e"]}
+        colors={[colors.palette.appCream, "#FFFFFF"]}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={[styles.loadingContainer, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 }]}>
@@ -96,7 +96,7 @@ export const LoadingScreen: FC<Props> = ({ navigation, route }) => {
         <View style={styles.spinnerWrapper}>
           <Animated.View style={[styles.spinnerOuter, { transform: [{ rotate: spin }] }]}>
             <LinearGradient
-              colors={[colors.palette.royalPurple, colors.palette.imperialGold, colors.palette.jadeGreen]}
+              colors={[colors.palette.appOrange, colors.palette.imperialGold, colors.palette.jadeGreen]}
               style={styles.spinnerGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -135,20 +135,20 @@ export const LoadingScreen: FC<Props> = ({ navigation, route }) => {
               const isDone = step.status === "done"
               const isError = step.status === "error"
 
-              let dotBg = "rgba(255,255,255,0.15)"
+              let dotBg = "rgba(249, 115, 22, 0.08)"
               if (isDone) dotBg = colors.palette.jadeGreen
               else if (isActive) dotBg = colors.palette.imperialGold
               else if (isError) dotBg = colors.error
 
               return (
-                <View key={step.id} style={[styles.stepRow, { opacity: step.status === "pending" ? 0.35 : 1 }]}>
+                <View key={step.id} style={[styles.stepRow, { opacity: step.status === "pending" ? 0.45 : 1 }]}>
                   <View style={[styles.stepDot, { backgroundColor: dotBg }]}>
                     <Text style={styles.stepDotText}>
                       {isDone ? "✓" : getStepIcon(step.id)}
                     </Text>
                   </View>
                   <View style={styles.stepInfo}>
-                    <Text style={[styles.stepText, isActive && { color: "#FFFFFF", fontFamily: typography.primary.semiBold }]}>
+                    <Text style={[styles.stepText, isActive && { color: colors.palette.appInk, fontFamily: typography.primary.semiBold }]}>
                       {step.label}
                     </Text>
                     <Text style={styles.stepDetailText}>{step.detail}</Text>
@@ -182,7 +182,7 @@ export const LoadingScreen: FC<Props> = ({ navigation, route }) => {
             showsVerticalScrollIndicator={false}
           >
             {logs.map((log) => {
-              let logColor = "rgba(255, 255, 255, 0.45)"
+              let logColor: string = colors.palette.appMuted
               if (log.type === "success") logColor = colors.palette.jadeGreen
               else if (log.type === "error") logColor = colors.error
 
@@ -201,7 +201,7 @@ export const LoadingScreen: FC<Props> = ({ navigation, route }) => {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.palette.appCream },
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -212,7 +212,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: colors.palette.sunsetOrange,
+    backgroundColor: "rgba(255, 255, 255, 0.65)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
@@ -221,7 +223,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontFamily: typography.primary.bold,
     fontSize: 22,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
   },
   spinnerWrapper: {
     width: 100,
@@ -246,9 +248,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(249, 115, 22, 0.12)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
@@ -257,14 +259,14 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontFamily: typography.primary.semiBold,
     fontSize: 22,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
     marginBottom: 8,
     textAlign: "center",
   },
   loadingSubtitle: {
     fontFamily: typography.primary.normal,
     fontSize: 13,
-    color: "rgba(255,255,255,0.45)",
+    color: colors.palette.appMuted,
     marginBottom: 25,
     textAlign: "center",
     fontStyle: "italic",
@@ -294,40 +296,51 @@ const styles = StyleSheet.create({
   stepText: {
     fontFamily: typography.primary.medium,
     fontSize: 14,
-    color: "rgba(255,255,255,0.5)",
+    color: colors.palette.appMuted,
   },
   stepDetailText: {
     fontFamily: typography.primary.normal,
     fontSize: 12,
-    color: "rgba(255,255,255,0.3)",
+    color: colors.palette.appMuted,
     marginTop: 1,
   },
   progressBar: {
     width: "100%",
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(249, 115, 22, 0.12)",
     borderRadius: 2,
     overflow: "hidden",
     marginBottom: 25,
   },
   progressFill: {
     height: "100%",
-    backgroundColor: colors.palette.imperialGold,
+    backgroundColor: colors.palette.appOrange,
     borderRadius: 2,
   },
   logsCard: {
     flex: 1,
     width: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
     padding: spacing.md,
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      } as any
+    }),
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
   },
   logsTitle: {
     fontFamily: typography.primary.semiBold,
     fontSize: 14,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
     marginBottom: 8,
   },
   logsScroll: {
@@ -365,19 +378,19 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: colors.palette.appLine,
     justifyContent: "center",
     alignItems: "center",
   },
   retryBtn: {
-    backgroundColor: colors.tint,
-    borderColor: colors.tint,
+    backgroundColor: colors.palette.appOrange,
+    borderColor: colors.palette.appOrange,
   },
   errorBtnText: {
     fontSize: 15,
     fontFamily: typography.primary.semiBold,
-    color: "#FFFFFF",
+    color: colors.palette.appInk,
   },
 })

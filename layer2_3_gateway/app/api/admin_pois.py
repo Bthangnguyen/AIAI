@@ -56,7 +56,7 @@ def _row_to_admin_poi(poi: PointOfInterest, geojson: str | None) -> AdminPoiItem
 async def list_admin_pois(
     request: Request,
     _: None = Depends(require_admin),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=2000),
     offset: int = Query(default=0, ge=0),
     q: str | None = Query(default=None),
 ):

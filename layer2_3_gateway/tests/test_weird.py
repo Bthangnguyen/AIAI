@@ -8,6 +8,15 @@ from httpx import AsyncClient
 # Add parent dir to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+@pytest.fixture(autouse=True)
+def check_db():
+    import socket
+    try:
+        socket.getaddrinfo("db", None)
+    except socket.gaierror:
+        pytest.skip("Database host 'db' is offline/unresolved.")
+
+
 @pytest.mark.anyio
 async def test_weird_scenario():
     print("🧪 Testing Vector Similarity for: 'đá gà', 'chèo thuyền'...")

@@ -41,10 +41,31 @@ if (typeof window !== "undefined") {
 interface ChatContract {
   destination?: string | null
   budget_max?: number | null
+  budget_is_unlimited?: boolean
   radius_km?: number
   num_days?: number
   tags?: string[]
   locked_pois?: string[]
+  excluded_pois?: string[]
+  hotel_lat?: number | null
+  hotel_lon?: number | null
+  hotel_name?: string | null
+  hotel_confirmed?: boolean
+  default_hotel_ok?: boolean
+  time_window?: { start_min: number; end_min: number } | null
+  time_slot?: string | null
+  transport_modes?: string[]
+  preferred_pace?: string | null
+  walking_tolerance?: string | null
+  food_preferences?: string[]
+  avoid_tags?: string[]
+  target_category_distribution?: Record<string, number>
+  distribution_description?: string | null
+  allow_cafe?: boolean
+  allow_art?: boolean
+  allow_shopping?: boolean
+  distribution_locked?: boolean
+  [key: string]: unknown
 }
 
 interface ChatProcessResult {
@@ -52,12 +73,15 @@ interface ChatProcessResult {
   reply: string
   updated_contract: ChatContract
   updated_itinerary?: any
+  edit_intent?: any
+  phase?: string
 }
 
 interface BackendPoiResponse {
   uuid: string
   name: string
   category: string
+  category_group?: string | null
   description?: string | null
   latitude: number
   longitude: number
@@ -71,7 +95,7 @@ interface BackendPoiResponse {
 interface TripPlanResponse {
   status: string
   message?: string
-  llm_contract?: ChatContract & { hotel_lat?: number; hotel_lon?: number; hotel_name?: string }
+  llm_contract?: ChatContract
   pois?: BackendPoiResponse[]
   layer4_result?: Layer4Itinerary
 }
@@ -79,6 +103,8 @@ interface TripPlanResponse {
 interface Layer4Stop {
   poi_id: string
   poi_name?: string
+  category?: string
+  description?: string
   arrival_time_min: number
   departure_time_min?: number
   visit_duration_min?: number
@@ -123,7 +149,7 @@ function mapBackendPoi(poi: BackendPoiResponse): POI {
   const mapped: POI = {
     id: String(poi.uuid),
     name: poi.name,
-    category: poi.category,
+    category: poi.category_group ?? poi.category,
     description: poi.description ?? "",
     tags: poi.tags ?? [],
     estimatedDurationMinutes: poi.visit_duration_min ?? 60,
@@ -133,13 +159,13 @@ function mapBackendPoi(poi: BackendPoiResponse): POI {
     lng: poi.longitude,
   }
   POI_CACHE.set(mapped.id, mapped)
-  saveCacheToStorage() // Save cache to storage
+  saveCacheToStorage()
   return mapped
 }
 
 export function cachePoisFromResponse(pois: BackendPoiResponse[] | undefined) {
   pois?.forEach((poi) => mapBackendPoi(poi))
-  saveCacheToStorage() // Save cache to storage
+  saveCacheToStorage()
 }
 
 function buildIntent(
@@ -154,8 +180,20 @@ function buildIntent(
     destination: contract?.destination ?? destination,
     days: contract?.num_days ?? days ?? 1,
     budget: contract?.budget_max ?? budget,
+    budgetIsUnlimited: contract?.budget_is_unlimited,
     interests: contract?.tags ?? interests ?? [],
     lockedPoiNames: contract?.locked_pois ?? [],
+    excludedPoiNames: contract?.excluded_pois ?? [],
+    preferredPace: contract?.preferred_pace,
+    walkingTolerance: contract?.walking_tolerance,
+    foodPreferences: contract?.food_preferences ?? [],
+    avoidTags: contract?.avoid_tags ?? [],
+    timeWindow: contract?.time_window ?? null,
+    timeSlot: contract?.time_slot ?? undefined,
+    transportModes: contract?.transport_modes ?? [],
+    hotelName: contract?.hotel_name ?? undefined,
+    hotelConfirmed: contract?.hotel_confirmed,
+    defaultHotelOk: contract?.default_hotel_ok,
     rawPrompt,
   }
 }
@@ -173,6 +211,7 @@ export function mapLayer4ResultToDraft(
   l4: Layer4Itinerary,
   intent: TripIntent,
   destination: string,
+  llmContract?: ChatContract,
 ): ItineraryDraft {
   const now = new Date().toISOString()
   const days: ItineraryDay[] = l4.days.map((day) => {
@@ -185,12 +224,12 @@ export function mapLayer4ResultToDraft(
           POI_CACHE.set(stop.poi_id, {
             id: stop.poi_id,
             name: stop.poi_name ?? cached?.name ?? "Unknown",
-            category: cached?.category ?? "general",
-            description: cached?.description ?? "",
+            category: stop.category ?? cached?.category ?? "general",
+            description: stop.description ?? cached?.description ?? "",
             tags: cached?.tags ?? [],
             estimatedDurationMinutes: stop.visit_duration_min ?? cached?.estimatedDurationMinutes ?? 60,
-            estimatedCost: (stop.entrance_fee && stop.entrance_fee > 0) 
-              ? stop.entrance_fee 
+            estimatedCost: (stop.entrance_fee && stop.entrance_fee > 0)
+              ? stop.entrance_fee
               : ((stop as any).price && (stop as any).price > 0)
                 ? (stop as any).price
                 : cached?.estimatedCost ?? 0,
@@ -242,6 +281,7 @@ export function mapLayer4ResultToDraft(
     updatedAt: now,
     status: "draft",
     intent,
+    llmContract,
     optimizationStats,
     validationNotes: parseValidationNotes(l4.validation_notes),
     droppedPoiCount: l4.total_pois_dropped ?? 0,
@@ -291,7 +331,7 @@ export async function generateRealItinerary(
       budget,
       destination: destination ?? "Huế",
       preferences: interests,
-      current_contract: currentContract,
+      contract: currentContract,
     }),
   })
 
@@ -311,7 +351,7 @@ export async function generateRealItinerary(
   const intent = buildIntent(rawPrompt, contract, days, budget, destination, interests)
   const dest = contract?.destination ?? destination ?? "Huế"
 
-  return mapLayer4ResultToDraft(data.layer4_result, intent, dest)
+  return mapLayer4ResultToDraft(data.layer4_result, intent, dest, contract)
 }
 
 export async function searchPoisBackend(query: string): Promise<POI[]> {

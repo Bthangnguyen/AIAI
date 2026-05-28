@@ -65,7 +65,6 @@ interface ChatContract {
   allow_art?: boolean
   allow_shopping?: boolean
   distribution_locked?: boolean
-  [key: string]: unknown
 }
 
 interface ChatProcessResult {
@@ -184,8 +183,8 @@ function buildIntent(
     interests: contract?.tags ?? interests ?? [],
     lockedPoiNames: contract?.locked_pois ?? [],
     excludedPoiNames: contract?.excluded_pois ?? [],
-    preferredPace: contract?.preferred_pace,
-    walkingTolerance: contract?.walking_tolerance,
+    preferredPace: contract?.preferred_pace ?? undefined,
+    walkingTolerance: contract?.walking_tolerance ?? undefined,
     foodPreferences: contract?.food_preferences ?? [],
     avoidTags: contract?.avoid_tags ?? [],
     timeWindow: contract?.time_window ?? null,

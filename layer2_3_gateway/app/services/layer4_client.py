@@ -1,7 +1,9 @@
 """HTTP client for Layer 4 (OR-Tools Routing Engine)."""
 
 import httpx
+import json as json_lib
 import time
+import uuid
 from typing import Optional, Dict, List
 from app.config import settings
 from app.schemas.trip import POIResponse, LLMDataContract
@@ -9,6 +11,19 @@ from app.utils.logging import AppLogger
 from app.services.transport_modes import transport_modes_from_contract
 
 logger = AppLogger().get_logger()
+
+
+class UUIDEncoder(json_lib.JSONEncoder):
+    """JSON encoder that safely converts UUID objects to strings."""
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return super().default(obj)
+
+
+def json_dumps(obj, **kwargs):
+    """UUID-safe json.dumps wrapper."""
+    return json_lib.dumps(obj, cls=UUIDEncoder, **kwargs)
 
 
 class CircuitBreaker:
@@ -265,7 +280,7 @@ class Layer4Client:
         hotel_fallback: bool = False,
     ):
         """SSE streaming: call Layer 4 /plan then yield result as SSE event."""
-        import json as json_lib
+        # json_lib and json_dumps already imported at module level
 
         if hotel_fallback:
             logger.warning("🏨 [HOTEL_FALLBACK] Selected optimal hotel default chosen by spatial criteria.")
@@ -273,17 +288,17 @@ class Layer4Client:
         result = await self.plan(pois=pois, contract=contract, time_limit=time_limit)
 
         if result is None:
-            yield f"data: {json_lib.dumps({'step': 'error', 'error_code': 'NO_FEASIBLE_ROUTE', 'message': 'Layer 4 solver unavailable'})}\n\n"
+            yield f"data: {json_dumps({'step': 'error', 'error_code': 'NO_FEASIBLE_ROUTE', 'message': 'Layer 4 solver unavailable'})}\n\n"
             yield "data: [DONE]\n\n"
             return
 
         if "error_code" in result:
-            yield f"data: {json_lib.dumps({'step': 'error', 'error_code': result['error_code'], 'message': result['message']})}\n\n"
+            yield f"data: {json_dumps({'step': 'error', 'error_code': result['error_code'], 'message': result['message']})}\n\n"
             yield "data: [DONE]\n\n"
             return
 
         result["hotel_fallback"] = hotel_fallback
-        yield f"data: {json_lib.dumps(result)}\n\n"
+        yield f"data: {json_dumps(result)}\n\n"
         yield "data: [DONE]\n\n"
 
     async def plan_alternatives(

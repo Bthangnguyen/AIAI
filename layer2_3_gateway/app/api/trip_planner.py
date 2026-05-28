@@ -9,6 +9,7 @@ PRODUCTION-HARDENED ARCHITECTURE:
 """
 
 import json as json_lib
+import uuid
 import asyncio
 import time
 from typing import Optional, List, Dict
@@ -32,6 +33,15 @@ from app.middleware.firebase_verify import get_current_user, get_optional_user, 
 
 router = APIRouter(prefix="/v1/trip")
 logger = AppLogger().get_logger()
+
+class UUIDEncoder(json_lib.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return super().default(obj)
+
+def json_dumps(obj, **kwargs):
+    return json_lib.dumps(obj, cls=UUIDEncoder, **kwargs)
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -330,7 +340,7 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
             elif cached["status"] == "completed":
                 logger.info("Idempotency hit (stream): returning completed response")
                 async def cached_generator():
-                    yield f"data: {json_lib.dumps(cached['response'])}\n\n"
+                    yield f"data: {json_dumps(cached['response'])}\n\n"
                     yield "data: [DONE]\n\n"
                 return StreamingResponse(
                     cached_generator(),
@@ -353,11 +363,11 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
         )
 
     async def event_generator():
-        yield f"data: {json_lib.dumps({'step': 'l2_done', 'tags': contract.tags, 'locked': contract.locked_pois})}\n\n"
+        yield f"data: {json_dumps({'step': 'l2_done', 'tags': contract.tags, 'locked': contract.locked_pois})}\n\n"
 
         if not pois:
             err_payload = {'step': 'error', 'error_code': 'NO_FEASIBLE_ROUTE', 'message': 'Không tìm thấy địa điểm nào phù hợp.'}
-            yield f"data: {json_lib.dumps(err_payload)}\n\n"
+            yield f"data: {json_dumps(err_payload)}\n\n"
             yield "data: [DONE]\n\n"
             if idempotency_key:
                 await idempotency_manager.set_completed(idempotency_key, err_payload)
@@ -365,7 +375,7 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
 
         # Gửi toàn bộ danh sách POIs (kèm giá, tag, mô tả thực tế) để frontend đưa vào POI_CACHE
         pois_json = [p.model_dump(mode='json') if hasattr(p, 'model_dump') else p for p in pois]
-        yield f"data: {json_lib.dumps({'step': 'l3_done', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked), 'pois': pois_json})}\n\n"
+        yield f"data: {json_dumps({'step': 'l3_done', 'pois_found': len(pois), 'locked_count': sum(1 for p in pois if p.is_locked), 'pois': pois_json})}\n\n"
 
         try:
             plan_result = None
@@ -383,7 +393,7 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
                 await idempotency_manager.set_completed(idempotency_key, plan_result)
         except Exception as e:
             err_payload = {'step': 'error', 'error_code': 'NO_FEASIBLE_ROUTE', 'message': str(e)}
-            yield f"data: {json_lib.dumps(err_payload)}\n\n"
+            yield f"data: {json_dumps(err_payload)}\n\n"
             yield "data: [DONE]\n\n"
             if idempotency_key:
                 await idempotency_manager.remove(idempotency_key)

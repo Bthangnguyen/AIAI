@@ -21,6 +21,7 @@ import { useTripStore } from "@/store/useTripStore"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
+import { getPOIImage } from "@/utils/poiImages"
 import { getRemainingPOIIds, mergeReRoutedDay, getCurrentTimeMin } from "@/utils/itineraryHelpers"
 import { AppState, AppStateStatus } from "react-native"
 import { RerouteService } from "@/services/api/rerouteService"
@@ -105,6 +106,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
   const setIsLocked = useTripStore((state) => state.setIsLocked)
   const setCurrentItinerary = useTripStore((state) => state.setCurrentItinerary)
   const saveLockedTrip = useTripStore((state) => state.saveLockedTrip)
+  const extractedConstraints = useTripStore((state) => state.extractedConstraints)
 
   // ─── Backend re-solve after delete (optimistic update) ──────────────────
   const reAfterDelete = useCallback(async (removedPoiId: string) => {
@@ -660,7 +662,7 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
           <Pressable style={$poiPopupBtn} onPress={() => navigation.navigate("POIDetail", {
             poiId: selectedStop.poi_id,
             poiName: selectedStop.poi_name,
-            photoUrl: "",
+            photoUrl: getPOIImage(selectedStop.poi_name),
             rating: 4.5,
             reviewCount: 100,
             description: "No description available",
@@ -690,6 +692,12 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
             text={`${itinerary.total_pois_visited} stops · ${itinerary.total_distance_km.toFixed(1)} km · ${totalCost > 0 ? (totalCost / 1000).toFixed(0) + "k₫" : "Free"}`}
             style={$sheetSubtitle}
           />
+          {extractedConstraints?.distribution_description && (
+            <View style={$descriptionContainer}>
+              <Text text="✨ Mô tả chuyến đi:" style={$descriptionTitle} />
+              <Text text={extractedConstraints.distribution_description} style={$descriptionText} />
+            </View>
+          )}
         </View>
 
         {/* Day Tabs */}
@@ -837,6 +845,31 @@ export const MapTimelineScreen: FC<MapTimelineScreenProps> = ({ route, navigatio
 const $root: ViewStyle = {
   flex: 1,
   backgroundColor: colors.background,
+}
+
+const $descriptionContainer: ViewStyle = {
+  marginTop: spacing.md,
+  padding: spacing.md,
+  backgroundColor: "rgba(255, 255, 255, 0.04)",
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "rgba(255, 255, 255, 0.08)",
+}
+
+const $descriptionTitle: TextStyle = {
+  fontSize: 11,
+  fontFamily: typography.primary.semiBold,
+  color: colors.palette.imperialGold,
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+  marginBottom: 4,
+}
+
+const $descriptionText: TextStyle = {
+  fontSize: 13,
+  fontFamily: typography.primary.normal,
+  color: "rgba(255, 255, 255, 0.75)",
+  lineHeight: 18,
 }
 
 // ─── Summary Bar ─────────────

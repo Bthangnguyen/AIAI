@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-
 import L from "leaflet"
 import { TravelItineraryStop } from "@/navigators/navigationTypes"
 import { colors } from "@/theme/colors"
+import { getPOIImage } from "@/utils/poiImages"
 
 // Map component bounds updater
 const MapBoundsUpdater = ({ bounds }: { bounds: { ne: [number, number]; sw: [number, number] } | null }) => {
@@ -251,13 +252,30 @@ export const WebMap = ({
                 <div style={{
                   fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                   color: "#1a233d",
-                  minWidth: "180px",
-                  maxWidth: "240px",
+                  minWidth: "220px",
+                  maxWidth: "280px",
                   padding: "4px",
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: "13.5px", marginBottom: "6px", lineHeight: 1.35, color: "#0f172a" }}>
+                  <img 
+                    src={getPOIImage(stop.poi_name, stop.category)} 
+                    style={{
+                      width: "100%", 
+                      height: "120px", 
+                      borderRadius: "8px", 
+                      objectFit: "cover", 
+                      marginBottom: "8px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.15)"
+                    }} 
+                    alt={stop.poi_name}
+                  />
+                  <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px", lineHeight: 1.35, color: "#0f172a" }}>
                     {idx + 1}. {stop.poi_name}
                   </div>
+                  {stop.description && (
+                    <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "6px", lineHeight: 1.4 }}>
+                      {stop.description.length > 80 ? stop.description.substring(0, 80) + "..." : stop.description}
+                    </div>
+                  )}
                   <div style={{ fontSize: "11.5px", color: "#4b5563", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
                     ⏱️ <span>{formatTime(stop.arrival_time_min)} - {formatTime(stop.departure_time_min)} ({stop.visit_duration_min} phút)</span>
                   </div>

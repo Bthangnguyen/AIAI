@@ -33,6 +33,7 @@ export interface LLMDataContract {
   avoid_tags?: string[];
   
   target_category_distribution?: Record<string, number>;
+  distribution_description?: string;
 }
 
 export interface POIScoreBreakdown {

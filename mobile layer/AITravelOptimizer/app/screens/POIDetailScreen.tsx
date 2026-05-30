@@ -25,6 +25,7 @@ import { AppStackParamList } from "@/navigators/navigationTypes"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
 import { typography } from "@/theme/typography"
+import { getPOIImage } from "@/utils/poiImages"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.48
@@ -136,7 +137,9 @@ export const POIDetailScreen: React.FC<Props> = () => {
   const formatFee = (fee: number) => fee === 0 ? "Miễn phí" : `${fee.toLocaleString("vi-VN")} ₫`
 
   const displayName = poiName ?? "Lăng Tự Đức"
-  const displayPhoto = photoUrl ?? "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80&w=900"
+  const displayPhoto = (photoUrl && photoUrl !== "") 
+    ? photoUrl 
+    : getPOIImage(displayName, category)
   const displayDescription = description ?? AUDIO_NARRATIVE
 
   return (
@@ -193,10 +196,7 @@ export const POIDetailScreen: React.FC<Props> = () => {
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{displayName}</Text>
             <View style={styles.heroMeta}>
-              <Text style={styles.heroRating}>⭐ {rating}</Text>
-              <Text style={styles.heroReviews}>({reviewCount.toLocaleString()} đánh giá)</Text>
-              <View style={styles.heroDot} />
-              <Text style={styles.heroTime}>{openTime} - {closeTime}</Text>
+              <Text style={styles.heroTime}>⏰ Giờ mở cửa: {openTime} - {closeTime}</Text>
             </View>
           </View>
         </View>

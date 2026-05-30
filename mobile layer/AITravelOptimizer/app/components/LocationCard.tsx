@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LocationCard - Dark Glassmorphism with gradient overlay
  */
 import React from "react"
@@ -45,9 +45,9 @@ export const LocationCard: React.FC<LocationCardProps> = ({
         {priceFrom !== undefined && (
           <Text style={styles.price}>{`từ ${priceFrom.toLocaleString("vi-VN")}₫`}</Text>
         )}
-        {rating !== undefined && (
+        {/* rating !== undefined && (
           <RatingStars rating={rating} size="sm" showScore style={styles.rating} />
-        )}
+        ) */}
       </View>
       {locationCount !== undefined && (
         <Text style={styles.locationCount}>{`${locationCount} điểm tham quan`}</Text>

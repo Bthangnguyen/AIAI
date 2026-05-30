@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
+import { getPOIImage } from "@/lib/poiImages"
 import type { ItineraryDay, ItineraryDraft, ItineraryItem, POI } from "@/types/trip"
 
 interface ItineraryMapProps {
@@ -259,6 +260,7 @@ function getPoiCategoryInfo(poi: POI) {
 function MapMarkerPopup({ marker }: { marker: MarkerEntry }) {
   const categoryInfo = getPoiCategoryInfo(marker.poi)
   const dayStopIndex = marker.day.items.findIndex((it) => it.id === marker.item.id) + 1
+  const imageUrl = getPOIImage(marker.poi.name, categoryInfo.name)
   
   return (
     <div className="p-0.5 min-w-[245px] max-w-[290px] font-sans antialiased text-sm">
@@ -277,6 +279,15 @@ function MapMarkerPopup({ marker }: { marker: MarkerEntry }) {
             ⭐ {marker.poi.rating.toFixed(1)}
           </span>
         )}
+      </div>
+
+      {/* Real Image of POI */}
+      <div className="relative mb-2.5 h-28 w-full overflow-hidden rounded-xl border border-orange-100/20">
+        <img
+          src={imageUrl}
+          alt={marker.poi.name}
+          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+        />
       </div>
 
       {/* Place Title & Day/Time */}

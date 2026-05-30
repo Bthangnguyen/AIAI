@@ -804,7 +804,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
     normalized_msg = (body.message or "").strip().lower()
     is_edit_confirmation = bool(
         body.pending_edit_plan
-        and normalized_msg in {"ok", "oke", "được", "duoc", "đúng rồi", "dung roi", "làm đi", "lam di", "chốt", "chot", "xác nhận", "xac nhan", "yes", "y"}
+        and llm_service._is_confirmation(body.message)
     )
 
     deterministic_intent = None

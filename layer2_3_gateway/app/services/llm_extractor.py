@@ -701,12 +701,22 @@ class LLMExtractorService:
 
         # ── Route 4: Actionable operation with enough data → ready ──
         if action in _ACTIONABLE_EDITS:
+            # Let the LLM naturally decide if it is already confirmed (ready) or still needs confirmation (clarifying)
+            response_obj = locals().get('response')
+            status = getattr(response_obj, 'status', 'clarifying') if response_obj else "clarifying"
+            req_confirm = getattr(response_obj, 'requires_confirmation', True) if response_obj else True
+            
+            # Helper fallback: if our robust _is_confirmation helper detects confirmation, set to ready
+            if self._is_confirmation(message):
+                status = "ready"
+                req_confirm = False
+
             reply = (pending_edit_plan or {}).get("assistant_reply") or llm_reply or self._edit_reply(intent)
-            logger.info(f"Edit turn result: action={action}, pending_confirmation=True")
+            logger.info(f"Edit turn result: action={action}, status={status}, requires_confirmation={req_confirm}")
             return self._make_response(
-                contract, "clarifying", reply, phase="editing",
-                edit_intent=intent, pending_edit_plan=pending_edit_plan,
-                requires_confirmation=True,
+                contract, status, reply, phase="editing",
+                edit_intent=intent, pending_edit_plan=pending_edit_plan if req_confirm else None,
+                requires_confirmation=req_confirm,
             )
 
         # ── Fallback: unknown action → clarifying ──

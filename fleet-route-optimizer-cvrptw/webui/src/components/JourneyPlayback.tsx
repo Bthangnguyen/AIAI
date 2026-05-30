@@ -75,6 +75,7 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
       playingRef.current = false
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying])
 
   return null

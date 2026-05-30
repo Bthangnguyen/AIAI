@@ -146,13 +146,57 @@ function minutesToTime(minutes: number): string {
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
 }
 
+function cleanTags(rawTags: string[] | null | undefined): string[] {
+  if (!rawTags) return []
+  const result: string[] = []
+  for (const rawTag of rawTags) {
+    if (typeof rawTag !== "string") continue
+    
+    const trimmed = rawTag.trim()
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            const cleaned = String(item).replace(/[\[\]"']/g, "").trim()
+            if (cleaned) result.push(cleaned)
+          }
+          continue
+        }
+      } catch (e) {
+        const cleanRaw = trimmed.replace(/[\[\]"']/g, "")
+        const items = cleanRaw.split(",")
+        for (const item of items) {
+          const cleaned = item.trim()
+          if (cleaned) result.push(cleaned)
+        }
+        continue
+      }
+    }
+    
+    const cleaned = trimmed.replace(/[\[\]"']/g, "").trim()
+    if (cleaned) {
+      if (cleaned.includes(",")) {
+        const parts = cleaned.split(",")
+        for (const p of parts) {
+          const pt = p.trim()
+          if (pt) result.push(pt)
+        }
+      } else {
+        result.push(cleaned)
+      }
+    }
+  }
+  return result
+}
+
 function mapBackendPoi(poi: BackendPoiResponse): POI {
   const mapped: POI = {
     id: String(poi.uuid),
     name: poi.name,
     category: poi.category_group ?? poi.category,
     description: poi.description ?? "",
-    tags: poi.tags ?? [],
+    tags: cleanTags(poi.tags),
     estimatedDurationMinutes: poi.visit_duration_min ?? 60,
     estimatedCost: (poi.entrance_fee && poi.entrance_fee > 0) ? poi.entrance_fee : (poi.price || 0),
     rating: 4.5,

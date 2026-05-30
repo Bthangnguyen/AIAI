@@ -79,6 +79,17 @@ def test_service_init():
     assert service._client is None
 
 
+def test_afternoon_prompt_fills_time_window_failsafe():
+    service = LLMExtractorService()
+    contract = LLMDataContract(destination="Huế", num_days=1, budget_max=500000, tags=["culture"])
+
+    service._apply_backend_failsafes(contract, "Tôi muốn một chuyến đi Huế buổi chiều")
+
+    assert contract.time_slot == "afternoon"
+    assert contract.time_window.start_min == 780
+    assert contract.time_window.end_min == 1080
+
+
 @pytest.mark.integration
 @pytest.mark.anyio
 async def test_process_chat_turn_extraction():
@@ -208,4 +219,7 @@ async def test_post_plan_message_is_edit_intent():
         has_draft=True,
     )
     assert res["phase"] == "editing"
+    assert res["status"] == "clarifying"
+    assert res["requires_confirmation"] is True
     assert res["edit_intent"].action == "add_place"
+    assert res["pending_edit_plan"]["status"] == "pending_confirmation"

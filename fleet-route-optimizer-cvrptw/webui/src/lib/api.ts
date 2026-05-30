@@ -73,6 +73,8 @@ interface ChatProcessResult {
   updated_contract: ChatContract
   updated_itinerary?: any
   edit_intent?: any
+  pending_edit_plan?: any
+  requires_confirmation?: boolean
   phase?: string
 }
 
@@ -294,6 +296,7 @@ export async function chatProcess(
   currentContract: ChatContract,
   hasDraft?: boolean,
   currentItinerary?: any,
+  pendingEditPlan?: any,
 ): Promise<ChatProcessResult> {
   const res = await gatewayFetch("/v1/trip/chat_process", {
     method: "POST",
@@ -304,6 +307,7 @@ export async function chatProcess(
       current_contract: currentContract,
       has_draft: !!hasDraft,
       current_itinerary: currentItinerary,
+      pending_edit_plan: pendingEditPlan,
     }),
   })
   if (!res.ok) {

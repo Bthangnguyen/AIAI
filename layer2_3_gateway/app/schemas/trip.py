@@ -98,13 +98,20 @@ class TimeConstraints(BaseModel):
 
 class OperationItem(BaseModel):
     """Single atomic operation in a multi-intent edit request."""
-    type: str = Field(..., description="remove_place|add_place|replace_place|change_time|change_distribution|change_budget|change_pace|add_preference|avoid_preference|rebuild_requested")
+    type: str = Field(..., description="add_place|remove_place|replace_place|swap_places|move_place|change_time|change_duration|change_distribution|change_budget|change_pace|add_preference|avoid_preference|rebuild_requested")
     target: Optional[str] = Field(None, description="Target POI name or category")
     target_day: Optional[int] = Field(None, description="Target day number")
     target_count: Optional[int] = Field(None, description="Number of POIs requested for add_place")
     query: Optional[str] = Field(None, description="Search query for add_place")
     amount: Optional[float] = Field(None, description="Budget amount for change_budget")
     value: Optional[str] = Field(None, description="New value for pace/time changes")
+    target_category: Optional[str] = Field(None, description="Macro category such as food/cafe/culture/nightlife")
+    target_micro_tags: Optional[List[str]] = Field(default_factory=list, description="Fine-grained tags such as bun_bo, che, cafe_muoi")
+    time_window: Optional[Dict[str, int]] = Field(None, description="Preferred time window in minutes")
+    target_time_min: Optional[int] = Field(None, description="Exact preferred arrival/start minute")
+    position: Optional[str] = Field(None, description="before|after|first|last|best_gap")
+    relative_to: Optional[str] = Field(None, description="Existing stop used as anchor for insert/move")
+    resolution_strategy: Optional[str] = Field(None, description="current_itinerary_match|name_search|vector_search_then_suggest")
 
 
 class UserOperation(BaseModel):
@@ -273,6 +280,7 @@ class ChatProcessResponse(BaseModel):
     next_question: Optional[str] = None
     requires_confirmation: bool = False
     edit_intent: Optional[EditIntent] = None
+    pending_edit_plan: Optional[Dict[str, Any]] = Field(None, description="Preview edit plan waiting for user confirmation")
     updated_itinerary: Optional[Dict[str, Any]] = Field(None, description="The JIT-edited itinerary returned to the frontend if an edit was performed in-memory")
 
     @field_validator("updated_contract", "edit_intent", mode="before")
@@ -294,6 +302,7 @@ class POIScoreBreakdown(BaseModel):
     semantic_score: float = Field(0.5, description="pgvector cosine similarity to user intent")
     quality_score: float = Field(0.5, description="Rating + review count + popularity")
     distribution_boost: float = Field(0.5, description="Boost from LLM target_category_distribution")
+    intent_tag_match: float = Field(0.5, description="Deterministic match between user intent tags and POI tags/name/category")
     localness_score: float = Field(0.5, description="Tính bản địa, không generic")
     novelty_score: float = Field(0.5, description="Khác biệt so với lịch trình bình thường")
     comfort_score: float = Field(0.5, description="Phù hợp pace/walking tolerance của user")
@@ -370,3 +379,4 @@ class ChatProcessRequest(BaseModel):
     has_draft: bool = Field(False, description="True when the user is editing an existing itinerary")
     app_context: Optional[AppContext] = Field(None, description="UI context for disambiguation")
     current_itinerary: Optional[Dict[str, Any]] = Field(None, description="The current itinerary JSON representation from the frontend to enable JIT editing")
+    pending_edit_plan: Optional[Dict[str, Any]] = Field(None, description="Unapplied edit plan returned by a previous post-draft chat turn")

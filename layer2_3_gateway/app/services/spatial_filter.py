@@ -13,7 +13,7 @@ from geoalchemy2.types import Geography  # Only for casting center point
 
 from app.models.poi import PointOfInterest
 from app.schemas.trip import LLMDataContract, POIResponse
-from app.services.utility_scorer import UtilityScorer
+from app.services.utility_scorer import UtilityScorer, is_noise_poi
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class SpatialFilterService:
         ]
 
         stmt = select(
-            POI.uuid, POI.name, POI.category, POI.description,
+            POI.uuid, POI.name, POI.category, POI.category_group, POI.description,
             POI.visit_duration_min, POI.price, POI.entrance_fee,
             POI.open_time, POI.close_time, POI.priority_score,
             POI.tags, POI.is_outdoor,
@@ -195,6 +195,13 @@ class SpatialFilterService:
         elif contract.weather_preference == "outdoor":
             conditions.append(POI.is_outdoor == True)
 
+        noise_categories = ["hotel", "lodging", "accommodation"]
+        noise_name_terms = ["hotel", "khách sạn", "khach san", "resort", "homestay", "villa", "motel", "hostel"]
+        conditions.append(or_(POI.category_group.is_(None), func.lower(POI.category_group).notin_(noise_categories)))
+        conditions.append(func.lower(POI.category).notin_(noise_categories))
+        for term in noise_name_terms:
+            conditions.append(~func.lower(POI.name).contains(term))
+
         # Strict vegetarian exclusion
         is_vegetarian = any(
             t.lower() in ("vegetarian", "vegan", "chay")
@@ -211,22 +218,26 @@ class SpatialFilterService:
             ))
 
         stmt = select(
-            POI.uuid, POI.name, POI.category, POI.description,
+            POI.uuid, POI.name, POI.category, POI.category_group, POI.description,
             POI.visit_duration_min, POI.price, POI.entrance_fee,
             POI.open_time, POI.close_time, POI.priority_score,
             POI.tags, POI.is_outdoor,
             ST_AsGeoJSON(POI.coordinates).label("geojson"),
-        ).where(and_(*conditions))
+        )
 
         if apply_tags and query_vector is not None:
+            conditions.append(POI.tags_vector.isnot(None))
+            stmt = stmt.where(and_(*conditions))
+            distance_expr = POI.tags_vector.cosine_distance(query_vector)
+            stmt = stmt.add_columns(distance_expr.label("semantic_distance"))
             # Cosine distance via pgvector <=> operator (uses HNSW index)
             stmt = stmt.order_by(
-                POI.tags_vector.cosine_distance(query_vector),
+                distance_expr,
                 POI.priority_score.desc(),
             )
         else:
+            stmt = stmt.where(and_(*conditions))
             stmt = stmt.order_by(POI.priority_score.desc())
-
         stmt = stmt.limit(limit)
 
         result = await db_session.execute(stmt)
@@ -234,20 +245,26 @@ class SpatialFilterService:
 
         # Score POIs with UtilityScorer
         scorer = UtilityScorer()
-        existing_categories = set()
+        existing_categories = {}
+        existing_tags = {}
         scored_pois = []
 
         for row in rows:
             poi = self._row_to_poi(row, is_locked=False)
+            if is_noise_poi(poi):
+                continue
 
-            # Cosine similarity: not available as named column, use fallback
-            cosine_sim = 0.5
+            semantic_distance = getattr(row, "semantic_distance", None)
+            cosine_sim = None if semantic_distance is None else max(0.0, 1.0 - float(semantic_distance))
 
-            breakdown = scorer.score_poi(poi, contract, cosine_sim, existing_categories)
+            breakdown = scorer.score_poi(poi, contract, cosine_sim, existing_categories, existing_tags)
             poi.score_breakdown = breakdown
             poi.utility_score = scorer.compute_utility(breakdown)
 
-            existing_categories.add(poi.category)
+            group = scorer._category_to_group(poi.category_group or poi.category)
+            existing_categories[group] = existing_categories.get(group, 0) + 1
+            for key in scorer._get_fine_grained_keys(poi):
+                existing_tags[key] = existing_tags.get(key, 0) + 1
             scored_pois.append(poi)
 
         # Sort by utility_score descending
@@ -266,6 +283,7 @@ class SpatialFilterService:
             uuid=row.uuid,
             name=row.name,
             category=row.category,
+            category_group=getattr(row, "category_group", None),
             description=row.description,
             latitude=lat,
             longitude=lon,

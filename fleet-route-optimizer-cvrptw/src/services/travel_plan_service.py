@@ -14,6 +14,7 @@ Re-route Flow (JIT):
   4. Return updated TravelItineraryDay
 """
 
+import math
 import threading
 from typing import List, Optional, Dict
 from ..models.domain import (
@@ -26,10 +27,13 @@ from .distance_cache import DistanceCacheService
 from .itinerary_validator import ItineraryValidator
 from .rest_inserter import RestBreakInserter
 from ..config import get_logger
+from ..utils.distance_calculator import haversine_distance
 
 logger = get_logger(__name__)
 
 MAX_BUDGET_RETRIES = 3
+AVERAGE_TRAVEL_SPEED_KMH = 30.0
+ROAD_FACTOR = 1.25
 
 
 class TravelPlanService:
@@ -138,7 +142,12 @@ class TravelPlanService:
                 rest_duration_min=rest_duration,
             )
 
-        # 7. Assemble response
+        # 7. Final timeline pass: expose conservative point-to-point travel
+        # times and make all arrivals sequential. Use 30 km/h average speed so
+        # the itinerary is intentionally less compressed than ideal routing.
+        self._recompute_conservative_travel_times(days_result, matrix)
+
+        # 8. Assemble response
         total_pois = sum(d.num_pois for d in days_result)
         total_fee = sum(d.total_entrance_fee for d in days_result)
         total_travel = sum(d.total_travel_min for d in days_result)
@@ -284,6 +293,7 @@ class TravelPlanService:
         )
 
         if result:
+            self._recompute_conservative_travel_times([result], matrix)
             return result
 
         # Fallback: empty day
@@ -341,4 +351,98 @@ class TravelPlanService:
                         day.end_hotel_id = next_hotel.id if next_hotel else day.hotel_id
                 else:
                     day.end_hotel_id = day.hotel_id  # Last day: return to same hotel
+
+    def _recompute_conservative_travel_times(
+        self,
+        days: List[TravelItineraryDay],
+        matrix: Optional[Dict],
+        speed_kmh: float = AVERAGE_TRAVEL_SPEED_KMH,
+    ) -> None:
+        """Retimes final itinerary using conservative 30 km/h travel estimates.
+
+        Solver and post-processors may insert rest/meal stops after OR-Tools
+        routing. This final pass is the source of truth for UI fields:
+        travel_time_from_prev_min, travel_time_to_next_min, arrivals,
+        departures, total_travel_min, and total_distance_km.
+        """
+        for day in days:
+            if not day.stops:
+                day.total_travel_min = 0
+                day.total_distance_km = 0.0
+                continue
+
+            stops = sorted(day.stops, key=lambda s: (s.arrival_time_min, s.departure_time_min))
+            prev_location = day.start_hotel_location
+            prev_departure = day.start_time_min
+            total_travel = 0
+            total_distance = 0.0
+
+            for stop in stops:
+                distance_km = self._distance_between(prev_location, stop.location, matrix)
+                travel_min = self._travel_minutes(distance_km, speed_kmh)
+                stop.travel_time_from_prev_min = travel_min
+                total_travel += travel_min
+                total_distance += distance_km
+
+                earliest_arrival = prev_departure + travel_min
+                if stop.arrival_time_min < earliest_arrival:
+                    stop.arrival_time_min = earliest_arrival
+                    stop.departure_time_min = stop.arrival_time_min + stop.visit_duration_min
+
+                prev_location = stop.location
+                prev_departure = stop.departure_time_min
+
+            for idx, stop in enumerate(stops):
+                next_location = (
+                    stops[idx + 1].location
+                    if idx + 1 < len(stops)
+                    else (day.end_hotel_location or day.start_hotel_location)
+                )
+                next_distance = self._distance_between(stop.location, next_location, matrix)
+                stop.travel_time_to_next_min = self._travel_minutes(next_distance, speed_kmh)
+
+            end_location = day.end_hotel_location or day.start_hotel_location
+            total_travel += stops[-1].travel_time_to_next_min
+            total_distance += self._distance_between(stops[-1].location, end_location, matrix)
+
+            day.stops = stops
+            day.total_travel_min = total_travel
+            day.total_distance_km = round(total_distance, 2)
+            day.total_visit_min = sum(
+                s.visit_duration_min for s in stops
+                if not str(s.poi_id).startswith("__")
+            )
+            day.num_pois = sum(1 for s in stops if not str(s.poi_id).startswith("__"))
+
+    @staticmethod
+    def _location_key(location: Location) -> tuple[float, float]:
+        return (location.latitude, location.longitude)
+
+    def _distance_between(
+        self,
+        from_location: Location,
+        to_location: Location,
+        matrix: Optional[Dict],
+    ) -> float:
+        if not from_location or not to_location:
+            return 0.0
+
+        from_key = self._location_key(from_location)
+        to_key = self._location_key(to_location)
+        if from_key == to_key:
+            return 0.0
+
+        if matrix:
+            direct = matrix.get((from_key, to_key))
+            if direct:
+                return max(0.0, float(direct[0]))
+
+        return max(0.0, haversine_distance(from_key, to_key) * ROAD_FACTOR)
+
+    @staticmethod
+    def _travel_minutes(distance_km: float, speed_kmh: float) -> int:
+        if distance_km <= 0:
+            return 0
+        minutes = (distance_km / max(speed_kmh, 1.0)) * 60.0
+        return max(3, int(math.ceil(minutes)))
 

@@ -11,7 +11,7 @@ import { Toast, type ToastVariant } from "@/components/Toast"
 import { buildItineraryViaStream } from "@/lib/buildItinerary"
 import { buildFollowUpQuestion } from "@/lib/clarification"
 import { searchPois, getPoi, draftTotals } from "@/lib/mockItineraryFallback"
-import { searchPoisBackend, reRouteDay, POI_CACHE, chatProcess, generateRealItinerary, mapLayer4ResultToDraft } from "@/lib/api"
+import { reRouteDay, POI_CACHE, chatProcess, generateRealItinerary, mapLayer4ResultToDraft } from "@/lib/api"
 import { processReRouteResult } from "@/lib/reRouteFlow"
 import { getSavedDraftsForUser, saveDraftForUser } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
@@ -79,6 +79,7 @@ export default function Page() {
   const [draft, setDraft] = useState<ItineraryDraft | null>(null)
   const [savedDrafts, setSavedDrafts] = useState<ItineraryDraft[]>([])
   const [messages, setMessages] = useState<AIMessage[]>([])
+  const [pendingEditPlan, setPendingEditPlan] = useState<any>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
   const [viewMode, setViewMode] = useState<PreviewMode>("split")
@@ -191,6 +192,7 @@ export default function Page() {
     setStatus("live")
     setBuildErrorMessage(null)
     setFollowUp(null)
+    setPendingEditPlan(null)
     setOsrmDegraded(false)
     setViewMode("split")
     setSelectedPoiId(nextDraft.days[0]?.items[0]?.poiId ?? null)
@@ -283,6 +285,7 @@ export default function Page() {
     setIntent(nextDraft.intent)
     setStatus("live")
     setFollowUp(null)
+    setPendingEditPlan(null)
     if (assistantReply) {
       setMessages((items) => [...items, { role: "assistant", content: assistantReply }, { role: "assistant", content: "Đã cập nhật lại lịch trình theo yêu cầu mới." }])
     }
@@ -335,6 +338,7 @@ export default function Page() {
     setScreen("builder")
     setDraft(null)
     setContract(null)
+    setPendingEditPlan(null)
     setIsRunning(true)
     setBuildErrorMessage(null)
 
@@ -369,19 +373,6 @@ export default function Page() {
     if (isRunning) return
 
     setMessages((items) => [...items, { role: "user", content: message }])
-    const normalized = normalize(message)
-
-    if (draft && normalized.includes("them")) {
-      setIsRunning(true)
-      const results = await searchPoisBackend(message)
-      const match = results.find((poi) => !draft.days.some((day) => day.items.some((item) => item.poiId === poi.id)))
-      setIsRunning(false)
-      if (match) {
-        await handleAddPoiBackend(draft.days[0]?.dayNumber ?? 1, match)
-        return
-      }
-    }
-
     setIsRunning(true)
     setBuildErrorMessage(null)
 
@@ -396,7 +387,8 @@ export default function Page() {
         historyList,
         currentContractInput,
         hasDraft,
-        currentItineraryBackend
+        currentItineraryBackend,
+        pendingEditPlan
       )
 
       const updatedIntent: TripIntent = {
@@ -411,15 +403,23 @@ export default function Page() {
       setContract(res.updated_contract)
 
       if (res.updated_itinerary) {
+        setPendingEditPlan(null)
         const nextDraft = mapLayer4ResultToDraft(
           res.updated_itinerary,
           updatedIntent,
           res.updated_contract.destination || "Huế"
         )
         applyDraftSuccess(nextDraft, [res.reply])
+      } else if (res.pending_edit_plan) {
+        setPendingEditPlan(res.pending_edit_plan)
+        setFollowUp(null)
+        setStatus("live")
+        setMessages((items) => [...items, { role: "assistant", content: res.reply }])
       } else if (res.status === "ready") {
+        setPendingEditPlan(null)
         await buildItineraryFromContract(res.updated_contract, updatedIntent.rawPrompt || message, res.reply)
       } else {
+        setPendingEditPlan(null)
         handleClarifyingResponse(res, updatedIntent)
       }
     } catch (e) {

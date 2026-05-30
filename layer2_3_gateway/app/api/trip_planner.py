@@ -13,7 +13,7 @@ import uuid
 import asyncio
 import time
 import unicodedata
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import StreamingResponse
 
@@ -21,6 +21,8 @@ from app.database import AsyncSessionFactory
 from app.schemas.trip import TripPlanRequest, TripPlanResponse, LLMDataContract, POIResponse, ChatProcessRequest, ChatProcessResponse
 from app.schemas.re_route import MobileReRouteRequest, ReRouteResponse
 from app.services.llm_extractor import LLMExtractorService
+from app.services.distribution_policy import apply_distribution_policy
+from app.services.edit_intent_planner import EditIntentPlanner
 from app.services.spatial_filter import SpatialFilterService
 from app.services.layer4_client import Layer4Client
 from app.services.embedding_service import EmbeddingService
@@ -88,6 +90,298 @@ class IdempotencyManager:
 
 
 idempotency_manager = IdempotencyManager()
+
+
+def _poi_row_to_response(row: Any) -> POIResponse:
+    poi = row.PointOfInterest
+    geojson = json_lib.loads(row.geojson) if row.geojson else None
+    lat = geojson["coordinates"][1] if geojson else 0.0
+    lon = geojson["coordinates"][0] if geojson else 0.0
+    return POIResponse(
+        uuid=poi.uuid,
+        name=poi.name,
+        category=poi.category,
+        category_group=poi.category_group,
+        description=poi.description,
+        latitude=lat,
+        longitude=lon,
+        visit_duration_min=poi.visit_duration_min,
+        price=poi.price,
+        entrance_fee=poi.entrance_fee,
+        open_time=poi.open_time,
+        close_time=poi.close_time,
+        priority_score=poi.priority_score,
+        tags=poi.tags,
+    )
+
+
+MICRO_INTENT_ALIASES = {
+    "bun_bo": ("bun_bo", "bun bo", "bún bò", "bun_bo_hue", "bún bò huế"),
+    "com_hen": ("com_hen", "com hen", "cơm hến", "bun_hen", "bún hến"),
+    "che_hue": ("che_hue", "che", "chè", "chè huế", "hue_sweet_soup"),
+    "cafe_muoi": ("cafe_muoi", "salt_coffee", "cafe muoi", "cà phê muối", "ca phe muoi"),
+    "vegetarian": ("vegetarian", "vegan", "chay", "ăn chay", "quan_chay"),
+}
+
+
+MICRO_INTENT_CATEGORY = {
+    "bun_bo": "food",
+    "com_hen": "food",
+    "che_hue": "food",
+    "cafe_muoi": "cafe",
+    "vegetarian": "food",
+}
+
+
+def _normalize_text(value: str | None) -> str:
+    if not value:
+        return ""
+    text = unicodedata.normalize("NFKD", value.lower())
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = text.replace("đ", "d")
+    return text
+
+
+def _detect_required_micro_intents(contract: LLMDataContract, prompt: str) -> list[str]:
+    """Detect user-mentioned concrete dishes/drinks that must be represented."""
+    sources = [
+        prompt or "",
+        " ".join(contract.tags or []),
+        " ".join(contract.food_preferences or []),
+        contract.distribution_description or "",
+    ]
+    haystack = _normalize_text(" | ".join(sources))
+    required: list[str] = []
+    for micro_tag, aliases in MICRO_INTENT_ALIASES.items():
+        if any(_normalize_text(alias) in haystack for alias in aliases):
+            required.append(micro_tag)
+    return required
+
+
+def _poi_matches_micro_tag(poi: POIResponse, micro_tag: str) -> bool:
+    """Return True when a POI represents a concrete requested dish/drink."""
+    aliases = MICRO_INTENT_ALIASES.get(micro_tag, (micro_tag,))
+    tag_text = " ".join(str(tag) for tag in (poi.tags or []))
+    haystack = _normalize_text(" | ".join([
+        poi.name or "",
+        poi.description or "",
+        poi.category or "",
+        poi.category_group or "",
+        tag_text,
+    ]))
+    return any(_normalize_text(alias) in haystack for alias in aliases)
+
+
+async def _resolve_required_micro_pois(
+    contract: LLMDataContract,
+    required_micro_tags: list[str],
+    db_session,
+) -> list[POIResponse]:
+    """Resolve one best POI per required micro intent and lock it for Layer 4."""
+    if not required_micro_tags:
+        return []
+
+    from sqlalchemy import select, func, or_
+    from app.models.poi import PointOfInterest
+    from geoalchemy2.functions import ST_AsGeoJSON
+
+    POI = PointOfInterest
+    resolved: list[POIResponse] = []
+    used_ids: set[str] = set()
+
+    for micro_tag in required_micro_tags:
+        aliases = list(MICRO_INTENT_ALIASES.get(micro_tag, (micro_tag,)))
+        category_group = MICRO_INTENT_CATEGORY.get(micro_tag)
+
+        tag_conditions = [POI.tags.overlap([micro_tag])]
+        for alias in aliases:
+            norm_alias = _normalize_text(alias)
+            tag_conditions.append(func.coalesce(func.array_to_string(POI.tags, ","), "").ilike(f"%{norm_alias}%"))
+            tag_conditions.append(POI.name.ilike(f"%{alias}%"))
+            tag_conditions.append(POI.description.ilike(f"%{alias}%"))
+
+        conditions = [or_(*tag_conditions)]
+        if category_group:
+            conditions.append(or_(
+                func.lower(POI.category_group) == category_group,
+                func.lower(POI.category) == category_group,
+            ))
+        if contract.budget_max:
+            conditions.append(POI.price <= contract.budget_max)
+        if contract.time_window:
+            conditions.append(POI.open_time <= contract.time_window.end_min)
+            conditions.append(POI.close_time >= contract.time_window.start_min)
+
+        query_vector = None
+        try:
+            query_vector = await embed_service.aembed_text(f"{micro_tag} Hue local food cafe")
+        except Exception as exc:
+            logger.warning(f"Micro-intent embedding unavailable for {micro_tag}: {exc}")
+
+        stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(*conditions)
+        if query_vector is not None:
+            stmt = stmt.where(POI.tags_vector.isnot(None)).order_by(
+                POI.tags_vector.cosine_distance(query_vector),
+                POI.priority_score.desc(),
+            )
+        else:
+            stmt = stmt.order_by(POI.priority_score.desc())
+        stmt = stmt.limit(8)
+
+        result = await db_session.execute(stmt)
+        rows = result.all()
+        selected = None
+        for row in rows:
+            candidate = _poi_row_to_response(row)
+            if str(candidate.uuid) not in used_ids:
+                selected = candidate
+                break
+        if selected:
+            selected.is_locked = True
+            selected.utility_score = max(selected.utility_score or 0.5, 0.98)
+            selected.priority_score = max(selected.priority_score or 0.5, 0.95)
+            resolved.append(selected)
+            used_ids.add(str(selected.uuid))
+            logger.info(f"Locked micro intent {micro_tag}: {selected.name}")
+        else:
+            logger.warning(f"No POI found for required micro intent: {micro_tag}")
+
+    return resolved
+
+
+def _merge_required_micro_pois(
+    pois: list[POIResponse],
+    required_pois: list[POIResponse],
+    target_count: int = 50,
+) -> list[POIResponse]:
+    """Merge locked POIs and suppress duplicate micro-intent candidates."""
+    if not required_pois:
+        return pois
+
+    required_by_id = {str(p.uuid): p for p in required_pois}
+    required_micro_tags = [
+        micro_tag
+        for micro_tag in MICRO_INTENT_ALIASES
+        if any(_poi_matches_micro_tag(required, micro_tag) for required in required_pois)
+    ]
+    merged_required = list(required_by_id.values())
+    existing_non_required: list[POIResponse] = []
+
+    for poi in pois:
+        key = str(poi.uuid)
+        if key in required_by_id:
+            locked = required_by_id[key]
+            poi.is_locked = True
+            poi.utility_score = max(poi.utility_score or 0.5, locked.utility_score or 0.98)
+            poi.priority_score = max(poi.priority_score or 0.5, locked.priority_score or 0.95)
+            required_by_id[key] = poi
+        elif any(_poi_matches_micro_tag(poi, micro_tag) for micro_tag in required_micro_tags):
+            # If the user explicitly asked for bun_bo/com_hen/che/cafe_muoi,
+            # lock one good representative instead of letting the scorer fill
+            # the day with repeated versions of the same dish.
+            continue
+        else:
+            existing_non_required.append(poi)
+
+    merged_required = list(required_by_id.values())
+    room = max(0, target_count - len(merged_required))
+    return merged_required + existing_non_required[:room]
+
+
+async def _resolve_edit_add_poi(
+    query: str,
+    category: str | None = None,
+    micro_tags: list[str] | None = None,
+    time_window: dict[str, int] | None = None,
+    limit: int = 1,
+) -> list[POIResponse]:
+    """Resolve an add/replace edit with wide semantic recall and soft reranking."""
+    from sqlalchemy import select
+    from app.models.poi import PointOfInterest
+    from geoalchemy2.functions import ST_AsGeoJSON
+
+    POI = PointOfInterest
+    text = (query or "").strip()
+    tags = [_normalize_text(t) for t in (micro_tags or []) if t]
+    category_norm = _normalize_text(category)
+    start_min = int((time_window or {}).get("start_min") or 0)
+    end_min = int((time_window or {}).get("end_min") or 1440)
+
+    query_vector = None
+    if text:
+        try:
+            query_vector = await embed_service.aembed_text(text)
+        except Exception as exc:
+            logger.warning(f"Edit POI vector search unavailable, using SQL fallback: {exc}")
+
+    async with AsyncSessionFactory() as db_session:
+        if query_vector is not None:
+            stmt = (
+                select(
+                    POI,
+                    ST_AsGeoJSON(POI.coordinates).label("geojson"),
+                    POI.tags_vector.cosine_distance(query_vector).label("semantic_distance"),
+                )
+                .where(POI.tags_vector.isnot(None))
+                .order_by(POI.tags_vector.cosine_distance(query_vector), POI.priority_score.desc())
+                .limit(max(80, limit * 20))
+            )
+        else:
+            stmt = (
+                select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson"))
+                .order_by(POI.priority_score.desc())
+                .limit(max(80, limit * 20))
+            )
+        db_res = await db_session.execute(stmt)
+        rows = db_res.all()
+
+    def score_row(row: Any) -> tuple[float, POIResponse]:
+        poi_resp = _poi_row_to_response(row)
+        fields = " ".join([
+            poi_resp.name or "",
+            poi_resp.category or "",
+            poi_resp.category_group or "",
+            poi_resp.description or "",
+            " ".join(poi_resp.tags or []),
+        ])
+        haystack = _normalize_text(fields)
+        poi_tags = {_normalize_text(t) for t in (poi_resp.tags or [])}
+        poi_category = _normalize_text(poi_resp.category_group or poi_resp.category)
+
+        distance = float(getattr(row, "semantic_distance", 0.45) or 0.45)
+        score = max(0.0, 1.0 - min(distance, 2.0) / 2.0)
+        if text and any(token in haystack for token in _normalize_text(text).split() if len(token) > 2):
+            score += 0.12
+        if category_norm and category_norm == poi_category:
+            score += 0.25
+        elif category_norm and category_norm in haystack:
+            score += 0.12
+        if tags:
+            overlap = len(set(tags).intersection(poi_tags))
+            if overlap:
+                score += min(0.25, 0.12 * overlap)
+            elif any(tag in haystack for tag in tags):
+                score += 0.08
+        if time_window and poi_resp.open_time <= end_min and poi_resp.close_time >= start_min:
+            score += 0.08
+        if poi_category in {"hotel", "accommodation", "lodging"}:
+            score -= 1.0
+        score += min(0.1, float(poi_resp.priority_score or 0.0) * 0.05)
+        return score, poi_resp
+
+    ranked = sorted((score_row(row) for row in rows), key=lambda item: item[0], reverse=True)
+    picked = [poi for score, poi in ranked if score > -0.2][:limit]
+    if picked:
+        logger.info(
+            "Edit semantic resolver picked: %s for query=%r category=%r tags=%s",
+            [p.name for p in picked],
+            text,
+            category,
+            micro_tags,
+        )
+    else:
+        logger.warning("Edit semantic resolver found no POI for query=%r category=%r tags=%s", text, category, micro_tags)
+    return picked
 
 
 def _mark_confirmed(contract: LLMDataContract, field: str) -> None:
@@ -210,6 +504,8 @@ async def _run_pipeline(
         contract.trip_type = "mixed"
         logger.info("Vague intent detected for Hue. Applying high-quality default preferences.")
 
+    apply_distribution_policy(contract, request.user_prompt)
+
     # Validate trip duration constraints
     if contract.num_days is not None and (contract.num_days < 1 or contract.num_days > 7):
         raise HTTPException(
@@ -231,17 +527,28 @@ async def _run_pipeline(
         )
 
     query_vector = None
-    if contract.tags:
+    semantic_terms = []
+    semantic_terms.extend(getattr(contract, "tags", None) or [])
+    semantic_terms.extend(getattr(contract, "food_preferences", None) or [])
+    semantic_terms.extend(getattr(contract, "avoid_tags", None) or [])
+    if getattr(contract, "trip_type", None):
+        semantic_terms.append(contract.trip_type)
+    semantic_terms = [str(t).strip() for t in semantic_terms if str(t).strip()]
+
+    # Locked POIs are force-included separately. Keeping their names out of the
+    # semantic retrieval vector prevents one locked culture POI from pulling an
+    # entire culture cluster into a food/cafe-heavy trip.
+    if semantic_terms or getattr(contract, "distribution_description", None):
         if getattr(contract, "distribution_description", None):
             tag_text = embed_service.build_distribution_query_text(
                 distribution_description=contract.distribution_description,
-                tags=contract.tags,
+                tags=semantic_terms,
                 destination=contract.destination or "Huế"
             )
         else:
             tag_text = embed_service.build_poi_text(
                 name="query", category="preference",
-                tags=contract.tags, description="",
+                tags=semantic_terms, description="",
             )
         try:
             query_vector = await embed_service.aembed_text(tag_text)
@@ -285,6 +592,19 @@ async def _run_pipeline(
             db_session=db_session,
             query_vector=query_vector,
         )
+
+        required_micro_tags = _detect_required_micro_intents(contract, request.user_prompt)
+        if required_micro_tags:
+            required_pois = await _resolve_required_micro_pois(
+                contract=contract,
+                required_micro_tags=required_micro_tags,
+                db_session=db_session,
+            )
+            pois = _merge_required_micro_pois(pois, required_pois)
+            logger.info(
+                f"Required micro coverage: tags={required_micro_tags}, "
+                f"locked={len(required_pois)}, pool={len(pois)}"
+            )
 
     return contract, pois, hotel_fallback
 
@@ -481,18 +801,55 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         
     logger.warning(f"DEBUG_PRINT_LOGGER: has_draft={body.has_draft}, current_itinerary_is_none={body.current_itinerary is None}")
     history_dict = [{"role": h.role, "content": h.content} for h in body.history]
-    
-    result = await llm_service.process_chat_turn(
-        message=body.message,
-        history=history_dict,
-        current_contract=body.current_contract,
-        has_draft=getattr(body, "has_draft", False),
+    normalized_msg = (body.message or "").strip().lower()
+    is_edit_confirmation = bool(
+        body.pending_edit_plan
+        and normalized_msg in {"ok", "oke", "được", "duoc", "đúng rồi", "dung roi", "làm đi", "lam di", "chốt", "chot"}
     )
+
+    deterministic_intent = None
+    if False and getattr(body, "has_draft", False) and not is_edit_confirmation:
+        planned = EditIntentPlanner().build(body.message or "")
+        if planned.operations:
+            deterministic_intent = planned
+
+    if deterministic_intent is not None:
+        pending = deterministic_intent.constraints
+        result = {
+            "status": "clarifying",
+            "reply": pending.get("assistant_reply") or "Em sẽ chuẩn bị chỉnh lịch. Anh xác nhận em sửa nhé?",
+            "updated_contract": body.current_contract,
+            "phase": "editing",
+            "missing_fields": [],
+            "next_question": None,
+            "requires_confirmation": True,
+            "edit_intent": deterministic_intent,
+            "pending_edit_plan": pending,
+        }
+    else:
+        result = await llm_service.process_chat_turn(
+            message=body.message,
+            history=history_dict,
+            current_contract=body.current_contract,
+            has_draft=getattr(body, "has_draft", False),
+            current_itinerary=body.current_itinerary,
+        )
     
     updated_itinerary = None
     edit_intent = result.get("edit_intent")
-    
-    if getattr(body, "has_draft", False) and body.current_itinerary and edit_intent:
+    pending_edit_plan = result.get("pending_edit_plan")
+    if getattr(body, "has_draft", False):
+        deterministic_intent = EditIntentPlanner().build(body.message or "")
+        if not is_edit_confirmation and not (edit_intent and getattr(edit_intent, "operations", None)) and deterministic_intent.operations:
+            edit_intent = deterministic_intent
+            pending_edit_plan = deterministic_intent.constraints
+            result["edit_intent"] = deterministic_intent
+            result["pending_edit_plan"] = pending_edit_plan
+            result["status"] = "clarifying"
+            result["phase"] = "editing"
+            result["requires_confirmation"] = True
+            result["reply"] = pending_edit_plan.get("assistant_reply") or result.get("reply")
+    if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
         from app.services.itinerary_editor import ItineraryEditorService
         from app.schemas.trip import POIResponse
         from sqlalchemy import select, or_
@@ -501,16 +858,121 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         import json as json_lib
         
         editor_service = ItineraryEditorService()
-        action = edit_intent.action
-        target = edit_intent.target
+        action = edit_intent.action if edit_intent else "modify_itinerary"
+        target = edit_intent.target if edit_intent else None
+        should_apply_edit = result.get("status") == "ready" or is_edit_confirmation
+        operation_dicts = []
+        if is_edit_confirmation:
+            operation_dicts = list((body.pending_edit_plan or {}).get("operations") or [])
+        elif edit_intent and getattr(edit_intent, "operations", None):
+            operation_dicts = [op.model_dump(exclude_none=True) for op in edit_intent.operations]
+        elif edit_intent:
+            operation_dicts = [{
+                "type": action,
+                "target": target,
+                "target_count": edit_intent.target_count,
+                **(edit_intent.constraints or {}),
+            }]
         
         try:
+            if not should_apply_edit:
+                updated_itinerary = None
+            elif operation_dicts:
+                working_itinerary = body.current_itinerary
+                for op in operation_dicts:
+                    op_type = op.get("type")
+                    op_target = op.get("target") or op.get("query")
+                    target_day = op.get("target_day")
+                    if isinstance(target_day, int) and target_day < 0:
+                        target_day = len((working_itinerary or {}).get("days", []))
+                    if op_type == "remove_place" and op_target:
+                        working_itinerary = editor_service.remove_stop(
+                            itinerary=working_itinerary,
+                            target=op_target,
+                            target_day=target_day,
+                            target_count=int(op.get("target_count") or 1),
+                            micro_tags=op.get("target_micro_tags") or [],
+                            category=op.get("target_category"),
+                        )
+                    elif op_type in {"move_place", "change_time"} and op_target:
+                        position = op.get("position")
+                        moved_itinerary = editor_service.move_stop(
+                            itinerary=working_itinerary,
+                            target=op_target,
+                            target_day=target_day,
+                            preferred_time_min=op.get("target_time_min"),
+                            after_target=op.get("relative_to") if position == "after" else None,
+                            position=position,
+                        )
+                        if moved_itinerary.get("status") == "warning" and op_type == "move_place":
+                            resolved_pois = await _resolve_edit_add_poi(
+                                query=op_target,
+                                category=op.get("target_category"),
+                                micro_tags=op.get("target_micro_tags") or [],
+                                time_window=op.get("time_window") or None,
+                                limit=1,
+                            )
+                            if resolved_pois:
+                                day_index = max(0, int(target_day or 1) - 1)
+                                working_itinerary = editor_service.add_stop(
+                                    itinerary=working_itinerary,
+                                    day_index=day_index,
+                                    poi=resolved_pois[0],
+                                    after_target=op.get("relative_to") if position == "after" else None,
+                                    preferred_time_min=(op.get("time_window") or {}).get("start_min"),
+                                    position=position,
+                                )
+                            else:
+                                working_itinerary = moved_itinerary
+                        else:
+                            working_itinerary = moved_itinerary
+                    elif op_type == "swap_places" and op_target and op.get("relative_to"):
+                        working_itinerary = editor_service.swap_stops(
+                            itinerary=working_itinerary,
+                            target_a=op_target,
+                            target_b=op.get("relative_to"),
+                        )
+                    elif op_type == "replace_place" and op_target:
+                        resolved_pois = await _resolve_edit_add_poi(
+                            query=op.get("query") or op.get("value") or op_target,
+                            category=op.get("target_category"),
+                            micro_tags=op.get("target_micro_tags") or [],
+                            time_window=op.get("time_window") or None,
+                            limit=1,
+                        )
+                        if resolved_pois:
+                            working_itinerary = editor_service.replace_stop(
+                                itinerary=working_itinerary,
+                                old_name=op_target,
+                                new_poi=resolved_pois[0],
+                            )
+                    elif op_type == "add_place" and op_target:
+                        resolved_pois = await _resolve_edit_add_poi(
+                            query=op_target,
+                            category=op.get("target_category"),
+                            micro_tags=op.get("target_micro_tags") or [],
+                            time_window=op.get("time_window") or None,
+                            limit=1,
+                        )
+                        if resolved_pois:
+                            day_index = max(0, int(target_day or 1) - 1)
+                            working_itinerary = editor_service.add_stop(
+                                itinerary=working_itinerary,
+                                day_index=day_index,
+                                poi=resolved_pois[0],
+                                after_target=op.get("relative_to") if op.get("position") == "after" else None,
+                                preferred_time_min=(op.get("time_window") or {}).get("start_min"),
+                                position=op.get("position"),
+                            )
+                updated_itinerary = working_itinerary
+                if is_edit_confirmation:
+                    pending_edit_plan = None
             rebuild_actions = {
                 "rebuild_requested", "change_budget", "change_pace", 
                 "change_time_window", "change_time", "add_preference", 
                 "avoid_preference", "change_distribution"
             }
-            if action in rebuild_actions:
+            if should_apply_edit and not operation_dicts and action in rebuild_actions:
                 from app.schemas.trip import TripPlanRequest
                 contract_to_use = result.get("updated_contract")
                 if not contract_to_use:
@@ -533,56 +995,25 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                     updated_itinerary = l4_result
                 else:
                     logger.error(f"JIT Rebuild solver error: {l4_result}")
-            elif action == "remove_place" and target:
+            elif should_apply_edit and not operation_dicts and action == "remove_place" and target:
                 updated_itinerary = editor_service.remove_stop(
                     itinerary=body.current_itinerary,
                     target=target
                 )
-            elif action == "add_place" and target:
-                POI = PointOfInterest
-                stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
-                    or_(
-                        POI.name.ilike(f"%{target.strip()}%"),
-                        POI.category.ilike(f"%{target.strip()}%"),
+            elif should_apply_edit and not operation_dicts and action == "add_place" and target:
+                resolved_pois = await _resolve_edit_add_poi(query=target, limit=1)
+                if resolved_pois:
+                    target_day = edit_intent.constraints.get("target_day", 1)
+                    try:
+                        day_index = max(0, int(target_day) - 1)
+                    except (ValueError, TypeError):
+                        day_index = 0
+                    updated_itinerary = editor_service.add_stop(
+                        itinerary=body.current_itinerary,
+                        day_index=day_index,
+                        poi=resolved_pois[0],
                     )
-                ).order_by(POI.priority_score.desc()).limit(1)
-                
-                async with AsyncSessionFactory() as db_session:
-                    db_res = await db_session.execute(stmt)
-                    row = db_res.first()
-                    if row:
-                        poi_obj = row.PointOfInterest
-                        geojson = json_lib.loads(row.geojson) if row.geojson else None
-                        lat = geojson["coordinates"][1] if geojson else 0.0
-                        lon = geojson["coordinates"][0] if geojson else 0.0
-                        
-                        poi_resp = POIResponse(
-                            uuid=poi_obj.uuid,
-                            name=poi_obj.name,
-                            category=poi_obj.category,
-                            description=poi_obj.description,
-                            latitude=lat,
-                            longitude=lon,
-                            visit_duration_min=poi_obj.visit_duration_min,
-                            price=poi_obj.price,
-                            entrance_fee=poi_obj.entrance_fee,
-                            open_time=poi_obj.open_time,
-                            close_time=poi_obj.close_time,
-                            priority_score=poi_obj.priority_score,
-                            tags=poi_obj.tags,
-                        )
-                        
-                        target_day = edit_intent.constraints.get("target_day", 1)
-                        try:
-                            day_index = max(0, int(target_day) - 1)
-                        except (ValueError, TypeError):
-                            day_index = 0
-                        updated_itinerary = editor_service.add_stop(
-                            itinerary=body.current_itinerary,
-                            day_index=day_index,
-                            poi=poi_resp
-                        )
-            elif action == "replace_place" and target:
+            elif should_apply_edit and not operation_dicts and action == "replace_place" and target:
                 new_place_query = body.message
                 import re as re_lib
                 parts = re_lib.split(r'(?i)\s+bằng\s+|\s+thành\s+|\s+with\s+|\s+to\s+', body.message)
@@ -635,7 +1066,11 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         reply=result["reply"],
         updated_contract=result["updated_contract"],
         phase=result.get("phase"),
+        missing_fields=result.get("missing_fields", []),
+        next_question=result.get("next_question"),
+        requires_confirmation=result.get("requires_confirmation", False),
         edit_intent=edit_intent,
+        pending_edit_plan=pending_edit_plan,
         updated_itinerary=updated_itinerary,
     )
 

@@ -27,6 +27,7 @@ from sqlalchemy.orm import sessionmaker
 # Add parent dir so we can import from app/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.services.embedding_service import EmbeddingService
+from app.services.poi_tag_normalizer import build_embedding_text, normalize_tags
 
 BATCH_SIZE = 100
 
@@ -130,8 +131,12 @@ async def _process_and_insert_batch(
 
     if not skip_embeddings:
         texts = [
-            embed_svc.build_poi_text(
-                r["name"], r["category"], r["tags"], r["description"]
+            build_embedding_text(
+                name=r["name"],
+                category=r["category"],
+                category_group=r.get("category_group"),
+                description=r["description"],
+                tags=r["tags"],
             )
             for r in batch_rows
         ]
@@ -204,7 +209,13 @@ async def ingest(csv_path: str, skip_embeddings: bool = False, use_local_embed: 
                 "entrance_fee": float(row.get("entrance_fee", 0)),
                 "open_time": int(row.get("open_time", 480)),
                 "close_time": int(row.get("close_time", 1260)),
-                "tags": [t.strip() for t in row.get("tags", "").split(",") if t.strip()],
+            "tags": normalize_tags(
+                name=row["name"].strip(),
+                category=row["category"].strip(),
+                category_group=row.get("category_group", "").strip() or None,
+                description=row.get("description", ""),
+                raw_tags=[t.strip() for t in row.get("tags", "").split(",") if t.strip()],
+            ),
                 "description": row.get("description", ""),
                 "is_outdoor": row.get("is_outdoor", "false").lower() == "true",
             }

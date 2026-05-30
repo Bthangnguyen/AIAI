@@ -94,6 +94,35 @@ class Layer4Client:
                 normalized.append(mode)
         return normalized or ["taxi", "walking"]
 
+    @staticmethod
+    def _resolve_day_time_window(contract: LLMDataContract) -> tuple[int, int]:
+        """Resolve explicit time_window or useful time_slot into day bounds."""
+        slot = (getattr(contract, "time_slot", None) or "").lower().strip()
+        slot_windows = {
+            "morning": (480, 720),
+            "afternoon": (780, 1080),
+            "evening": (1080, 1320),
+            "night": (1080, 1320),
+            "full_day": (480, 1260),
+            "multi_day": (480, 1260),
+        }
+
+        if getattr(contract, "time_window", None) is not None:
+            start = getattr(contract.time_window, "start_min", None)
+            end = getattr(contract.time_window, "end_min", None)
+            if start is not None and end is not None:
+                # LLMs sometimes set time_slot=afternoon but leave the generic
+                # full-day/default window. In that case, trust the explicit slot.
+                if slot in {"morning", "afternoon", "evening", "night"} and (int(start), int(end)) in {
+                    (480, 1260), (480, 1320), (0, 1440)
+                }:
+                    return slot_windows[slot]
+                if slot == "afternoon" and int(start) < 780:
+                    return 780, int(end)
+                return int(start), int(end)
+
+        return slot_windows.get(slot, (480, 1260))
+
     def _build_payload(
         self,
         pois: List[POIResponse],
@@ -145,8 +174,8 @@ class Layer4Client:
         # Ensure distribution is never None — use balanced default
         if not constraints["target_category_distribution"]:
             constraints["target_category_distribution"] = {
-                "food": 0.35, "culture": 0.35, "nature": 0.20,
-                "nightlife": 0.05, "adventure": 0.05
+                "culture": 0.35, "food": 0.30, "cafe": 0.15,
+                "nightlife": 0.10, "nature": 0.10
             }
 
         payload = {
@@ -164,20 +193,22 @@ class Layer4Client:
             is_full_or_tour = (
                 getattr(contract, "time_slot", None) == "full_day"
                 or getattr(contract, "trip_type", None) == "food_tour"
-                or getattr(contract, "trip_duration_hours", 0) >= 6
+                or (getattr(contract, "trip_duration_hours", None) or 0) >= 6
             )
             if is_full_or_tour:
                 max_pois_per_day = min(6, max(4, calculated_max + 1))
             else:
                 max_pois_per_day = min(6, max(2, calculated_max))
 
+        start_time_min, end_time_min = self._resolve_day_time_window(contract)
+
         payload["day_plans"] = [
             {
                 "day_index": day_idx,
                 "date": f"Day {day_idx + 1}",
                 "hotel_id": f"hotel_day_{day_idx}",
-                "start_time_min": contract.time_window.start_min if getattr(contract, "time_window", None) is not None else 480,
-                "end_time_min": contract.time_window.end_min if getattr(contract, "time_window", None) is not None else 1260,
+                "start_time_min": start_time_min,
+                "end_time_min": end_time_min,
                 "max_pois": max_pois_per_day,
             }
             for day_idx in range(contract.num_days)

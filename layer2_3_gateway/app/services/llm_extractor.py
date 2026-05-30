@@ -19,8 +19,11 @@ from app.schemas.trip import (
     ChatProcessResponse,
     EditIntent,
     LLMDataContract,
+    OperationItem,
     TimeWindowSpec,
 )
+from app.services.distribution_policy import apply_distribution_policy
+from app.services.edit_intent_planner import EditIntentPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -257,12 +260,63 @@ LLM_MAX_TOKENS = 6000
 # Actions that never trigger itinerary rebuild
 _INFO_ACTIONS = frozenset({"info_reply", "answer_question"})
 
+SEMANTIC_EDIT_SYSTEM_PROMPT = """\
+<SYSTEM>
+You are TripFlow's semantic itinerary edit planner.
+
+The user already has an itinerary draft. Read CURRENT_ITINERARY_SUMMARY,
+CURRENT_CONTRACT, HISTORY, and NEW_MESSAGE, then return ChatProcessResponse JSON.
+You do not rewrite the itinerary directly. Backend executes your operations.
+</SYSTEM>
+
+<OUTPUT_CONTRACT>
+- status: "clarifying" for edit previews because backend asks confirmation before applying.
+- phase: "editing" for edits, "info" for information answers.
+- requires_confirmation: true for edit operations.
+- updated_contract: keep the current contract unless the user changes trip-wide settings.
+- edit_intent.action: "modify_itinerary" for multi-operation edits, otherwise the operation type.
+- edit_intent.operations: atomic OperationItem list.
+- pending_edit_plan: include status="pending_confirmation", requires_confirmation=true, operations, affected_days, assistant_reply, raw_message.
+</OUTPUT_CONTRACT>
+
+<OPERATION_SCHEMA>
+type: add_place | remove_place | replace_place | move_place | swap_places | change_time | change_duration | change_distribution | change_budget | change_pace | rebuild_requested | ask_info
+target: existing POI/category to affect. For remove/move/replace, MUST use STOP_ID exactly from CURRENT_ITINERARY_SUMMARY when a matching stop exists. If STOP_ID is missing, use exact stop name.
+query: search text for add/replace new POI, e.g. "mon an vat Hue buoi chieu".
+target_day: 1-based day number.
+target_count: count if user specifies or implies.
+target_category: food | cafe | culture | nature | nightlife | adventure.
+target_micro_tags: bun_bo | com_hen | che_hue | cafe_muoi | snack | dessert | vegetarian | walking_street | night_market | dai_noi | lang_khai_dinh | lang_minh_mang | lang_huong.
+time_window: preferred minutes from midnight.
+target_time_min: exact arrival/start minute.
+position: before | after | first | last | best_gap.
+relative_to: existing stop anchor name.
+resolution_strategy: current_itinerary_match | name_search | vector_search_then_suggest.
+</OPERATION_SCHEMA>
+
+<RULES>
+1. Understand semantics, not keywords. "di bo/pho di bo" means walking_street/nightlife, never remove.
+2. Do not rebuild unless user explicitly says rebuild/reset/lam lai het/tao lai.
+3. Preserve core/locked intent stops unless user explicitly asks to remove them.
+4. Vague remove like "bo quan an nang bung" should target category=food or a non-signature heavy meal; avoid removing requested signature dishes if possible.
+5. Vague add like "mon an vat buoi chieu" => add_place query="mon an vat Hue buoi chieu", category=food, target_micro_tags=["snack"], time_window={start_min:840,end_min:1020}.
+6. "thay A bang B" => replace_place target=A query=B.
+7. "chuyen A sang ngay N" => move_place target=<matching STOP_ID> target_day=N.
+8. "sau X" => position="after", relative_to=<matching STOP_ID>. "dau/cuoi lich" => first/last.
+9. If user asks a question, return info/ask_info and no edit operations.
+</RULES>
+
+<REPLY>
+Vietnamese, short, preview exactly what will change.
+</REPLY>"""
+
 # Actions that are concrete edit operations (frontend should execute)
 _ACTIONABLE_EDITS = frozenset({
     "add_place", "remove_place", "replace_place",
-    "change_time", "change_distribution", "change_budget",
+    "swap_places", "move_place", "change_time", "change_duration", "change_distribution", "change_budget",
     "change_pace", "add_preference", "avoid_preference",
     "change_time_window",
+    "modify_itinerary",
 })
 
 
@@ -347,11 +401,12 @@ class LLMExtractorService:
         history: List[Dict[str, str]],
         current_contract: LLMDataContract,
         has_draft: bool = False,
+        current_itinerary: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """Process one chat turn — dispatches to create or edit flow."""
         clean_message = (message or "").strip()
         if has_draft:
-            return await self._process_edit_turn(clean_message, history, current_contract)
+            return await self._process_edit_turn(clean_message, history, current_contract, current_itinerary)
         return await self._process_create_turn(clean_message, history, current_contract)
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -363,6 +418,7 @@ class LLMExtractorService:
         message: str,
         history: List[Dict[str, str]],
         current_contract: LLMDataContract,
+        current_itinerary: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """Create-mode chat turn: LLM drives follow-up questions.
 
@@ -444,7 +500,8 @@ class LLMExtractorService:
                     contract.confirmation_pending = False
             return self._make_response(
                 contract, status, llm_reply, phase=llm_phase,
-                missing_fields=response.missing_fields if response else []
+                missing_fields=response.missing_fields if response else [],
+                requires_confirmation=(llm_phase == "confirming"),
             )
 
         # ── Step 5: Combined Fallback Questions on LLM Failure/Timeout (R2) ──
@@ -541,6 +598,7 @@ class LLMExtractorService:
         message: str,
         history: List[Dict[str, str]],
         current_contract: LLMDataContract,
+        current_itinerary: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """Edit-mode chat turn.
 
@@ -551,14 +609,18 @@ class LLMExtractorService:
         - Actionable operation with enough data → ready + edit_intent
         """
         contract = current_contract.model_copy(deep=True)
+        planner = EditIntentPlanner()
+        planned_intent = planner.build(message)
         intent = self._detect_edit_intent(message)
         llm_reply = ""
 
         if message:
             try:
                 history_str = "\n".join([f"{h['role']}: {h['content']}" for h in history[-8:]])
+                itinerary_summary = self._summarize_itinerary_for_edit(current_itinerary)
                 prompt = (
                     f"CURRENT_CONTRACT:\n{contract.model_dump_json(indent=2)}\n\n"
+                    f"CURRENT_ITINERARY_SUMMARY:\n{itinerary_summary}\n\n"
                     f"HISTORY:\n{history_str}\n\n"
                     f"NEW_MESSAGE:\n{message}"
                 )
@@ -566,7 +628,7 @@ class LLMExtractorService:
                     model=global_settings.LLM_MODEL,
                     response_model=ChatProcessResponse,
                     messages=[
-                        {"role": "system", "content": EDIT_INTENT_SYSTEM_PROMPT},
+                        {"role": "system", "content": SEMANTIC_EDIT_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
                     ],
                     max_tokens=LLM_MAX_TOKENS,
@@ -575,10 +637,12 @@ class LLMExtractorService:
                 )
                 if response.updated_contract:
                     contract = self._merge_contracts(contract, response.updated_contract)
-                if response.edit_intent:
+                if response.edit_intent and response.edit_intent.operations:
                     intent = response.edit_intent
                     if not intent.raw_message:
                         intent.raw_message = message
+                elif planned_intent.operations:
+                    intent = planned_intent
                 llm_reply = response.reply or ""
                 logger.info(
                     f"Edit turn OK — action={intent.action}, "
@@ -586,12 +650,17 @@ class LLMExtractorService:
                 )
             except Exception as e:
                 logger.warning(f"Edit-intent LLM classification failed, using rules: {e}")
+                if planned_intent.operations:
+                    intent = planned_intent
 
         self._apply_message_hints(contract, message)
         self._apply_backend_failsafes(contract, message)
         self._deduplicate_locked_pois(contract)
 
         action = intent.action
+        pending_edit_plan = None
+        if intent.operations:
+            pending_edit_plan = planner.pending_plan(message, intent.operations)
 
         # ── Safety net: rebuild confirmation from history ──
         # If user says "ok" and previous assistant message was a rebuild confirmation,
@@ -632,10 +701,13 @@ class LLMExtractorService:
 
         # ── Route 4: Actionable operation with enough data → ready ──
         if action in _ACTIONABLE_EDITS:
-            reply = llm_reply or self._edit_reply(intent)
-            logger.info(f"Edit turn result: action={action}, status=ready")
-            return self._make_response(contract, "ready", reply, phase="editing",
-                                       edit_intent=intent)
+            reply = (pending_edit_plan or {}).get("assistant_reply") or llm_reply or self._edit_reply(intent)
+            logger.info(f"Edit turn result: action={action}, pending_confirmation=True")
+            return self._make_response(
+                contract, "clarifying", reply, phase="editing",
+                edit_intent=intent, pending_edit_plan=pending_edit_plan,
+                requires_confirmation=True,
+            )
 
         # ── Fallback: unknown action → clarifying ──
         reply = llm_reply or self._edit_reply(intent)
@@ -646,6 +718,32 @@ class LLMExtractorService:
     # Response builders
     # ═══════════════════════════════════════════════════════════════════════════
 
+    def _summarize_itinerary_for_edit(self, itinerary: Optional[Dict[str, Any]]) -> str:
+        """Compact draft context for the edit LLM."""
+        if not itinerary:
+            return "No itinerary draft provided."
+
+        lines: list[str] = []
+        for day_idx, day in enumerate((itinerary or {}).get("days", [])[:10]):
+            display_day = day.get("day_number") or day.get("day") or int(day.get("day_index", day_idx)) + 1
+            lines.append(
+                f"Day {display_day} start={day.get('start_time_min')} end={day.get('end_time_min')}"
+            )
+            for stop_idx, stop in enumerate(day.get("stops", [])[:12], start=1):
+                poi_id = str(stop.get("poi_id") or stop.get("id") or "")
+                name = stop.get("poi_name") or stop.get("name") or "Unknown"
+                cat = stop.get("category") or "general"
+                arr = stop.get("arrival_time_min")
+                dep = stop.get("departure_time_min")
+                tags = stop.get("tags") or []
+                tag_text = ",".join(str(t) for t in tags[:8])
+                desc = (stop.get("description") or "")[:120].replace("\n", " ")
+                lines.append(
+                    f"{stop_idx}. STOP_ID={poi_id} | NAME={name} | CATEGORY={cat} | "
+                    f"TIME={arr}-{dep} | TAGS=[{tag_text}] | DESC={desc}"
+                )
+        return "\n".join(lines) if lines else "Itinerary has no stops."
+
     def _make_response(
         self,
         contract: LLMDataContract,
@@ -654,6 +752,8 @@ class LLMExtractorService:
         phase: str = "collecting",
         missing_fields: Optional[List[str]] = None,
         edit_intent: Optional[EditIntent] = None,
+        pending_edit_plan: Optional[Dict[str, Any]] = None,
+        requires_confirmation: Optional[bool] = None,
     ) -> Dict:
         return {
             "status": status,
@@ -662,8 +762,9 @@ class LLMExtractorService:
             "phase": phase,
             "missing_fields": missing_fields or [],
             "next_question": reply if status == "clarifying" else None,
-            "requires_confirmation": phase == "confirming",
+            "requires_confirmation": (phase == "confirming") if requires_confirmation is None else requires_confirmation,
             "edit_intent": edit_intent,
+            "pending_edit_plan": pending_edit_plan,
         }
 
     def _collecting_response(self, contract: LLMDataContract, missing: List[str]) -> Dict:
@@ -721,6 +822,12 @@ class LLMExtractorService:
         action = "answer_question"
         if any(word in text for word in ("tao lai", "lam lai", "xay lai", "rebuild", "reset lich")):
             action = "rebuild_requested"
+        elif any(word in text for word in ("doi cho", "swap")):
+            action = "swap_places"
+        elif any(word in text for word in ("chuyen", "dua ")) or ("sang" in text and any(poi_key in text for poi_key in LOCKED_POI_MAP)):
+            action = "move_place"
+        elif any(word in text for word in ("tang len", "rut con", "them mot ngay", "bot ngay")):
+            action = "change_duration"
         elif any(word in text for word in ("thay", "doi", "replace")) and any(word in text for word in ("bang", "thanh")):
             action = "replace_place"
         elif any(word in text for word in ("them", "add", "bo sung", "chen")):
@@ -929,6 +1036,33 @@ class LLMExtractorService:
                 poi for poi in contract.locked_pois
                 if self._normalize(poi).strip() not in city_blacklist
             ]
+        self._apply_time_slot_failsafe(contract, raw_text)
+        apply_distribution_policy(contract, raw_text)
+
+    def _apply_time_slot_failsafe(self, contract: LLMDataContract, raw_text: str) -> None:
+        """Fill deterministic time windows for explicit Vietnamese day parts."""
+        text = self._normalize(raw_text or "")
+        existing = None
+        if contract.time_window and contract.time_window.start_min is not None and contract.time_window.end_min is not None:
+            existing = (int(contract.time_window.start_min), int(contract.time_window.end_min))
+
+        generic_windows = {(480, 1260), (480, 1320), (0, 1440)}
+        slot_windows = [
+            (("buoi chieu", "chieu", "afternoon"), "afternoon", 780, 1080),
+            (("ca ngay", "full day", "full_day"), "full_day", 480, 1260),
+            (("buoi sang", "sang", "morning"), "morning", 480, 720),
+            (("buoi toi", "toi", "evening", "night"), "evening", 1080, 1320),
+        ]
+        for keywords, slot, start, end in slot_windows:
+            if any(keyword in text for keyword in keywords):
+                if existing and existing not in generic_windows and contract.time_slot != slot:
+                    return
+                contract.time_slot = slot
+                if not existing or existing in generic_windows or (slot == "afternoon" and existing[0] < 780):
+                    contract.time_window = TimeWindowSpec(start_min=start, end_min=end)
+                if "time_window" not in (contract.confirmed_fields or []):
+                    contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["time_window"])
+                return
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Field validation

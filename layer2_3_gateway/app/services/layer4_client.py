@@ -235,7 +235,7 @@ class Layer4Client:
         self,
         pois: List[POIResponse],
         contract: LLMDataContract,
-        time_limit: int = 30,
+        time_limit: int = 12,
     ) -> Optional[Dict]:
         """Send assembled payload to Layer 4 POST /plan (blocking) under Circuit Breaker protection."""
         state = solver_breaker.check_state()
@@ -246,7 +246,7 @@ class Layer4Client:
         payload = self._build_payload(pois, contract)
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=180.0) as client:
                 resp = await client.post(
                     f"{self.base_url}/plan",
                     json=payload,
@@ -265,6 +265,14 @@ class Layer4Client:
                 solver_breaker.record_success()
                 result = resp.json()
                 if result and "days" in result:
+                    # Enrich days with start_time_min and end_time_min from payload day_plans
+                    day_plans_map = {dp["day_index"]: dp for dp in payload["day_plans"]}
+                    for day in result["days"]:
+                        d_idx = day.get("day_index")
+                        if d_idx in day_plans_map:
+                            day["start_time_min"] = day_plans_map[d_idx]["start_time_min"]
+                            day["end_time_min"] = day_plans_map[d_idx]["end_time_min"]
+
                     poi_map = {str(p.uuid): p for p in pois}
                     for day in result["days"]:
                         if "stops" in day:
@@ -276,7 +284,7 @@ class Layer4Client:
                                     stop["description"] = poi.description
 
                 # Run post-solver LLM itinerary validation layer
-                if result and result.get("status") != "error" and "days" in result:
+                if result and isinstance(result, dict) and "error_code" not in result and "days" in result:
                     from app.services.itinerary_validator import ItineraryValidatorService
                     validator = ItineraryValidatorService()
                     result = await validator.validate_and_adjust(
@@ -284,6 +292,22 @@ class Layer4Client:
                         contract=contract,
                         all_pois=pois
                     )
+
+                # Check if itinerary is empty (contains 0 real stops) after validator/solver
+                if result and isinstance(result, dict) and "error_code" not in result:
+                    real_stops_count = 0
+                    for day in result.get("days", []):
+                        for stop in day.get("stops", []):
+                            pid = str(stop.get("poi_id") or "")
+                            if pid and not pid.startswith("__") and not pid.startswith("hotel"):
+                                real_stops_count += 1
+                    
+                    if real_stops_count == 0:
+                        logger.warning("Solver returned success but with 0 real stops. Converting to INFEASIBLE_CONSTRAINT error.")
+                        return {
+                            "error_code": "INFEASIBLE_CONSTRAINT",
+                            "message": "Không thể tìm thấy lộ trình hợp lý do giới hạn thời gian quá ngắn hoặc các điểm quá xa nhau. Bạn vui lòng bớt điểm đi hoặc kéo dài thêm thời gian di chuyển nhé!"
+                        }
 
                 return result
         except httpx.TimeoutException as e:
@@ -307,7 +331,7 @@ class Layer4Client:
         self,
         pois: List[POIResponse],
         contract: LLMDataContract,
-        time_limit: int = 30,
+        time_limit: int = 12,
         hotel_fallback: bool = False,
     ):
         """SSE streaming: call Layer 4 /plan then yield result as SSE event."""

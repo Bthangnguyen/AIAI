@@ -1,3 +1,4 @@
+import pytest
 from app.schemas.trip import LLMDataContract
 from app.services.layer4_client import Layer4Client
 
@@ -45,3 +46,44 @@ def test_layer4_payload_clamps_afternoon_start_to_13h():
 
     assert payload["day_plans"][0]["start_time_min"] == 780
     assert payload["day_plans"][0]["end_time_min"] == 1080
+
+
+@pytest.mark.anyio
+async def test_layer4_empty_itinerary_converts_to_error():
+    import pytest
+    from unittest.mock import patch, AsyncMock
+    
+    client = Layer4Client()
+    mock_response = {
+        "status": "success",
+        "days": [
+            {
+                "day_index": 0,
+                "stops": [
+                    {
+                        "poi_id": "hotel_day_0",
+                        "poi_name": "Hotel",
+                        "arrival_time_min": 480,
+                        "departure_time_min": 500,
+                    }
+                ]
+            }
+        ]
+    }
+    
+    with patch("httpx.AsyncClient.post") as mock_post:
+        # We need mock_post to return a response with status_code=200, json() returning mock_response
+        mock_response_obj = AsyncMock()
+        mock_response_obj.status_code = 200
+        mock_response_obj.json = lambda: mock_response
+        mock_response_obj.raise_for_status = lambda: None
+        mock_post.return_value = mock_response_obj
+        
+        result = await client.plan(
+            pois=[],
+            contract=LLMDataContract(destination="Huế", num_days=1)
+        )
+        
+        assert result["error_code"] == "INFEASIBLE_CONSTRAINT"
+        assert "bớt điểm" in result["message"]
+

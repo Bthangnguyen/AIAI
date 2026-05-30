@@ -919,7 +919,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                                     day_index=day_index,
                                     poi=resolved_pois[0],
                                     after_target=op.get("relative_to") if position == "after" else None,
-                                    preferred_time_min=(op.get("time_window") or {}).get("start_min"),
+                                    preferred_time_min=op.get("target_time_min") or (op.get("time_window") or {}).get("start_min"),
                                     position=position,
                                 )
                             else:
@@ -961,7 +961,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                                 day_index=day_index,
                                 poi=resolved_pois[0],
                                 after_target=op.get("relative_to") if op.get("position") == "after" else None,
-                                preferred_time_min=(op.get("time_window") or {}).get("start_min"),
+                                preferred_time_min=op.get("target_time_min") or (op.get("time_window") or {}).get("start_min"),
                                 position=op.get("position"),
                             )
                 updated_itinerary = working_itinerary

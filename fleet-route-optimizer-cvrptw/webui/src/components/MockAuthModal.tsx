@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { X } from "lucide-react"
 
@@ -28,10 +28,20 @@ export function MockAuthModal({ isOpen, onClose, onContinue, configured = true, 
         </div>
 
         <div className="mt-6 grid gap-3">
-          <button type="button" onClick={onContinue} disabled={isLoading || !configured} className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50">
-            {isLoading ? "Dang xu ly..." : "Tiep tuc voi Google"}
-          </button>
-          {!configured ? <p className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-700">Firebase chua co env config tren web app.</p> : null}
+          {configured ? (
+            <button type="button" onClick={onContinue} disabled={isLoading} className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600">
+              {isLoading ? "Dang xu ly..." : "Tiep tuc voi Google"}
+            </button>
+          ) : (
+            <button type="button" onClick={onContinue} disabled={isLoading} className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600">
+              {isLoading ? "Dang xu ly..." : "Dang nhap tai khoan Guest (Local Dev)"}
+            </button>
+          )}
+          {!configured ? (
+            <p className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-700">
+              Firebase chưa được cấu hình. Hệ thống sẽ sử dụng Tài khoản Guest local để chạy thử nghiệm đầy đủ tính năng.
+            </p>
+          ) : null}
         </div>
 
         <p className="mt-4 text-center text-xs text-orange-950/50">Login va signup deu dung Google provider.</p>

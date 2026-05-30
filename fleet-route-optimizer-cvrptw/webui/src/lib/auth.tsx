@@ -41,7 +41,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     configured,
     async signInWithGoogle() {
-      if (!configured || !auth) return null
+      if (!configured || !auth) {
+        const mockUser = {
+          uid: "mock-user-12345",
+          email: "guest@tripflow.ai",
+          displayName: "Guest Tester",
+          photoURL: "https://lh3.googleusercontent.com/a/default-user=s96-c",
+          emailVerified: true,
+          isAnonymous: false,
+          metadata: {},
+          providerData: [],
+          refreshToken: "mock-refresh-token",
+          tenantId: null,
+          delete: async () => {},
+          getIdToken: async () => "mock-id-token",
+          getIdTokenResult: async () => ({} as any),
+          reload: async () => {},
+          toJSON: () => ({}),
+          phoneNumber: null,
+          providerId: "google.com",
+        } as unknown as User
+        setUser(mockUser)
+        return mockUser
+      }
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: "select_account" })
       const result = await signInWithPopup(auth, provider)

@@ -1,6 +1,23 @@
 import pytest
+import urllib.request
+import json
 from src.models.domain import Location, TransportMode
 from src.services.distance_cache import DistanceCacheService
+from src.config.settings import get_settings
+
+def _is_osrm_alive() -> bool:
+    try:
+        settings = get_settings()
+        url = f"{settings.osrm_base_url}/table/v1/driving/107.579,16.468;107.584,16.471?annotations=duration,distance"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=1.0) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('code') == 'Ok'
+    except Exception:
+        return False
+
+OSRM_ALIVE = _is_osrm_alive()
+skip_if_no_osrm = pytest.mark.skipif(not OSRM_ALIVE, reason="OSRM routing service is offline (cannot test asymmetric distances)")
 
 @pytest.fixture
 def distance_service():
@@ -44,6 +61,7 @@ def test_unreachable_node_fallback(distance_service):
     assert dist_1_1 == 0
     assert dist_2_2 == 0
 
+@skip_if_no_osrm
 def test_one_way_trap(distance_service):
     """
     Test 1.2: Bẫy đường một chiều (One-way Trap)

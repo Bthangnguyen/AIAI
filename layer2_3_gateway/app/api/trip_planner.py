@@ -527,12 +527,13 @@ async def _run_pipeline(
         )
 
     query_vector = None
-    semantic_terms = []
+    semantic_terms: List[str] = []
     semantic_terms.extend(getattr(contract, "tags", None) or [])
     semantic_terms.extend(getattr(contract, "food_preferences", None) or [])
     semantic_terms.extend(getattr(contract, "avoid_tags", None) or [])
-    if getattr(contract, "trip_type", None):
-        semantic_terms.append(contract.trip_type)
+    trip_type = getattr(contract, "trip_type", None)
+    if trip_type:
+        semantic_terms.append(trip_type)
     semantic_terms = [str(t).strip() for t in semantic_terms if str(t).strip()]
 
     # Locked POIs are force-included separately. Keeping their names out of the
@@ -541,7 +542,7 @@ async def _run_pipeline(
     if semantic_terms or getattr(contract, "distribution_description", None):
         if getattr(contract, "distribution_description", None):
             tag_text = embed_service.build_distribution_query_text(
-                distribution_description=contract.distribution_description,
+                distribution_description=contract.distribution_description or "",
                 tags=semantic_terms,
                 destination=contract.destination or "Huế"
             )
@@ -842,13 +843,13 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         deterministic_intent = EditIntentPlanner().build(body.message or "")
         if not is_edit_confirmation and not (edit_intent and getattr(edit_intent, "operations", None)) and deterministic_intent.operations:
             edit_intent = deterministic_intent
-            pending_edit_plan = deterministic_intent.constraints
+            pending_edit_plan = None
             result["edit_intent"] = deterministic_intent
-            result["pending_edit_plan"] = pending_edit_plan
-            result["status"] = "clarifying"
+            result["pending_edit_plan"] = None
+            result["status"] = "ready"
             result["phase"] = "editing"
-            result["requires_confirmation"] = True
-            result["reply"] = pending_edit_plan.get("assistant_reply") or result.get("reply")
+            result["requires_confirmation"] = False
+            result["reply"] = deterministic_intent.constraints.get("assistant_reply") or result.get("reply")
     if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
         from app.services.itinerary_editor import ItineraryEditorService
         from app.schemas.trip import POIResponse
@@ -860,7 +861,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         editor_service = ItineraryEditorService()
         action = edit_intent.action if edit_intent else "modify_itinerary"
         target = edit_intent.target if edit_intent else None
-        should_apply_edit = result.get("status") == "ready" or is_edit_confirmation
+        should_apply_edit = True
         operation_dicts = []
         if is_edit_confirmation:
             operation_dicts = list((body.pending_edit_plan or {}).get("operations") or [])
@@ -973,7 +974,8 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                 "change_time_window", "change_time", "add_preference", 
                 "avoid_preference", "change_distribution"
             }
-            if should_apply_edit and not operation_dicts and action in rebuild_actions:
+            is_rebuild_in_ops = any(op.get("type") == "rebuild_requested" for op in operation_dicts) if operation_dicts else False
+            if should_apply_edit and (not operation_dicts or is_rebuild_in_ops) and (action in rebuild_actions or is_rebuild_in_ops):
                 from app.schemas.trip import TripPlanRequest
                 contract_to_use = result.get("updated_contract")
                 if not contract_to_use:
@@ -1001,10 +1003,14 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                     itinerary=body.current_itinerary,
                     target=target
                 )
+                updated_itinerary = editor_service.remove_stop(
+                    itinerary=body.current_itinerary,
+                    target=target
+                )
             elif should_apply_edit and not operation_dicts and action == "add_place" and target:
                 resolved_pois = await _resolve_edit_add_poi(query=target, limit=1)
                 if resolved_pois:
-                    target_day = edit_intent.constraints.get("target_day", 1)
+                    target_day = edit_intent.constraints.get("target_day", 1) if edit_intent is not None else 1
                     try:
                         day_index = max(0, int(target_day) - 1)
                     except (ValueError, TypeError):
@@ -1061,6 +1067,15 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                         )
         except Exception as ex:
             logger.error(f"JIT Editing failed: {ex}", exc_info=True)
+            
+    if updated_itinerary and isinstance(updated_itinerary, dict):
+        budget_total = result["updated_contract"].budget_max if result.get("updated_contract") else (body.current_contract.budget_max if body.current_contract else None)
+        budget_used = updated_itinerary.get("budget_used", 0) or updated_itinerary.get("total_entrance_fee", 0)
+        
+        if budget_total and budget_used > budget_total:
+            warning_msg = f"\n\n⚠️ *Lưu ý*: Việc chỉnh sửa này làm tổng chi phí vé tham quan ({int(budget_used):,}đ) vượt quá ngân sách ban đầu của bạn ({int(budget_total):,}đ) một chút nhé."
+            if not result["reply"].endswith(warning_msg):
+                result["reply"] += warning_msg
             
     return ChatProcessResponse(
         status=result["status"],

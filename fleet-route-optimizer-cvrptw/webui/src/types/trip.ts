@@ -80,6 +80,9 @@ export interface ItineraryItem {
   poiId: string
   time: string
   note: string
+  travel_time_from_prev_min?: number
+  travel_time_to_next_min?: number
+  vibe_note?: string
 }
 
 export interface ItineraryDay {
@@ -105,6 +108,7 @@ export interface ItineraryDraft {
   budgetUsed?: number
   selectedPlanStyle?: PlanStyle
   manualDayNumbers?: number[]
+  startDate?: string
 }
 
 export interface FollowUpQuestion {

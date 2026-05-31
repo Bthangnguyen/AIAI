@@ -114,6 +114,32 @@ export default function Page() {
   }, [user?.uid])
 
   useEffect(() => {
+    if (!user || user.isAnonymous) return
+    
+    async function mergeLocalDrafts() {
+      try {
+        const { getSavedDrafts, saveDraftForUser } = await import("@/lib/storage")
+        const localDrafts = getSavedDrafts()
+        if (localDrafts.length === 0) return
+        
+        for (const localDraft of localDrafts) {
+          await saveDraftForUser(localDraft, user!.uid)
+        }
+        
+        window.localStorage.removeItem("tripflow-saved-drafts")
+        showToast(`Đã tự động đồng bộ ${localDrafts.length} lịch trình nháp lên tài khoản Cloud của anh!`, "success")
+        
+        const updatedItems = await getSavedDraftsForUser(user!.uid)
+        setSavedDrafts(updatedItems)
+      } catch (e) {
+        console.error("Lỗi đồng bộ lịch trình nháp:", e)
+      }
+    }
+    
+    void mergeLocalDrafts()
+  }, [user?.uid])
+
+  useEffect(() => {
     if (!draft) return
     const totals = draftTotals(draft)
     
@@ -458,6 +484,11 @@ export default function Page() {
             latitude: POI_CACHE.get(item.poiId)?.lat || getPoi(item.poiId)?.lat || 0,
             longitude: POI_CACHE.get(item.poiId)?.lng || getPoi(item.poiId)?.lng || 0,
           },
+          arrival_time_min: (() => {
+            const timeStr = item.time || "";
+            const [h, m] = timeStr.split(":").map(Number);
+            return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
+          })(),
           visit_duration_min:
             POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || getPoi(item.poiId)?.estimatedDurationMinutes || 60,
         })),
@@ -663,6 +694,14 @@ export default function Page() {
     setPrompt("")
   }
 
+  function handleStartDateChange(date: string) {
+    if (!draft) return
+    setDraft({
+      ...draft,
+      startDate: date,
+    })
+  }
+
   function backHome() {
     setScreen("home")
   }
@@ -713,6 +752,7 @@ export default function Page() {
             onShowRouteLinesChange={setShowRouteLines}
             onShowCostChange={setShowCost}
             onShowCategoriesChange={setShowCategories}
+            onStartDateChange={handleStartDateChange}
             onFitMap={() => setFitSignal((value) => value + 1)}
             onAddPoi={handleAddPoiBackend}
             onRemovePlace={handleRemovePlaceBackend}
@@ -743,7 +783,7 @@ export default function Page() {
         userName={user?.displayName}
         userEmail={user?.email}
       />
-      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => void handleGoogleAuthContinue()} configured={firebaseConfigured} isLoading={authLoading || isRunning} />
+      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => { setShowAuthModal(false); if (prompt.trim()) void continueAfterAuth() }} configured={firebaseConfigured} isLoading={authLoading || isRunning} />
       <Toast variant={toastVariant} message={toastMessage} onClose={() => { setToastMessage(null); setUndoState(null) }} />
     </>
   )

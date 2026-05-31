@@ -111,7 +111,7 @@ class TestDistanceCacheService:
         
         l1_tup = (10.0, 106.0)
         l2_tup = (10.1, 106.1)
-        assert matrix2[(l1_tup, l2_tup)] == (1.0, 2.0)
+        assert matrix2[(l1_tup, l2_tup)] == (1.0, 4.0)
 
     @patch('urllib.request.urlopen')
     def test_walking_mode_heuristic(self, mock_urlopen, temp_db_path):

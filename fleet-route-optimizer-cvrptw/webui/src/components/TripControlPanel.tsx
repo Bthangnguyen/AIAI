@@ -1,6 +1,6 @@
 "use client"
 
-import { Map, Plus, RefreshCw, RotateCcw, Save, Smartphone } from "lucide-react"
+import { Map, Plus, RefreshCw, RotateCcw, Save, Smartphone, Calendar } from "lucide-react"
 import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import type { BuildStatus, ItineraryDraft } from "@/types/trip"
@@ -21,62 +21,119 @@ interface TripControlPanelProps {
   onRebuild: () => void
   onReset: () => void
   onFitMap: () => void
+  onStartDateChange?: (date: string) => void
 }
 
-export function TripControlPanel({ draft, status, selectedDay, showRouteLines, showCost, showCategories, onSelectedDayChange, onShowRouteLinesChange, onShowCostChange, onShowCategoriesChange, onSaveDraft, onAddPlace, onRebuild, onReset, onFitMap }: TripControlPanelProps) {
+export function TripControlPanel({
+  draft,
+  status,
+  selectedDay,
+  showRouteLines,
+  showCost,
+  showCategories,
+  onSelectedDayChange,
+  onShowRouteLinesChange,
+  onShowCostChange,
+  onShowCategoriesChange,
+  onSaveDraft,
+  onAddPlace,
+  onRebuild,
+  onReset,
+  onFitMap,
+  onStartDateChange,
+}: TripControlPanelProps) {
   const totals = draftTotals(draft)
 
   return (
     <aside className="flex h-full flex-col overflow-y-auto border-l border-orange-200 bg-white p-4">
+      {/* Status Section */}
       <section className="rounded-2xl border border-orange-200 bg-white p-4">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Trip Status</p>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Trạng thái hành trình</p>
         <div className="mt-3 flex items-center gap-2">
           <span className={`h-2.5 w-2.5 rounded-full ${status === "live" ? "bg-success" : status === "building" ? "bg-warning" : status === "resolving" ? "bg-blue" : "bg-muted-2"}`} />
-          <span className="text-sm font-black text-orange-950">{status === "live" ? "Draft" : status === "empty" ? "Empty" : "Building"}</span>
+          <span className="text-sm font-black text-orange-950">
+            {status === "live" ? "Đã sẵn sàng" : status === "empty" ? "Chưa có dữ liệu" : "Đang tính toán tối ưu..."}
+          </span>
         </div>
         <div className="mt-4 grid gap-3 text-sm">
-          <Metric label="Last updated" value={draft ? formatDateTime(draft.updatedAt) : "--"} />
-          <Metric label="POI count" value={`${totals.poiCount}`} />
-          <Metric label="Estimated cost" value={formatCurrency(totals.estimatedCost)} />
-          <Metric label="Days" value={draft ? `${draft.days.length}` : "--"} />
+          <Metric label="Cập nhật cuối" value={draft ? formatDateTime(draft.updatedAt) : "--"} />
+          <Metric label="Số địa điểm" value={`${totals.poiCount}`} />
+          <Metric label="Dự chi ước tính" value={formatCurrency(totals.estimatedCost)} />
+          <Metric label="Tổng số ngày" value={draft ? `${draft.days.length} ngày` : "--"} />
         </div>
       </section>
 
+      {/* Date & Map Controls */}
       <section className="mt-4 rounded-2xl border border-orange-200 bg-white p-4">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Actions</p>
-        <div className="mt-3 grid gap-2">
-          <Action icon={<Save size={15} />} label="Save Draft" onClick={onSaveDraft} disabled={!draft} />
-          <Action icon={<Plus size={15} />} label="Add Place" onClick={onAddPlace} disabled={!draft} />
-          <Action icon={<RefreshCw size={15} />} label="Rebuild Itinerary" onClick={onRebuild} disabled={!draft} />
-          <Action icon={<RotateCcw size={15} />} label="Reset" onClick={onReset} />
-        </div>
-      </section>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Lập lịch & Bản đồ</p>
+        
+        <label className="mt-3.5 flex items-center gap-1.5 text-xs font-bold text-orange-950/60">
+          <Calendar className="h-3.5 w-3.5 text-orange-500" /> Ngày khởi hành thực tế
+        </label>
+        <input 
+          type="date" 
+          value={draft?.startDate || ""} 
+          onChange={(event) => onStartDateChange?.(event.target.value)} 
+          className="mt-2 w-full rounded-xl border border-orange-200 bg-orange-50/50 px-3 py-2 text-sm text-orange-950 font-bold outline-none cursor-pointer hover:bg-orange-100/50 transition focus:border-orange-400"
+        />
 
-      <section className="mt-4 rounded-2xl border border-orange-200 bg-white p-4">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Map Controls</p>
-        <label className="mt-3 block text-xs font-bold text-orange-950/60">View</label>
-        <select value={selectedDay} onChange={(event) => onSelectedDayChange(event.target.value === "all" ? "all" : Number(event.target.value))} className="mt-2 w-full rounded-xl border border-orange-200 bg-orange-100 px-3 py-2 text-sm text-orange-950 outline-none">
-          <option value="all">All days</option>
-          {draft?.days.map((day) => <option key={day.dayNumber} value={day.dayNumber}>Day {day.dayNumber}</option>)}
+        <label className="mt-4 block text-xs font-bold text-orange-950/60">Xem theo ngày dừng chân</label>
+        <select 
+          value={selectedDay} 
+          onChange={(event) => onSelectedDayChange(event.target.value === "all" ? "all" : Number(event.target.value))} 
+          className="mt-2 w-full rounded-xl border border-orange-200 bg-orange-100 px-3 py-2 text-sm font-bold text-orange-950 outline-none cursor-pointer hover:bg-orange-200 transition"
+        >
+          <option value="all">Tất cả các ngày</option>
+          {draft?.days.map((day) => (
+            <option key={day.dayNumber} value={day.dayNumber}>
+              Ngày {day.dayNumber}
+            </option>
+          ))}
         </select>
+
         <div className="mt-4 space-y-3">
-          <Toggle label="Show route line" checked={showRouteLines} onChange={onShowRouteLinesChange} />
-          <Toggle label="Show estimated cost" checked={showCost} onChange={onShowCostChange} />
-          <Toggle label="Show categories" checked={showCategories} onChange={onShowCategoriesChange} />
+          <Toggle label="Vẽ đường đi (Lộ trình)" checked={showRouteLines} onChange={onShowRouteLinesChange} />
+          <Toggle label="Hiển thị chi phí điểm" checked={showCost} onChange={onShowCostChange} />
+          <Toggle label="Hiển thị nhãn danh mục" checked={showCategories} onChange={onShowCategoriesChange} />
         </div>
-        <button type="button" onClick={onFitMap} disabled={!draft} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-100 px-3 py-2 text-sm font-bold text-orange-950 disabled:opacity-40">
-          <Map size={15} /> Fit map to itinerary
+        
+        <button 
+          type="button" 
+          onClick={onFitMap} 
+          disabled={!draft} 
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-950 hover:bg-orange-100 transition disabled:opacity-40"
+        >
+          <Map size={14} /> Căn chỉnh bản đồ vừa vặn
         </button>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-travel/30 bg-travel/10 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-black text-orange-950">Active Trip Mode</p>
-          <span className="rounded-full bg-travel/20 px-2 py-1 text-[10px] font-black text-travel">Sắp ra mắt</span>
+      {/* Actions */}
+      <section className="mt-4 rounded-2xl border border-orange-200 bg-white p-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">Công cụ lịch trình</p>
+        <div className="mt-3 grid gap-2">
+          <Action icon={<Save size={14} />} label="Lưu lịch trình nháp" onClick={onSaveDraft} disabled={!draft} />
+          <Action icon={<Plus size={14} />} label="Thêm địa điểm thủ công" onClick={onAddPlace} disabled={!draft} />
+          <Action icon={<RefreshCw size={14} />} label="Tính toán lại toàn bộ" onClick={onRebuild} disabled={!draft} />
+          <Action icon={<RotateCcw size={14} />} label="Đặt lại từ đầu (Reset)" onClick={onReset} />
         </div>
-        <p className="mt-2 text-xs leading-5 text-orange-950/60">Tính năng này sẽ dùng GPS trên app mobile để tối ưu lại phần còn lại của ngày khi người dùng bỏ qua một điểm đến.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-bold text-orange-950/60">
-          {['Next Location', 'Skip Stop', 'GPS Reroute', 'Reroute Current Day'].map((item) => <button key={item} disabled className="rounded-xl border border-orange-200 bg-white/70 px-2 py-2 opacity-60"><Smartphone className="mx-auto mb-1 h-3.5 w-3.5" />{item}</button>)}
+      </section>
+
+      {/* Mobile GPS Phase (Placeholder / Future work) */}
+      <section className="mt-4 rounded-2xl border border-travel/30 bg-travel/10 p-4 shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-black text-orange-950 uppercase tracking-wider">Hành trình GPS thời gian thực</p>
+          <span className="rounded-full bg-travel/20 px-2 py-0.5 text-[9px] font-black text-travel">Comming Soon</span>
+        </div>
+        <p className="mt-2 text-[11px] leading-5 text-orange-950/60">
+          Chức năng định vị GPS để tự động tính toán, giãn lộ trình thông minh khi anh skip điểm đến trên ứng dụng di động.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-[10px] font-bold text-orange-950/60">
+          {['Tới điểm tiếp', 'Bỏ qua điểm', 'Reroute GPS', 'Tối ưu lại ngày'].map((item) => (
+            <button key={item} disabled className="rounded-xl border border-orange-200 bg-white/70 px-1 py-1.5 opacity-60 cursor-not-allowed">
+              <Smartphone className="mx-auto mb-1 h-3.5 w-3.5 text-orange-950/40" />
+              {item}
+            </button>
+          ))}
         </div>
       </section>
     </aside>
@@ -84,19 +141,33 @@ export function TripControlPanel({ draft, status, selectedDay, showRouteLines, s
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between gap-3"><span className="text-orange-950/60">{label}</span><span className="font-black text-orange-950">{value}</span></div>
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-orange-950/60">{label}</span>
+      <span className="font-black text-orange-950">{value}</span>
+    </div>
+  )
 }
 
 function Action({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
-  return <button type="button" onClick={onClick} disabled={disabled} className="inline-flex items-center gap-2 rounded-xl bg-orange-100 px-3 py-2 text-sm font-bold text-orange-950 transition hover:bg-border-strong disabled:cursor-not-allowed disabled:opacity-40">{icon}{label}</button>
+  return (
+    <button 
+      type="button" 
+      onClick={onClick} 
+      disabled={disabled} 
+      className="inline-flex items-center gap-2 rounded-xl bg-orange-50 border border-orange-200 px-3 py-2 text-xs font-bold text-orange-950 transition hover:bg-orange-100 hover:text-orange-900 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {icon}
+      {label}
+    </button>
+  )
 }
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between gap-3 text-sm text-orange-950/60">
+    <label className="flex items-center justify-between gap-3 text-xs font-bold text-orange-950/65 cursor-pointer">
       {label}
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-travel" />
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-travel cursor-pointer" />
     </label>
   )
 }
-

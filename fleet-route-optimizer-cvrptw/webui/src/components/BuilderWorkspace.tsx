@@ -53,6 +53,7 @@ interface BuilderWorkspaceProps {
   onSuggestFix?: (fix: string) => void
   osrmDegraded?: boolean
   onOsrmDegradedChange?: (degraded: boolean) => void
+  onStartDateChange?: (date: string) => void
 }
 
 type MobileTab = "chat" | "preview" | "control"
@@ -88,7 +89,7 @@ export function BuilderWorkspace(props: BuilderWorkspaceProps) {
         </div>
 
         <div className={`${mobileTab === "control" ? "block" : "hidden"} h-full min-h-0 md:block`}>
-          <TripControlPanel draft={props.draft} status={props.status} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} showCost={props.showCost} showCategories={props.showCategories} onSelectedDayChange={props.onSelectedDayChange} onShowRouteLinesChange={props.onShowRouteLinesChange} onShowCostChange={props.onShowCostChange} onShowCategoriesChange={props.onShowCategoriesChange} onSaveDraft={props.onSaveDraft} onAddPlace={() => openAddPlace()} onRebuild={props.onRebuild} onReset={props.onReset} onFitMap={props.onFitMap} />
+          <TripControlPanel draft={props.draft} status={props.status} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} showCost={props.showCost} showCategories={props.showCategories} onSelectedDayChange={props.onSelectedDayChange} onShowRouteLinesChange={props.onShowRouteLinesChange} onShowCostChange={props.onShowCostChange} onShowCategoriesChange={props.onShowCategoriesChange} onSaveDraft={props.onSaveDraft} onAddPlace={() => openAddPlace()} onRebuild={props.onRebuild} onReset={props.onReset} onFitMap={props.onFitMap} onStartDateChange={props.onStartDateChange} />
         </div>
       </main>
 

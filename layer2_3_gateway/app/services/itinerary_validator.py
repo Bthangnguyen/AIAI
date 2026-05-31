@@ -320,16 +320,22 @@ class ItineraryValidatorService:
         lon1 = from_location.get("longitude") if isinstance(from_location, dict) else getattr(from_location, "longitude", None)
         lat2 = to_location.get("latitude") if isinstance(to_location, dict) else getattr(to_location, "latitude", None)
         lon2 = to_location.get("longitude") if isinstance(to_location, dict) else getattr(to_location, "longitude", None)
-        if None in (lat1, lon1, lat2, lon2):
+        if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
             return 0.0
-        if lat1 == lat2 and lon1 == lon2:
+
+        flat1: float = float(lat1)
+        flon1: float = float(lon1)
+        flat2: float = float(lat2)
+        flon2: float = float(lon2)
+
+        if flat1 == flat2 and flon1 == flon2:
             return 0.0
 
         radius_km = 6371.0
-        phi1 = math.radians(float(lat1))
-        phi2 = math.radians(float(lat2))
-        d_phi = math.radians(float(lat2) - float(lat1))
-        d_lambda = math.radians(float(lon2) - float(lon1))
+        phi1 = math.radians(flat1)
+        phi2 = math.radians(flat2)
+        d_phi = math.radians(flat2 - flat1)
+        d_lambda = math.radians(flon2 - flon1)
         a = (
             math.sin(d_phi / 2) ** 2
             + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2

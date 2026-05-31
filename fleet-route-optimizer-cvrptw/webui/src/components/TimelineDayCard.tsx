@@ -11,6 +11,7 @@ interface TimelineDayCardProps {
   day: ItineraryDay
   selectedPoiId: string | null
   isManualOrder?: boolean
+  startDate?: string
   onSelectPoi: (poiId: string) => void
   onHoverPoi: (poiId: string | null) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
@@ -20,10 +21,26 @@ interface TimelineDayCardProps {
   onOptimizeDay: (dayNumber: number) => void
 }
 
+function getFormattedDate(startDateStr: string, dayNumber: number): string {
+  try {
+    const date = new Date(startDateStr)
+    date.setDate(date.getDate() + dayNumber - 1)
+    const daysOfWeek = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+    const dayName = daysOfWeek[date.getDay()]
+    const dd = String(date.getDate()).padStart(2, '0')
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    return `${dayName}, ${dd}/${mm}/${yyyy}`
+  } catch (e) {
+    return ""
+  }
+}
+
 export function TimelineDayCard({
   day,
   selectedPoiId,
   isManualOrder,
+  startDate,
   onSelectPoi,
   onHoverPoi,
   onRemovePlace,
@@ -55,7 +72,9 @@ export function TimelineDayCard({
               </span>
             ) : null}
           </div>
-          <h3 className="mt-1 text-lg font-black text-orange-950">Ngày {day.dayNumber}</h3>
+          <h3 className="mt-1 text-lg font-black text-orange-950">
+            Ngày {day.dayNumber} {startDate ? `— ${getFormattedDate(startDate, day.dayNumber)}` : ""}
+          </h3>
           <p className="mt-1 text-xs text-orange-950/60">
             {day.items.filter(item => !item.poiId.startsWith("__")).length} điểm đến · ~{Math.max(1, Math.round(totals.duration / 60))} giờ · ước tính {formatCurrency(totals.cost)}
           </p>

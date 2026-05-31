@@ -78,7 +78,7 @@ class PointOfInterest(Base):
     async def search_within_radius(
         cls,
         lat: float, lon: float, radius_m: float,
-        extra_conditions: list[Any] = None,
+        extra_conditions: Optional[list[Any]] = None,
         limit: int = 50,
         database_session: Optional[AsyncSession] = None,
     ):
@@ -96,5 +96,7 @@ class PointOfInterest(Base):
             ST_AsGeoJSON(cls.coordinates).label("geojson_coordinates"),
         ).where(*conditions).limit(limit)
 
+        if database_session is None:
+            raise ValueError("database_session cannot be None")
         _result = await database_session.execute(_stmt)
         return _result.fetchall()

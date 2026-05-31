@@ -73,9 +73,8 @@ async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
         rows = res.all()
         
         poi_map = {}
-        for row in rows:
-            poi = row.PointOfInterest
-            geojson = json_lib.loads(row.geojson) if row.geojson else None
+        for poi, geojson_str in rows:
+            geojson = json_lib.loads(geojson_str) if geojson_str else None
             lat = geojson["coordinates"][1] if geojson else 0.0
             lon = geojson["coordinates"][0] if geojson else 0.0
             poi_map[str(poi.uuid)] = {
@@ -1253,6 +1252,62 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
     try:
         if body.original_itinerary:
             body.original_itinerary = await _enrich_itinerary_with_db(body.original_itinerary)
+            
+            # Enrich new POIs that are in remaining_poi_ids but not in original_itinerary stops
+            if body.remaining_poi_ids:
+                existing_poi_ids = set()
+                days = body.original_itinerary.get("days", [])
+                target_day = None
+                for d in days:
+                    if d.get("day_index") == body.day_index:
+                        target_day = d
+                        break
+                if target_day is None and days:
+                    target_day = days[min(body.day_index, len(days) - 1)]
+                
+                if target_day is not None:
+                    for stop in target_day.get("stops", []):
+                        pid = stop.get("poi_id") or stop.get("poiId")
+                        if pid:
+                            existing_poi_ids.add(str(pid))
+                    
+                    new_poi_ids = [pid for pid in body.remaining_poi_ids if pid not in existing_poi_ids and not pid.startswith("__")]
+                    
+                    if new_poi_ids:
+                        logger.info(f"🔍 Found new POI IDs to enrich in re-route: {new_poi_ids}")
+                        from app.models.poi import PointOfInterest
+                        from geoalchemy2.functions import ST_AsGeoJSON
+                        from sqlalchemy import select
+                        import json as json_lib
+                        
+                        POI = PointOfInterest
+                        stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(new_poi_ids))
+                        
+                        async with AsyncSessionFactory() as db_session:
+                            res = await db_session.execute(stmt)
+                            rows = res.all()
+                            
+                            for poi, geojson_str in rows:
+                                geojson = json_lib.loads(geojson_str) if geojson_str else None
+                                lat = geojson["coordinates"][1] if geojson else 0.0
+                                lon = geojson["coordinates"][0] if geojson else 0.0
+                                
+                                new_stop = {
+                                    "poi_id": str(poi.uuid),
+                                    "poi_name": poi.name,
+                                    "category": poi.category,
+                                    "description": poi.description or "",
+                                    "tags": poi.tags or [],
+                                    "entrance_fee": poi.entrance_fee or poi.price or 0.0,
+                                    "price": poi.entrance_fee or poi.price or 0.0,
+                                    "visit_duration_min": poi.visit_duration_min or 60,
+                                    "location": {
+                                        "latitude": lat,
+                                        "longitude": lon
+                                    }
+                                }
+                                target_day.setdefault("stops", []).append(new_stop)
+                                logger.info(f"✨ Successfully enriched target_day with new JIT POI: {poi.name}")
         result = await layer4_client.re_route(
             current_lat=body.current_lat,
             current_lon=body.current_lon,

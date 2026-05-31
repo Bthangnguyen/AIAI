@@ -458,6 +458,11 @@ export default function Page() {
             latitude: POI_CACHE.get(item.poiId)?.lat || getPoi(item.poiId)?.lat || 0,
             longitude: POI_CACHE.get(item.poiId)?.lng || getPoi(item.poiId)?.lng || 0,
           },
+          arrival_time_min: (() => {
+            const timeStr = item.time || "";
+            const [h, m] = timeStr.split(":").map(Number);
+            return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
+          })(),
           visit_duration_min:
             POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || getPoi(item.poiId)?.estimatedDurationMinutes || 60,
         })),

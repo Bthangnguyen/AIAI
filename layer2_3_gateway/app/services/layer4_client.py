@@ -9,6 +9,7 @@ from app.config import settings
 from app.schemas.trip import POIResponse, LLMDataContract
 from app.utils.logging import AppLogger
 from app.services.transport_modes import transport_modes_from_contract
+from app.services.llm_planner import ItineraryPlannerService
 
 logger = AppLogger().get_logger()
 
@@ -127,6 +128,7 @@ class Layer4Client:
         self,
         pois: List[POIResponse],
         contract: LLMDataContract,
+        skeleton: Optional[dict] = None,
     ) -> Dict:
         """Assemble TravelPlanRequest matching Layer 4 schema exactly."""
         l4_pois = []
@@ -142,6 +144,7 @@ class Layer4Client:
                     "end_min": p.close_time,
                 },
                 "entrance_fee": p.entrance_fee,
+                "price": p.price,
                 "priority_score": getattr(p, "utility_score", 1.0),
                 "tags": p.tags or [],
                 "description": p.description,
@@ -182,6 +185,7 @@ class Layer4Client:
             "pois": l4_pois,
             "hotels": hotels,
             "constraints": constraints,
+            "metadata": {"skeleton": skeleton} if skeleton else None,
         }
 
         # Hard cap: max 6 POIs per day, minimum 3 (for full_day/evening slot) or 2 (for short slots)
@@ -243,7 +247,17 @@ class Layer4Client:
             logger.error("Circuit breaker is OPEN. Blocking request to Layer 4 Solver.")
             return {"error_code": "CIRCUIT_BREAKER_OPEN", "message": "Hệ thống đang quá tải. Vui lòng thử lại sau 30 giây."}
 
-        payload = self._build_payload(pois, contract)
+        # Generate Skeleton using Tour Guide LLM Planner
+        skeleton_dict = None
+        try:
+            planner = ItineraryPlannerService()
+            skeleton = await planner.build_skeleton(contract, pois)
+            if skeleton:
+                skeleton_dict = skeleton.model_dump()
+        except Exception as e:
+            logger.warning(f"🧠 LLM Planner: Failed to build skeleton, falling back to pure solver: {e}")
+
+        payload = self._build_payload(pois, contract, skeleton=skeleton_dict)
 
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
@@ -368,7 +382,17 @@ class Layer4Client:
             logger.error("Circuit breaker is OPEN. Blocking request to Layer 4 alternatives.")
             return {"error_code": "CIRCUIT_BREAKER_OPEN", "message": "Hệ thống đang quá tải. Vui lòng thử lại sau 30 giây."}
 
-        payload = self._build_payload(pois, contract)
+        # Generate Skeleton using Tour Guide LLM Planner
+        skeleton_dict = None
+        try:
+            planner = ItineraryPlannerService()
+            skeleton = await planner.build_skeleton(contract, pois)
+            if skeleton:
+                skeleton_dict = skeleton.model_dump()
+        except Exception as e:
+            logger.warning(f"🧠 LLM Planner: Failed to build skeleton, falling back to pure solver: {e}")
+
+        payload = self._build_payload(pois, contract, skeleton=skeleton_dict)
 
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:

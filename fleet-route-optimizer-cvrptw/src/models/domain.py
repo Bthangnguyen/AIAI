@@ -50,6 +50,7 @@ class POI(BaseModel):
     visit_duration_min: int = Field(..., description="Recommended visit duration in minutes")
     time_window: Optional[TimeWindow] = Field(None, description="Opening hours as time window")
     entrance_fee: float = Field(0.0, description="Entrance fee in VND")
+    price: float = Field(0.0, description="Average price/spending in VND")
     priority_score: float = Field(0.5, description="Priority score from Layer 3 (0.0-1.0)")
     tags: Optional[List[str]] = Field(None, description="Tags: outdoor, indoor, family, etc.")
     description: Optional[str] = Field(None, description="Short description")
@@ -142,6 +143,7 @@ class TravelItineraryStop(BaseModel):
     travel_time_from_prev_min: int = Field(0, description="Travel time from previous stop")
     travel_time_to_next_min: int = Field(0, description="Travel time to next stop or end hotel")
     entrance_fee: float = Field(0.0, description="Entrance fee paid at this POI")
+    price: float = Field(0.0, description="Average price/spending in VND")
 
 
 class TravelItineraryDay(BaseModel):

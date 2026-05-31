@@ -973,7 +973,8 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                 "change_time_window", "change_time", "add_preference", 
                 "avoid_preference", "change_distribution"
             }
-            if should_apply_edit and not operation_dicts and action in rebuild_actions:
+            is_rebuild_in_ops = any(op.get("type") == "rebuild_requested" for op in operation_dicts) if operation_dicts else False
+            if should_apply_edit and (not operation_dicts or is_rebuild_in_ops) and (action in rebuild_actions or is_rebuild_in_ops):
                 from app.schemas.trip import TripPlanRequest
                 contract_to_use = result.get("updated_contract")
                 if not contract_to_use:
@@ -997,6 +998,10 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                 else:
                     logger.error(f"JIT Rebuild solver error: {l4_result}")
             elif should_apply_edit and not operation_dicts and action == "remove_place" and target:
+                updated_itinerary = editor_service.remove_stop(
+                    itinerary=body.current_itinerary,
+                    target=target
+                )
                 updated_itinerary = editor_service.remove_stop(
                     itinerary=body.current_itinerary,
                     target=target
@@ -1061,6 +1066,15 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                         )
         except Exception as ex:
             logger.error(f"JIT Editing failed: {ex}", exc_info=True)
+            
+    if updated_itinerary and isinstance(updated_itinerary, dict):
+        budget_total = result["updated_contract"].budget_max if result.get("updated_contract") else (body.current_contract.budget_max if body.current_contract else None)
+        budget_used = updated_itinerary.get("budget_used", 0) or updated_itinerary.get("total_entrance_fee", 0)
+        
+        if budget_total and budget_used > budget_total:
+            warning_msg = f"\n\n⚠️ *Lưu ý*: Việc chỉnh sửa này làm tổng chi phí vé tham quan ({int(budget_used):,}đ) vượt quá ngân sách ban đầu của bạn ({int(budget_total):,}đ) một chút nhé."
+            if not result["reply"].endswith(warning_msg):
+                result["reply"] += warning_msg
             
     return ChatProcessResponse(
         status=result["status"],

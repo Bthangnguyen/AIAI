@@ -693,8 +693,15 @@ class LLMExtractorService:
         # ── Route 2: Rebuild → clarifying + rebuild confirmation ──
         if action == "rebuild_requested":
             reply = self._build_rebuild_confirmation(contract, intent)
-            return self._make_response(contract, "clarifying", reply, phase="editing",
-                                       edit_intent=intent)
+            pending_edit_plan = {
+                "operations": [{"type": "rebuild_requested"}],
+                "assistant_reply": reply
+            }
+            return self._make_response(
+                contract, "clarifying", reply, phase="editing",
+                edit_intent=intent, pending_edit_plan=pending_edit_plan,
+                requires_confirmation=True
+            )
 
         # ── Route 3: Operation missing target → clarifying + follow-up ──
         followup = self._needs_edit_followup(action, intent, message)

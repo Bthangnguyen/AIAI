@@ -243,6 +243,7 @@ class TravelSolverAdapter:
                         visit_duration_min=poi.visit_duration_min,
                         travel_time_from_prev_min=0,
                         entrance_fee=poi.entrance_fee,
+                        price=poi.price,
                     )
                     stops.append(stop)
                     total_fee += poi.entrance_fee
@@ -423,6 +424,7 @@ class TravelSolverAdapter:
                 visit_duration_min=poi.visit_duration_min,
                 travel_time_from_prev_min=0,
                 entrance_fee=poi.entrance_fee,
+                price=poi.price,
             )
             stops.append(stop)
             total_fee += poi.entrance_fee

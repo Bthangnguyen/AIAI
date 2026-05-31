@@ -842,13 +842,13 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         deterministic_intent = EditIntentPlanner().build(body.message or "")
         if not is_edit_confirmation and not (edit_intent and getattr(edit_intent, "operations", None)) and deterministic_intent.operations:
             edit_intent = deterministic_intent
-            pending_edit_plan = deterministic_intent.constraints
+            pending_edit_plan = None
             result["edit_intent"] = deterministic_intent
-            result["pending_edit_plan"] = pending_edit_plan
-            result["status"] = "clarifying"
+            result["pending_edit_plan"] = None
+            result["status"] = "ready"
             result["phase"] = "editing"
-            result["requires_confirmation"] = True
-            result["reply"] = pending_edit_plan.get("assistant_reply") or result.get("reply")
+            result["requires_confirmation"] = False
+            result["reply"] = deterministic_intent.constraints.get("assistant_reply") or result.get("reply")
     if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
         from app.services.itinerary_editor import ItineraryEditorService
         from app.schemas.trip import POIResponse
@@ -860,7 +860,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         editor_service = ItineraryEditorService()
         action = edit_intent.action if edit_intent else "modify_itinerary"
         target = edit_intent.target if edit_intent else None
-        should_apply_edit = result.get("status") == "ready" or is_edit_confirmation
+        should_apply_edit = True
         operation_dicts = []
         if is_edit_confirmation:
             operation_dicts = list((body.pending_edit_plan or {}).get("operations") or [])

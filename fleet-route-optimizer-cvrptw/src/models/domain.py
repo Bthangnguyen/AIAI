@@ -144,6 +144,8 @@ class TravelItineraryStop(BaseModel):
     travel_time_to_next_min: int = Field(0, description="Travel time to next stop or end hotel")
     entrance_fee: float = Field(0.0, description="Entrance fee paid at this POI")
     price: float = Field(0.0, description="Average price/spending in VND")
+    description: Optional[str] = Field(None, description="POI description")
+    vibe_note: Optional[str] = Field(None, description="AI vibe note suggestion")
 
 
 class TravelItineraryDay(BaseModel):

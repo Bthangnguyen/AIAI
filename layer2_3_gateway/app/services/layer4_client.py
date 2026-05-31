@@ -474,11 +474,12 @@ class Layer4Client:
             pois.append({
                 "id": stop["poi_id"],
                 "name": stop["poi_name"],
-                "category": "general",
+                "category": stop.get("category", "general"),
                 "location": stop["location"],
                 "visit_duration_min": stop.get("visit_duration_min", 60),
                 "entrance_fee": stop.get("entrance_fee", 0),
-                "priority_score": 0.8,
+                "priority_score": stop.get("priority_score", 0.8),
+                "price": stop.get("price", 0.0),
             })
 
         hotel_name = target_day.get("end_hotel_name") or target_day.get("start_hotel_name") or target_day.get("hotel_name", "Hotel")

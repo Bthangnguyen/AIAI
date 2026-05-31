@@ -243,7 +243,7 @@ NEGATIVE_OR_ANY_MARKERS = (
     "ok", "duoc", "chua biet", "khong biet", "skip",
 )
 
-LOCKED_POI_MAP = {}
+LOCKED_POI_MAP: dict[str, Any] = {}
 
 
 LLM_MAX_TOKENS = 6000

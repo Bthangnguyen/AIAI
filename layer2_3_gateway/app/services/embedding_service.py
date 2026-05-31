@@ -18,6 +18,7 @@ class EmbeddingService:
 
     def __init__(self, api_key: Optional[str] = None):
         provider = os.getenv("LLM_PROVIDER", "openai")
+        self._base_url: Optional[str] = None
         if provider == "openrouter":
             self._api_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
             self._base_url = "https://openrouter.ai/api/v1"

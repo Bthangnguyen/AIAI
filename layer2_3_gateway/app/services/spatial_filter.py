@@ -67,8 +67,8 @@ class SpatialFilterService:
         # Phase 1: Force Include locked POIs (bounded by 50km safety radius)
         locked_pois = await self._phase1_force_include(
             locked_names=contract.locked_pois,
-            hotel_lat=contract.hotel_lat,
-            hotel_lon=contract.hotel_lon,
+            hotel_lat=contract.hotel_lat or 0.0,
+            hotel_lon=contract.hotel_lon or 0.0,
             db_session=db_session,
         )
         locked_uuids = {p.uuid for p in locked_pois}
@@ -294,8 +294,8 @@ class SpatialFilterService:
 
         # Score POIs with UtilityScorer
         scorer = UtilityScorer()
-        existing_categories = {}
-        existing_tags = {}
+        existing_categories: dict[str, int] = {}
+        existing_tags: dict[str, int] = {}
         scored_pois = []
 
         for row in rows:

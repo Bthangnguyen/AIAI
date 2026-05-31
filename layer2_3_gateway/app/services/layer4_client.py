@@ -190,9 +190,10 @@ class Layer4Client:
 
         # Hard cap: max 6 POIs per day, minimum 3 (for full_day/evening slot) or 2 (for short slots)
         max_pois_per_day = 6
-        if getattr(contract, "estimated_pois", None) is not None:
+        estimated_pois = getattr(contract, "estimated_pois", None)
+        if estimated_pois is not None:
             # Use ceiling division to prevent rounding down (e.g. 5 POIs in 2 days -> 3 per day, not 2)
-            calculated_max = (contract.estimated_pois + contract.num_days - 1) // contract.num_days
+            calculated_max = (estimated_pois + contract.num_days - 1) // contract.num_days
             # Add a generous buffer if user requested a full day or food tour to allow adding outdoor/nature stops
             is_full_or_tour = (
                 getattr(contract, "time_slot", None) == "full_day"

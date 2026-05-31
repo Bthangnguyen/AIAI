@@ -527,7 +527,7 @@ async def _run_pipeline(
         )
 
     query_vector = None
-    semantic_terms = []
+    semantic_terms: List[str] = []
     semantic_terms.extend(getattr(contract, "tags", None) or [])
     semantic_terms.extend(getattr(contract, "food_preferences", None) or [])
     semantic_terms.extend(getattr(contract, "avoid_tags", None) or [])
@@ -541,7 +541,7 @@ async def _run_pipeline(
     if semantic_terms or getattr(contract, "distribution_description", None):
         if getattr(contract, "distribution_description", None):
             tag_text = embed_service.build_distribution_query_text(
-                distribution_description=contract.distribution_description,
+                distribution_description=contract.distribution_description or "",
                 tags=semantic_terms,
                 destination=contract.destination or "Huế"
             )
@@ -1009,7 +1009,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
             elif should_apply_edit and not operation_dicts and action == "add_place" and target:
                 resolved_pois = await _resolve_edit_add_poi(query=target, limit=1)
                 if resolved_pois:
-                    target_day = edit_intent.constraints.get("target_day", 1)
+                    target_day = edit_intent.constraints.get("target_day", 1) if edit_intent is not None else 1
                     try:
                         day_index = max(0, int(target_day) - 1)
                     except (ValueError, TypeError):

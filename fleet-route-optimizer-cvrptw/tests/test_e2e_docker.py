@@ -22,6 +22,17 @@ L4_HEADERS = {"api-key": L4_API_KEY}
 GW_URL = "http://localhost:8001"
 GW_PREFIX = "/v1/trip"
 
+# Dynamic service check to prevent CI build failures when Docker stack is offline
+def _is_l4_alive() -> bool:
+    try:
+        resp = httpx.get(f"{L4_URL}/health", timeout=1.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+L4_ALIVE = _is_l4_alive()
+skip_if_offline = pytest.mark.skipif(not L4_ALIVE, reason="LIVE Docker cvrptw-solver service is offline")
+
 # ── Fixtures: Test Data ──
 
 def hue_pois():
@@ -119,6 +130,7 @@ def two_day_constraints():
 # TEST SUITE 1: Layer 4 Health & API Contract
 # ═══════════════════════════════════════════
 
+@skip_if_offline
 class TestLayer4Health:
     """Verify Layer 4 is alive and responds correctly."""
 
@@ -148,6 +160,7 @@ class TestLayer4Health:
 # TEST SUITE 2: Layer 4 Multi-Day Plan (Solver v2)
 # ═══════════════════════════════════════════
 
+@skip_if_offline
 class TestLayer4MultiDayPlan:
     """Test the multi-depot solver through the HTTP API."""
 
@@ -284,6 +297,7 @@ class TestLayer4MultiDayPlan:
 # TEST SUITE 3: Layer 4 Re-Route (JIT)
 # ═══════════════════════════════════════════
 
+@skip_if_offline
 class TestLayer4ReRoute:
     """Test the single-day re-route endpoint."""
 
@@ -355,6 +369,7 @@ class TestLayer4ReRoute:
 # TEST SUITE 4: Layer 2-3 Gateway Health
 # ═══════════════════════════════════════════
 
+@skip_if_offline
 class TestGatewayHealth:
     """Verify Gateway is alive and DB is connected."""
 
@@ -371,6 +386,7 @@ class TestGatewayHealth:
 # ═══════════════════════════════════════════
 
 @pytest.mark.live
+@skip_if_offline
 class TestE2EPipeline:
     """Test full pipeline from Gateway through Layer 4."""
 
@@ -425,6 +441,7 @@ class TestE2EPipeline:
 # TEST SUITE 6: Edge Cases & Error Handling
 # ═══════════════════════════════════════════
 
+@skip_if_offline
 class TestEdgeCases:
     """Test edge cases and error handling."""
 

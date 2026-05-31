@@ -234,6 +234,24 @@ class EditIntentPlanner:
         if any(word in norm for word in ("doi cho", "swap")):
             return OperationItem(type="swap_places", target=target or clause, value=clause)
 
+        is_replace = any(word in norm for word in ("thay bang", "thay the", "doi bang"))
+        if is_replace:
+            match = re.search(r"thay\s+(.+?)\s+bang\s+(.+)", norm)
+            if match:
+                target_place = match.group(1).strip()
+                new_place = match.group(2).strip()
+                new_place = re.sub(r"\b(di|giup|ho|nhe|dum|nay)\b", "", new_place).strip()
+                return OperationItem(
+                    type="replace_place",
+                    target=display_target(target_place) or target_place,
+                    query=new_place,
+                    target_day=day,
+                    target_category=category,
+                    target_micro_tags=tags,
+                    resolution_strategy="name_search",
+                )
+
+
         if any(word in norm for word in ("chuyen", "dua ")) or ("sang" in norm and target):
             return OperationItem(
                 type="move_place",
@@ -251,7 +269,7 @@ class EditIntentPlanner:
                 type="remove_place",
                 target=target or self._query_from_clause(clause, tags),
                 target_day=day,
-                target_count=extract_command_count(norm, ("bo", "xoa", "remove"), default=1),
+                target_count=extract_command_count(norm, ("bo", "xoa", "remove"), default=999),
                 target_category=category,
                 target_micro_tags=tags,
                 resolution_strategy="current_itinerary_match",

@@ -890,7 +890,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                             itinerary=working_itinerary,
                             target=op_target,
                             target_day=target_day,
-                            target_count=int(op.get("target_count") or 1),
+                            target_count=int(op.get("target_count") or 999),
                             micro_tags=op.get("target_micro_tags") or [],
                             category=op.get("target_category"),
                         )
@@ -945,6 +945,7 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                                 itinerary=working_itinerary,
                                 old_name=op_target,
                                 new_poi=resolved_pois[0],
+                                target_day=target_day,
                             )
                     elif op_type == "add_place" and op_target:
                         resolved_pois = await _resolve_edit_add_poi(

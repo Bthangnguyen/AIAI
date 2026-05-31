@@ -87,7 +87,8 @@ Luôn ưu tiên: ĐÚNG > RÕ > ĐỦ > ĐẸP.
 - "bún bò" → "bun_bo"
 - "ăn chay" → food_preferences: ["vegetarian"], tags: ["vegetarian"]
 - "đi chill" → preferred_pace: "chill"
-- "Đại Nội" → locked_pois: ["Đại Nội"]
+- "Đại Nội" → tags: ["culture"]
+
 - "không đi chùa" → excluded_pois: ["chùa"], avoid_tags: ["pagoda", "temple"]
 - "8h-17h" → time_window: {start_min: 480, end_min: 1020}
 - "cả ngày" → time_slot: "full_day", time_window: {start_min: 480, end_min: 1260}
@@ -242,18 +243,8 @@ NEGATIVE_OR_ANY_MARKERS = (
     "ok", "duoc", "chua biet", "khong biet", "skip",
 )
 
-LOCKED_POI_MAP = {
-    "dai noi": "Đại Nội",
-    "chua thien mu": "Chùa Thiên Mụ",
-    "lang tu duc": "Lăng Tự Đức",
-    "lang khai dinh": "Lăng Khải Định",
-    "lang minh mang": "Lăng Minh Mạng",
-    "cho dong ba": "Chợ Đông Ba",
-    "cau truong tien": "Cầu Trường Tiền",
-    "cafe muoi": "Café Muối",
-    "bun bo hue": "Bún Bò Huế",
-    "song huong": "Sông Hương",
-}
+LOCKED_POI_MAP = {}
+
 
 LLM_MAX_TOKENS = 6000
 
@@ -304,7 +295,20 @@ resolution_strategy: current_itinerary_match | name_search | vector_search_then_
 7. "chuyen A sang ngay N" => move_place target=<matching STOP_ID> target_day=N.
 8. "sau X" => position="after", relative_to=<matching STOP_ID>. "dau/cuoi lich" => first/last.
 9. If user asks a question, return info/ask_info and no edit operations.
+10. Handle unpunctuated compound Vietnamese sentences (e.g. "bỏ A thay bằng B bỏ C bỏ D đi") by splitting them into a sequence of distinct atomic operations (e.g. replace_place for A->B, remove_place for C, remove_place for D).
 </RULES>
+
+<FEW_SHOT_EXAMPLES>
+User: "giảm số lượng điểm bỏ nhà hàng cung đình thay bằng quán bún bò bỏ Đại nội huế bỏ Huế cooking class đi"
+JSON operations:
+[
+  {"type": "replace_place", "target": "Nhà hàng Cung Đình Tịnh Gia Viên", "query": "quán bún bò"},
+  {"type": "remove_place", "target": "Đại Nội Huế"},
+  {"type": "remove_place", "target": "Hue Citadel Night Tour"},
+  {"type": "remove_place", "target": "Hue Cooking Class"}
+]
+Explanation: Notice how "bỏ Đại Nội Huế" is expanded to remove BOTH the daytime "Đại Nội Huế" and the nighttime "Hue Citadel Night Tour" if both exist, to completely remove the concept as requested by the user. "thay bằng" is translated as a single replace_place operation.
+</FEW_SHOT_EXAMPLES>
 
 <REPLY>
 Vietnamese, short, preview exactly what will change.
@@ -706,12 +710,16 @@ class LLMExtractorService:
             status = getattr(response_obj, 'status', 'clarifying') if response_obj else "clarifying"
             req_confirm = getattr(response_obj, 'requires_confirmation', True) if response_obj else True
             
+            # Enforce consistency: if status is clarifying, it MUST require confirmation
+            if status == "clarifying":
+                req_confirm = True
+
             # Helper fallback: if our robust _is_confirmation helper detects confirmation, set to ready
             if self._is_confirmation(message):
                 status = "ready"
                 req_confirm = False
 
-            reply = (pending_edit_plan or {}).get("assistant_reply") or llm_reply or self._edit_reply(intent)
+            reply = llm_reply or (pending_edit_plan or {}).get("assistant_reply") or self._edit_reply(intent)
             logger.info(f"Edit turn result: action={action}, status={status}, requires_confirmation={req_confirm}")
             return self._make_response(
                 contract, status, reply, phase="editing",
@@ -980,24 +988,15 @@ class LLMExtractorService:
         text = self._normalize(raw_text)
         raw_lower = raw_text.lower()
 
-        # 1. Location spelling/display name normalization for locked POIs
-        if contract.locked_pois:
-            normalized_pois = []
-            for poi in contract.locked_pois:
-                norm_poi = self._normalize(poi)
-                matched_name = None
-                for key, display_name in LOCKED_POI_MAP.items():
-                    if key == norm_poi or key in norm_poi:
-                        matched_name = display_name
-                        break
-                if matched_name:
-                    normalized_pois.append(matched_name)
-                else:
-                    normalized_pois.append(poi)
-            contract.locked_pois = normalized_pois
+        # 1. (Disabled) Spelling normalization for locked POIs is removed to disable background locking.
+
 
         # 2. (Disabled per request) Pure numerical time range parsing and time slot heuristics
         # Let the LLM decide time_window and time_slot completely, no overrides.
+
+        # Only apply static tag filters if the LLM failed to provide a valid distribution
+        if contract.target_category_distribution:
+            return
 
         # 4. Safe interest and preference parsing (prevents "chưa" matching "chùa")
         has_culture = (
@@ -1303,13 +1302,7 @@ class LLMExtractorService:
         if name and name != "Hotel":
             contract.hotel_name = name
 
-    def _extract_common_locked_pois(self, text: str) -> List[str]:
-        """Recognize well-known Huế POIs from normalized text."""
-        found = []
-        for key, display_name in LOCKED_POI_MAP.items():
-            if key in text:
-                found.append(display_name)
-        return found
+
 
     @staticmethod
     def _deduplicate_locked_pois(contract: LLMDataContract) -> None:

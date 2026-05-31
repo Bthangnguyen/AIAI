@@ -52,6 +52,8 @@ def derive_distribution(contract: Any, raw_text: str | None = None) -> dict[str,
 
     existing = normalize_distribution(getattr(contract, "target_category_distribution", None))
     explicit = bool(getattr(contract, "target_category_distribution", None))
+    if explicit:
+        return existing
 
     has_food = any(token in text for token in ("am thuc", "an uong", "food", "foodie", "local_cuisine", "street food", "street_food"))
     has_culture = any(token in text for token in ("van hoa", "culture", "cultural", "lich su", "heritage"))

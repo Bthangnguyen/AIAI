@@ -60,3 +60,13 @@ poetry.lock
 .local/
 docs/superpowers/plans/
 docs/superpowers/specs/
+
+# Temporary developer scratch sandbox & data exports
+scratch/
+layer2_3_gateway/app/scratch/
+*.xlsx
+!all_pois_final_cleaned_nightlife.xlsx
+*.xls
+*.csv
+.agents_backup_merge/
+.codex-backup/

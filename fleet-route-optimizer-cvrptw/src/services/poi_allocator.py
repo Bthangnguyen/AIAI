@@ -114,7 +114,7 @@ class POIAllocator:
         # Group POIs by category_group
         pois_by_group: Dict[str, List[POI]] = {}
         for poi in remaining_pois:
-            group = poi.category_group or "culture"
+            group = poi.category_group or "other"
             pois_by_group.setdefault(group, []).append(poi)
 
         # Phase 1: Compute category quotas
@@ -409,7 +409,7 @@ class POIAllocator:
         for group, members in CATEGORY_GROUP_MAP.items():
             if cat_lower in members:
                 return group
-        return "culture"  # default fallback
+        return "other"  # default fallback — don't inflate any specific group
 
     # ─── Budget Filter ───
 

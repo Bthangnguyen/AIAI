@@ -28,6 +28,31 @@ FALLBACK_TIERS = [
 TARGET_POI_COUNT = 50
 MIN_POI_THRESHOLD = 10
 
+# Category group mapping for stratified POI sampling
+CATEGORY_GROUP_MAP = {
+    "food": {
+        "food", "restaurant", "nhà hàng", "quán ăn", "eatery", "street_food",
+        "streetfood", "bún bò", "bún", "cơm", "cơm hến", "bánh bèo",
+        "bánh khoái", "bánh canh", "chay", "dessert", "chè",
+    },
+    "cafe": {"cafe", "coffee", "cà phê", "ca phe", "tea", "trà"},
+    "culture": {
+        "culture", "cultural", "historic", "historical", "history",
+        "temple", "pagoda", "tourism_attraction", "heritage", "museum",
+        "bảo tàng", "landmark", "unesco", "palace", "citadel",
+        "mausoleum", "tomb", "ca huế",
+    },
+    "nature": {"nature", "park", "công viên", "garden", "lake", "river", "beach", "lagoon"},
+    "nightlife": {"nightlife", "bar", "night_market", "pub", "karaoke", "walking_street"},
+    "shopping": {"shopping", "shop", "market", "chợ"},
+    "adventure": {"adventure", "trekking", "outdoor", "sport", "hiking"},
+}
+
+DEFAULT_DISTRIBUTION = {
+    "culture": 0.35, "food": 0.30, "cafe": 0.15,
+    "nightlife": 0.10, "nature": 0.10,
+}
+
 
 class SpatialFilterService:
     """Executes 2-phase spatial + semantic filtering."""
@@ -133,11 +158,13 @@ class SpatialFilterService:
         if limit <= 0:
             return []
 
+        distribution = contract.target_category_distribution or DEFAULT_DISTRIBUTION
+
         for tier_idx, (radius_override, apply_budget, apply_tags) in enumerate(FALLBACK_TIERS):
             radius_km = radius_override or contract.radius_km
             radius_m = radius_km * 1000
 
-            pois = await self._query_tier(
+            pois = await self._query_tier_stratified(
                 contract=contract,
                 radius_m=radius_m,
                 apply_budget=apply_budget,
@@ -146,6 +173,7 @@ class SpatialFilterService:
                 limit=limit,
                 query_vector=query_vector,
                 db_session=db_session,
+                distribution=distribution,
             )
 
             logger.debug(f"Tier {tier_idx+1}: {len(pois)} POIs (radius={radius_km}km)")
@@ -165,6 +193,7 @@ class SpatialFilterService:
         limit: int,
         query_vector: Optional[list],
         db_session: AsyncSession,
+        category_filter: Optional[set] = None,
     ) -> List[POIResponse]:
         """Single-tier query: PostGIS distance + budget + vector cosine similarity."""
         POI = PointOfInterest
@@ -201,6 +230,26 @@ class SpatialFilterService:
         conditions.append(func.lower(POI.category).notin_(noise_categories))
         for term in noise_name_terms:
             conditions.append(~func.lower(POI.name).contains(term))
+
+        # Strict exclusion of hotel/lodging related tags to prevent them from showing as itinerary stops
+        noise_tags = ["hotel", "lodging", "accommodation", "homestay", "resort", "motel", "hostel", "lưu trú", "guesthouse", "nhà nghỉ", "qua đêm"]
+        conditions.append(
+            or_(
+                POI.tags.is_(None),
+                ~POI.tags.overlap(noise_tags)
+            )
+        )
+
+
+        # Category filter for stratified sampling
+        if category_filter:
+            filter_lower = [c.lower() for c in category_filter]
+            conditions.append(
+                or_(
+                    func.lower(POI.category).in_(filter_lower),
+                    func.lower(POI.category_group).in_(filter_lower),
+                )
+            )
 
         # Strict vegetarian exclusion
         is_vegetarian = any(
@@ -270,6 +319,93 @@ class SpatialFilterService:
         # Sort by utility_score descending
         scored_pois.sort(key=lambda p: p.utility_score, reverse=True)
         return scored_pois
+
+    async def _query_tier_stratified(
+        self,
+        contract: LLMDataContract,
+        radius_m: float,
+        apply_budget: bool,
+        apply_tags: bool,
+        exclude_uuids: set,
+        limit: int,
+        query_vector: Optional[list],
+        db_session: AsyncSession,
+        distribution: dict,
+    ) -> List[POIResponse]:
+        """Category-stratified query: fetch POIs proportional to target distribution.
+
+        Instead of a single LIMIT N query (which biases toward high-priority
+        categories), this method runs per-category queries with proportional
+        limits, ensuring the POI pool reflects the user's requested mix.
+        """
+        # Compute per-category limits (minimum 2 per group to avoid starvation)
+        category_limits = {}
+        for group, ratio in distribution.items():
+            category_limits[group] = max(2, round(ratio * limit))
+
+        # Scale down if total exceeds limit
+        total_allocated = sum(category_limits.values())
+        if total_allocated > limit:
+            scale = limit / total_allocated
+            category_limits = {
+                k: max(2, round(v * scale))
+                for k, v in category_limits.items()
+            }
+
+        all_pois: List[POIResponse] = []
+        seen_uuids = set(exclude_uuids) if exclude_uuids else set()
+
+        for group, cat_limit in category_limits.items():
+            micro_categories = CATEGORY_GROUP_MAP.get(group)
+            if not micro_categories:
+                continue
+
+            # Include group name in filter set (matches both category and category_group)
+            filter_set = micro_categories | {group}
+
+            group_pois = await self._query_tier(
+                contract=contract,
+                radius_m=radius_m,
+                apply_budget=apply_budget,
+                apply_tags=apply_tags,
+                exclude_uuids=seen_uuids,
+                limit=cat_limit,
+                query_vector=query_vector,
+                db_session=db_session,
+                category_filter=filter_set,
+            )
+
+            for p in group_pois:
+                seen_uuids.add(p.uuid)
+            all_pois.extend(group_pois)
+
+            logger.debug(
+                f"Stratified [{group}]: {len(group_pois)}/{cat_limit} POIs"
+            )
+
+        # Fill remaining slots with any category (catches uncategorized POIs)
+        remaining = limit - len(all_pois)
+        if remaining > 0:
+            overflow_pois = await self._query_tier(
+                contract=contract,
+                radius_m=radius_m,
+                apply_budget=apply_budget,
+                apply_tags=apply_tags,
+                exclude_uuids=seen_uuids,
+                limit=remaining,
+                query_vector=query_vector,
+                db_session=db_session,
+            )
+            all_pois.extend(overflow_pois)
+            logger.debug(
+                f"Stratified [overflow]: {len(overflow_pois)}/{remaining} POIs"
+            )
+
+        logger.info(
+            f"Stratified sampling complete: {len(all_pois)} POIs "
+            f"(target distribution={distribution})"
+        )
+        return all_pois[:limit]
 
     @staticmethod
     def _row_to_poi(row, is_locked: bool) -> POIResponse:

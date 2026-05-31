@@ -1,4 +1,4 @@
-﻿@import "leaflet/dist/leaflet.css";
+@import "leaflet/dist/leaflet.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -75,3 +75,61 @@ button { cursor: pointer; }
   55% { transform: translateX(95%); }
   100% { transform: translateX(250%); }
 }
+
+@media print {
+  /* Hide non-printable elements */
+  header, footer, nav,
+  .no-print,
+  button,
+  .leaflet-control-container,
+  input,
+  textarea {
+    display: none !important;
+  }
+
+  /* Reset body and root backgrounds */
+  body, html {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    font-family: "Segoe UI", Roboto, sans-serif !important;
+  }
+
+  /* Reset main column grid to normal block layout */
+  main {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide Chat panel column (first grid child) and Control panel column (third child) */
+  main > div:first-child,
+  main > div:last-child {
+    display: none !important;
+  }
+
+  /* Make middle column fill page */
+  main > div:nth-child(2) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure no elements inside the list are clipped by scrollbar wrappers */
+  .overflow-y-auto,
+  .overflow-x-hidden,
+  .custom-scrollbar {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Force print styling for cards and text alignment */
+  .bg-white {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+}
+

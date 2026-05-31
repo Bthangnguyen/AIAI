@@ -57,7 +57,7 @@ class ItineraryEditorService:
         itinerary: Dict[str, Any],
         target: str,
         target_day: int | None = None,
-        target_count: int = 1,
+        target_count: int = 999,
         micro_tags: Optional[list[str]] = None,
         category: str | None = None,
     ) -> Dict[str, Any]:
@@ -129,13 +129,21 @@ class ItineraryEditorService:
         draft["message"] = f"Đã thêm {poi.name} vào ngày {self._display_day(day)}."
         return self._finalize(draft)
 
-    def replace_stop(self, itinerary: Dict[str, Any], old_name: str, new_poi: POIResponse) -> Dict[str, Any]:
+    def replace_stop(
+        self,
+        itinerary: Dict[str, Any],
+        old_name: str,
+        new_poi: POIResponse,
+        target_day: int | None = None,
+    ) -> Dict[str, Any]:
         draft = self._clone_and_normalize(itinerary)
         target_norm = _normalize(old_name)
         target_tokens = _tokens(old_name)
         replaced = False
 
         for day in draft.get("days", []):
+            if target_day is not None and self._display_day(day) != target_day:
+                continue
             next_stops = []
             for stop in day.get("stops", []):
                 if not replaced and self._matches_stop(stop, target_norm, target_tokens):
@@ -324,6 +332,17 @@ class ItineraryEditorService:
         micro_tags: Optional[list[str]] = None,
         category: str | None = None,
     ) -> bool:
+        hay_norm = _normalize(stop.get("poi_name") or "")
+        concept_aliases = {
+            "dai noi": ("dai noi", "citadel", "kinh thanh", "hoang thanh"),
+            "song huong": ("song huong", "perfume river", "sunrise boat", "thuyen rong", "ca hue"),
+            "thien mu": ("thien mu", "chua thien mu"),
+        }
+        for concept, aliases in concept_aliases.items():
+            if concept in target_norm:
+                if any(alias in hay_norm for alias in aliases):
+                    return True
+
         fields = [
             stop.get("poi_id"),
             stop.get("id"),
@@ -344,7 +363,16 @@ class ItineraryEditorService:
             return True
         if target_tokens:
             hay_tokens = set(haystack.split())
-            return len(target_tokens.intersection(hay_tokens)) >= min(2, len(target_tokens))
+            generic_tokens = {"nha", "hang", "quan", "an", "ca", "phe", "chua", "lang", "tour", "diem", "tham", "quan", "du", "lich", "hue"}
+            filtered_target = target_tokens - generic_tokens
+            filtered_hay = hay_tokens - generic_tokens
+            if filtered_target:
+                intersection = filtered_target.intersection(filtered_hay)
+                req = max(2, len(filtered_target) // 2 + 1) if len(filtered_target) >= 2 else 1
+                return len(intersection) >= req
+            else:
+                intersection = target_tokens.intersection(hay_tokens)
+                return len(intersection) >= min(2, len(target_tokens))
         return False
 
     def _retime_day(self, day: Dict[str, Any]) -> None:

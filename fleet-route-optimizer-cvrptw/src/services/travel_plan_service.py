@@ -236,12 +236,16 @@ class TravelPlanService:
         # 8. Assemble response
         total_pois_visited = sum(len([s for s in day.stops if not str(s.poi_id).startswith("__")]) for day in days_result)
         total_pois_dropped = max(0, len(request.pois) - total_pois_visited)
+        total_distance = sum(day.total_distance_km for day in days_result)
+        total_travel = sum(day.total_travel_min for day in days_result)
         return TravelItinerary(
             status="success",
             num_days=len(days_result),
             days=days_result,
             total_pois_visited=total_pois_visited,
             total_pois_dropped=total_pois_dropped,
+            total_distance_km=round(total_distance, 2),
+            total_travel_min=total_travel,
             message="Itinerary planned successfully",
             validation_notes=validation_notes,
         )

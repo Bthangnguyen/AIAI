@@ -256,7 +256,8 @@ class TravelPlanService:
 
         try:
             self._is_busy = True
-            remaining = list(request.remaining_pois)
+            remaining_ids = set(request.remaining_poi_ids)
+            remaining = [p for p in request.pois if p.id in remaining_ids]
 
             # Remove excluded
             if request.excluded_poi_ids:

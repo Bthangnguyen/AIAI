@@ -194,7 +194,7 @@ export function ItineraryMap({
 
       const coordsString = positions.map(([lat, lng]) => `${lng},${lat}`).join(";")
       const cacheKey = `${day.dayNumber}-${coordsString}`
-      const dayColor = dayColors[index % dayColors.length]
+      const dayColor = dayColors[(day.dayNumber - 1) % dayColors.length]
 
       const drawRoute = (coords: [number, number][]) => {
         const sourceId = `route-source-day-${day.dayNumber}`
@@ -420,12 +420,6 @@ function MapMarkerPopup({ marker }: { marker: MarkerEntry }) {
             {categoryInfo.name}
           </span>
         </div>
-        
-        {marker.poi.rating > 0 && (
-          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 text-[10px] font-bold border border-amber-500/20">
-            ⭐ {marker.poi.rating.toFixed(1)}
-          </span>
-        )}
       </div>
 
       <div className="mb-2">

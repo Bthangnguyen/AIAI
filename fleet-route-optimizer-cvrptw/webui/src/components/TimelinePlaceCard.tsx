@@ -35,12 +35,18 @@ export function TimelinePlaceCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-travel/15 px-2.5 py-1 text-[11px] font-bold text-travel">{poi.category}</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-950/70">
-              <Star className="h-3 w-3 fill-warning text-warning" /> {poi.rating}
-            </span>
           </div>
           <h4 className="mt-2 text-sm font-black text-orange-950">{poi.name}</h4>
-          <p className="mt-1 text-xs leading-5 text-orange-950/60">{poi.description}</p>
+          {item.vibe_note ? (
+            <div className="mt-2 rounded-xl bg-violet-50 border border-violet-100 p-2.5 text-xs text-violet-950 leading-relaxed shadow-sm">
+              <span className="inline-flex items-center gap-1 font-extrabold text-violet-700 mb-1">
+                💡 AI Tour Guide gợi ý:
+              </span>
+              <p className="italic font-medium">{item.vibe_note}</p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs leading-5 text-orange-950/60">{poi.description}</p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col gap-1">
           <button

@@ -83,6 +83,9 @@ function deriveAverageTravelMinutes(draft?: ItineraryDraft): number {
   if (!draft?.days.length) return 0
   const totalTravel = draft.days.reduce((sum, day) => {
     return sum + day.items.reduce((daySum, item) => {
+      if (item.travel_time_from_prev_min !== undefined) {
+        return daySum + item.travel_time_from_prev_min
+      }
       const match = item.note.match(/di chuyển tiếp\s+(\d+)\s+phút/i)
       return daySum + (match ? Number(match[1]) : 0)
     }, 0)

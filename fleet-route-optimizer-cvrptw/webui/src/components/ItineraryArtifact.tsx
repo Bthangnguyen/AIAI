@@ -58,6 +58,7 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
             key={day.dayNumber}
             day={day}
             selectedPoiId={selectedPoiId}
+            startDate={draft.startDate}
             isManualOrder={draft.manualDayNumbers?.includes(day.dayNumber)}
             onSelectPoi={onSelectPoi}
             onHoverPoi={onHoverPoi}

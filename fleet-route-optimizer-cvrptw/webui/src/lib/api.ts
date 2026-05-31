@@ -111,6 +111,9 @@ interface Layer4Stop {
   visit_duration_min?: number
   entrance_fee?: number
   location?: { latitude: number; longitude: number }
+  travel_time_from_prev_min?: number
+  travel_time_to_next_min?: number
+  vibe_note?: string
 }
 
 interface Layer4Day {
@@ -290,6 +293,9 @@ export function mapLayer4ResultToDraft(
           poiId: stop.poi_id,
           time: minutesToTime(stop.arrival_time_min),
           note: stop.poi_name ?? "",
+          travel_time_from_prev_min: stop.travel_time_from_prev_min,
+          travel_time_to_next_min: stop.travel_time_to_next_min,
+          vibe_note: stop.vibe_note,
         }
       })
 

@@ -668,6 +668,14 @@ export default function Page() {
     setPrompt("")
   }
 
+  function handleStartDateChange(date: string) {
+    if (!draft) return
+    setDraft({
+      ...draft,
+      startDate: date,
+    })
+  }
+
   function backHome() {
     setScreen("home")
   }
@@ -718,6 +726,7 @@ export default function Page() {
             onShowRouteLinesChange={setShowRouteLines}
             onShowCostChange={setShowCost}
             onShowCategoriesChange={setShowCategories}
+            onStartDateChange={handleStartDateChange}
             onFitMap={() => setFitSignal((value) => value + 1)}
             onAddPoi={handleAddPoiBackend}
             onRemovePlace={handleRemovePlaceBackend}
@@ -748,7 +757,7 @@ export default function Page() {
         userName={user?.displayName}
         userEmail={user?.email}
       />
-      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => void handleGoogleAuthContinue()} configured={firebaseConfigured} isLoading={authLoading || isRunning} />
+      <MockAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onContinue={() => { setShowAuthModal(false); if (prompt.trim()) void continueAfterAuth() }} configured={firebaseConfigured} isLoading={authLoading || isRunning} />
       <Toast variant={toastVariant} message={toastMessage} onClose={() => { setToastMessage(null); setUndoState(null) }} />
     </>
   )

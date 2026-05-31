@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
 
-    @property
     @computed_field
+    @property
     def sql_url(self) -> PostgresDsn:
         return MultiHostUrl.build(
             scheme="postgresql+psycopg",

@@ -37,9 +37,9 @@ def test_impossible_time_windows():
     p03 = next(p for p in all_pois if p.id == "P03")
     
     # Bóp nghẹt thời gian
-    p01.time_window = TimeWindow(start_min=480, end_min=540) # 08:00 - 09:00
+    p01.time_window = TimeWindow(start_min=480, end_min=510) # 08:00 - 08:30
     p01.visit_duration_min = 40
-    p03.time_window = TimeWindow(start_min=495, end_min=540) # 08:15 - 09:00
+    p03.time_window = TimeWindow(start_min=495, end_min=510) # 08:15 - 08:30
     p03.visit_duration_min = 40
     
     hotel = Hotel(id="hotel_1", name="Ga Hue", location=hotel_poi.location)

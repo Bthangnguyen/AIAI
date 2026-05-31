@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 class DistanceCacheService:
     """Manages a SQLite cache of distances and travel times between locations."""
 
+    osrm_offline = False
+
     # OSRM driving durations are often too optimistic for tourist itineraries:
     # no parking, pickup/dropoff, traffic lights, walking to entrance, or Hue
     # urban traffic friction. Clamp to realistic door-to-door speeds.
@@ -207,6 +209,10 @@ class DistanceCacheService:
 
     def _fetch_osrm_table(self, locs: List[Location], hashes: List[str], mode: TransportMode):
         """Fetch full distance/duration table from OSRM and save to DB."""
+        if DistanceCacheService.osrm_offline:
+            logger.warning("OSRM is marked offline. Skipping table fetch.")
+            return
+
         if not locs:
             return
             
@@ -256,3 +262,4 @@ class DistanceCacheService:
                     logger.warning(f"OSRM returned non-Ok code: {data.get('code')}")
         except Exception as e:
             logger.error(f"Failed to fetch OSRM table: {e}")
+            DistanceCacheService.osrm_offline = True

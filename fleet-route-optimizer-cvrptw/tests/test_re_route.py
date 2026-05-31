@@ -55,7 +55,7 @@ class TestReRoute:
             excluded_poi_ids=["b"],
         )
 
-        result = service.re_route(request)
+        result = service.re_route(request, time_limit=2)
 
         assert isinstance(result, TravelItineraryDay)
         # The solver may or may not find a solution with empty matrix,

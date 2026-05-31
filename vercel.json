@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd fleet-route-optimizer-cvrptw/webui && npm run build",
-  "installCommand": "cd fleet-route-optimizer-cvrptw/webui && npm install",
-  "outputDirectory": "fleet-route-optimizer-cvrptw/webui/.next",
-  "framework": "nextjs"
-}

@@ -531,8 +531,9 @@ async def _run_pipeline(
     semantic_terms.extend(getattr(contract, "tags", None) or [])
     semantic_terms.extend(getattr(contract, "food_preferences", None) or [])
     semantic_terms.extend(getattr(contract, "avoid_tags", None) or [])
-    if getattr(contract, "trip_type", None):
-        semantic_terms.append(contract.trip_type)
+    trip_type = getattr(contract, "trip_type", None)
+    if trip_type:
+        semantic_terms.append(trip_type)
     semantic_terms = [str(t).strip() for t in semantic_terms if str(t).strip()]
 
     # Locked POIs are force-included separately. Keeping their names out of the

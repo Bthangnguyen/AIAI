@@ -114,6 +114,32 @@ export default function Page() {
   }, [user?.uid])
 
   useEffect(() => {
+    if (!user || user.isAnonymous) return
+    
+    async function mergeLocalDrafts() {
+      try {
+        const { getSavedDrafts, saveDraftForUser } = await import("@/lib/storage")
+        const localDrafts = getSavedDrafts()
+        if (localDrafts.length === 0) return
+        
+        for (const localDraft of localDrafts) {
+          await saveDraftForUser(localDraft, user!.uid)
+        }
+        
+        window.localStorage.removeItem("tripflow-saved-drafts")
+        showToast(`Đã tự động đồng bộ ${localDrafts.length} lịch trình nháp lên tài khoản Cloud của anh!`, "success")
+        
+        const updatedItems = await getSavedDraftsForUser(user!.uid)
+        setSavedDrafts(updatedItems)
+      } catch (e) {
+        console.error("Lỗi đồng bộ lịch trình nháp:", e)
+      }
+    }
+    
+    void mergeLocalDrafts()
+  }, [user?.uid])
+
+  useEffect(() => {
     if (!draft) return
     const totals = draftTotals(draft)
     

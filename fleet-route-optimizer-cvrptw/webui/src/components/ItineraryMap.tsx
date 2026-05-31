@@ -306,6 +306,7 @@ export function ItineraryMap({
           onStepChange={onJourneyStepChange}
           onFinish={onJourneyFinish}
           selectedDay={selectedDay}
+          map={mapRef.current}
         />
       ) : null}
     </div>

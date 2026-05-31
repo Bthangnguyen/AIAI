@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import L from "leaflet"
-import { useMap } from "react-leaflet"
 import type { ItineraryDay, POI } from "@/types/trip"
 import { getPoi } from "@/lib/mockItineraryFallback"
 
@@ -12,6 +10,7 @@ interface JourneyPlaybackProps {
   onStepChange: (poiId: string, stepIndex: number) => void
   onFinish: () => void
   selectedDay: number | "all"
+  map: mapboxgl.Map | null
 }
 
 interface PlaybackMarker {
@@ -20,8 +19,7 @@ interface PlaybackMarker {
   time: string
 }
 
-export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selectedDay }: JourneyPlaybackProps) {
-  const map = useMap()
+export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selectedDay, map }: JourneyPlaybackProps) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stepRef = useRef(0)
   const playingRef = useRef(false)
@@ -38,7 +36,7 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
     )
 
   useEffect(() => {
-    if (!isPlaying || markers.length === 0) {
+    if (!isPlaying || markers.length === 0 || !map) {
       playingRef.current = false
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       return
@@ -48,7 +46,7 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
     stepRef.current = 0
 
     function playStep() {
-      if (!playingRef.current) return
+      if (!playingRef.current || !map) return
       const index = stepRef.current
       if (index >= markers.length) {
         onFinish()
@@ -58,7 +56,12 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
       const marker = markers[index]
       const zoom = index === 0 ? 13 : 15
 
-      map.flyTo([marker.poi.lat, marker.poi.lng], zoom, { duration: 1.5 })
+      map.flyTo({
+        center: [marker.poi.lng, marker.poi.lat],
+        zoom,
+        essential: true,
+        duration: 1500
+      })
       onStepChange(marker.poi.id, index)
 
       stepRef.current++
@@ -66,8 +69,16 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
     }
 
     // Start: zoom out first to show all points
-    const bounds = L.latLngBounds(markers.map(m => [m.poi.lat, m.poi.lng]))
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 })
+    const bounds = markers.reduce(
+      (acc, m) => {
+        return [
+          [Math.min(acc[0][0], m.poi.lng), Math.min(acc[0][1], m.poi.lat)],
+          [Math.max(acc[1][0], m.poi.lng), Math.max(acc[1][1], m.poi.lat)]
+        ]
+      },
+      [[markers[0].poi.lng, markers[0].poi.lat], [markers[0].poi.lng, markers[0].poi.lat]]
+    )
+    map.fitBounds(bounds as [[number, number], [number, number]], { padding: 50, maxZoom: 13 })
 
     timeoutRef.current = setTimeout(playStep, 1500)
 
@@ -76,7 +87,7 @@ export function JourneyPlayback({ days, isPlaying, onStepChange, onFinish, selec
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying])
+  }, [isPlaying, map])
 
   return null
 }

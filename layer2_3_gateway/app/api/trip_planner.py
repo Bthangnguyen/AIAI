@@ -46,6 +46,66 @@ class UUIDEncoder(json_lib.JSONEncoder):
 def json_dumps(obj, **kwargs):
     return json_lib.dumps(obj, cls=UUIDEncoder, **kwargs)
 
+async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
+    if not itinerary or not itinerary.get("days"):
+        return itinerary
+    
+    from app.models.poi import PointOfInterest
+    from geoalchemy2.functions import ST_AsGeoJSON
+    from sqlalchemy import select
+    import json as json_lib
+    
+    poi_ids = set()
+    for day in itinerary.get("days", []):
+        for stop in day.get("stops", []):
+            pid = stop.get("poiId") or stop.get("poi_id")
+            if pid:
+                poi_ids.add(str(pid))
+                
+    if not poi_ids:
+        return itinerary
+        
+    POI = PointOfInterest
+    stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(list(poi_ids)))
+    
+    async with AsyncSessionFactory() as db_session:
+        res = await db_session.execute(stmt)
+        rows = res.all()
+        
+        poi_map = {}
+        for row in rows:
+            poi = row.PointOfInterest
+            geojson = json_lib.loads(row.geojson) if row.geojson else None
+            lat = geojson["coordinates"][1] if geojson else 0.0
+            lon = geojson["coordinates"][0] if geojson else 0.0
+            poi_map[str(poi.uuid)] = {
+                "name": poi.name,
+                "category": poi.category,
+                "description": poi.description or "",
+                "tags": poi.tags or [],
+                "entrance_fee": poi.entrance_fee or poi.price or 0.0,
+                "latitude": lat,
+                "longitude": lon
+            }
+            
+        for day in itinerary.get("days", []):
+            for stop in day.get("stops", []):
+                pid = stop.get("poiId") or stop.get("poi_id")
+                if pid and str(pid) in poi_map:
+                    p = poi_map[str(pid)]
+                    stop["poi_id"] = str(pid)
+                    stop["poi_name"] = stop.get("poi_name") or stop.get("name") or stop.get("note") or p["name"]
+                    stop["category"] = p["category"]
+                    stop["description"] = stop.get("description") or p["description"]
+                    stop["tags"] = p["tags"]
+                    stop["entrance_fee"] = p["entrance_fee"]
+                    stop["location"] = {
+                        "latitude": p["latitude"],
+                        "longitude": p["longitude"]
+                    }
+                    
+    return itinerary
+
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
@@ -788,6 +848,9 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
     user_uid = user.uid if user else "mock-uid-12345"
     logger.info(f"💬 chat_process called by user: {user_uid}")
     
+    if body.current_itinerary:
+        body.current_itinerary = await _enrich_itinerary_with_db(body.current_itinerary)
+    
     # Ghi log debug ra file để chẩn đoán chính xác
     try:
         with open("/tmp/gateway_debug.log", "a", encoding="utf-8") as f:
@@ -1188,6 +1251,8 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
     """Proxy re-route request from mobile to Layer 4. Requires Firebase Auth."""
     logger.info(f"🔄 re_route called by user: {user.uid}")
     try:
+        if body.original_itinerary:
+            body.original_itinerary = await _enrich_itinerary_with_db(body.original_itinerary)
         result = await layer4_client.re_route(
             current_lat=body.current_lat,
             current_lon=body.current_lon,

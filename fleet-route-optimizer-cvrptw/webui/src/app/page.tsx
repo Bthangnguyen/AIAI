@@ -480,28 +480,48 @@ export default function Page() {
 
   function buildOriginalItinerary(currentDraft: ItineraryDraft) {
     return {
-      days: currentDraft.days.map((d) => ({
-        day_index: d.dayNumber - 1,
-        date: `Day ${d.dayNumber}`,
-        hotel_name: currentDraft.destination + " Hotel",
-        hotel_location: { latitude: 16.4637, longitude: 107.5905 },
-        stops: d.items.map((item) => ({
-          poi_id: item.poiId,
-          poi_name: POI_CACHE.get(item.poiId)?.name || getPoi(item.poiId)?.name || "Unknown",
-          location: {
-            latitude: POI_CACHE.get(item.poiId)?.lat || getPoi(item.poiId)?.lat || 0,
-            longitude: POI_CACHE.get(item.poiId)?.lng || getPoi(item.poiId)?.lng || 0,
-          },
-          arrival_time_min: (() => {
-            const timeStr = item.time || "";
-            const [h, m] = timeStr.split(":").map(Number);
-            return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
-          })(),
-          visit_duration_min:
-            POI_CACHE.get(item.poiId)?.estimatedDurationMinutes || getPoi(item.poiId)?.estimatedDurationMinutes || 60,
-        })),
-      })),
-    }
+      num_days: currentDraft.days.length,
+      days: currentDraft.days.map((d, index) => {
+        const firstStopArrival = d.items[0] ? (() => {
+          const timeStr = d.items[0].time || "";
+          const [h, m] = timeStr.split(":").map(Number);
+          return isNaN(h) || isNaN(m) ? 480 : h * 60 + m;
+        })() : 480;
+        const startTimeMin = Math.max(0, firstStopArrival - (d.items[0]?.travel_time_from_prev_min ?? 15));
+
+        return {
+          day_index: index,
+          date: `Day ${d.dayNumber}`,
+          start_time_min: (d as any).start_time_min ?? startTimeMin,
+          hotel_name: currentDraft.destination + " Hotel",
+          hotel_location: { latitude: 16.4637, longitude: 107.5905 },
+          stops: d.items.map((item) => {
+            const cachedPoi = POI_CACHE.get(item.poiId) || getPoi(item.poiId);
+            return {
+              poi_id: item.poiId,
+              poi_name: item.note || cachedPoi?.name || "Unknown",
+              category: cachedPoi?.category || "general",
+              description: cachedPoi?.description || item.vibe_note || "",
+              vibe_note: item.vibe_note || "",
+              location: {
+                latitude: cachedPoi?.lat || 0,
+                longitude: cachedPoi?.lng || 0,
+              },
+              arrival_time_min: (() => {
+                const timeStr = item.time || "";
+                const [h, m] = timeStr.split(":").map(Number);
+                return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
+              })(),
+              visit_duration_min: cachedPoi?.estimatedDurationMinutes || 60,
+              entrance_fee: cachedPoi?.estimatedCost || 0,
+              price: cachedPoi?.estimatedCost || 0,
+              travel_time_from_prev_min: item.travel_time_from_prev_min,
+              travel_time_to_next_min: item.travel_time_to_next_min,
+            };
+          }),
+        };
+      }),
+    };
   }
 
   async function runReRouteForDay(dayIndex: number, remainingPoiIds: string[], excludedPoiIds: string[] = []) {

@@ -921,13 +921,13 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
     if getattr(body, "has_draft", False):
         deterministic_intent = EditIntentPlanner().build(body.message or "")
         if not is_edit_confirmation and not (edit_intent and getattr(edit_intent, "operations", None)) and deterministic_intent.operations:
-            edit_intent = deterministic_intent
-            pending_edit_plan = None
+            edit_intent = None
+            pending_edit_plan = deterministic_intent.constraints
             result["edit_intent"] = deterministic_intent
-            result["pending_edit_plan"] = None
-            result["status"] = "ready"
+            result["pending_edit_plan"] = deterministic_intent.constraints
+            result["status"] = "clarifying"
             result["phase"] = "editing"
-            result["requires_confirmation"] = False
+            result["requires_confirmation"] = True
             result["reply"] = deterministic_intent.constraints.get("assistant_reply") or result.get("reply")
     if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
         from app.services.itinerary_editor import ItineraryEditorService

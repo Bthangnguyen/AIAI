@@ -54,6 +54,7 @@ async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
     from geoalchemy2.functions import ST_AsGeoJSON
     from sqlalchemy import select
     import json as json_lib
+    import uuid
     
     poi_ids = set()
     for day in itinerary.get("days", []):
@@ -65,8 +66,19 @@ async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
     if not poi_ids:
         return itinerary
         
+    valid_poi_ids = []
+    for pid in poi_ids:
+        try:
+            uuid.UUID(str(pid))
+            valid_poi_ids.append(str(pid))
+        except ValueError:
+            continue
+            
+    if not valid_poi_ids:
+        return itinerary
+        
     POI = PointOfInterest
-    stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(list(poi_ids)))
+    stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(valid_poi_ids))
     
     async with AsyncSessionFactory() as db_session:
         res = await db_session.execute(stmt)
@@ -1273,15 +1285,23 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
                     
                     new_poi_ids = [pid for pid in body.remaining_poi_ids if pid not in existing_poi_ids and not pid.startswith("__")]
                     
-                    if new_poi_ids:
-                        logger.info(f"🔍 Found new POI IDs to enrich in re-route: {new_poi_ids}")
+                    valid_new_poi_ids = []
+                    for pid in new_poi_ids:
+                        try:
+                            uuid.UUID(str(pid))
+                            valid_new_poi_ids.append(str(pid))
+                        except ValueError:
+                            continue
+                            
+                    if valid_new_poi_ids:
+                        logger.info(f"🔍 Found new POI IDs to enrich in re-route: {valid_new_poi_ids}")
                         from app.models.poi import PointOfInterest
                         from geoalchemy2.functions import ST_AsGeoJSON
                         from sqlalchemy import select
                         import json as json_lib
                         
                         POI = PointOfInterest
-                        stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(new_poi_ids))
+                        stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(POI.uuid.in_(valid_new_poi_ids))
                         
                         async with AsyncSessionFactory() as db_session:
                             res = await db_session.execute(stmt)

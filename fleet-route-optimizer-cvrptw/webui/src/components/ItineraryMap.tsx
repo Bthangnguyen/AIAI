@@ -412,7 +412,7 @@ function MapMarkerPopup({ marker }: { marker: MarkerEntry }) {
   const imageUrl = getPOIImage(marker.poi.name, categoryInfo.name)
   
   return (
-    <div className="p-2 pb-4 min-w-[250px] max-w-[290px] font-sans antialiased text-sm">
+    <div className="p-1 w-[265px] font-sans antialiased text-sm">
       <div className="flex items-center justify-between gap-2 border-b border-orange-100/60 pb-1.5 mb-2">
         <div className="flex items-center gap-1.5">
           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${categoryInfo.bgClass}`}>

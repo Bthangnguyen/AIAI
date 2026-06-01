@@ -480,6 +480,7 @@ class Layer4Client:
                 "entrance_fee": stop.get("entrance_fee", 0),
                 "priority_score": stop.get("priority_score", 0.8),
                 "price": stop.get("price", 0.0),
+                "description": stop.get("description") or stop.get("vibe_note"),
             })
 
         hotel_name = target_day.get("end_hotel_name") or target_day.get("start_hotel_name") or target_day.get("hotel_name", "Hotel")
@@ -534,6 +535,8 @@ class Layer4Client:
                             orig = stop_map[poi_id]
                             stop["category"] = orig.get("category")
                             stop["description"] = orig.get("description")
+                            if orig.get("vibe_note"):
+                                stop["vibe_note"] = orig.get("vibe_note")
                 return result
         except httpx.HTTPError as e:
             logger.error(f"Layer 4 re-route failed: {e}")

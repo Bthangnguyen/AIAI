@@ -107,7 +107,12 @@ async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
                     stop["poi_id"] = str(pid)
                     stop["poi_name"] = stop.get("poi_name") or stop.get("name") or stop.get("note") or p["name"]
                     stop["category"] = p["category"]
-                    stop["description"] = stop.get("description") or p["description"]
+                    vnote = stop.get("vibe_note")
+                    if vnote:
+                        stop["vibe_note"] = vnote
+                        stop["description"] = vnote
+                    else:
+                        stop["description"] = stop.get("description") or p["description"]
                     stop["tags"] = p["tags"]
                     stop["entrance_fee"] = p["entrance_fee"]
                     stop["location"] = {

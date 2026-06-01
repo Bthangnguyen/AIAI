@@ -134,6 +134,9 @@ button { cursor: pointer; }
 }
 
 /* Custom Mapbox Popup styling for premium look */
+.custom-mapbox-popup {
+  max-width: 320px !important;
+}
 .custom-mapbox-popup .mapboxgl-popup-content {
   padding: 12px 12px 20px !important;
   border-radius: 16px !important;

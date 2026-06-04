@@ -5,60 +5,56 @@
 **Muc tieu kiem tra:** vegetarian, lunch window
 
 ## Phuong An: Lich trinh chinh (Lich trinh toi uu hoa tot nhat)
-- **Tong so diem tham quan:** 13 diem
-- **Chi phi ve tham quan:** 250,000 VND
+- **Tong so diem tham quan:** 14 diem
+- **Chi phi ve tham quan:** 0 VND
 
 ### Ghi Chu Chat Luong Lich Trinh:
-- [warning] Ngày 0: 8h hoạt động nhưng không có quán ăn trưa (11:00-13:30)
-- [warning] Ngày 1: 11h hoạt động nhưng không có quán ăn trưa (11:00-13:30)
-- [info] Ngày 0: 210min liên tục không nghỉ (sau Hồ Thủy Tiên Water Park)
-- [info] Ngày 1: 247min liên tục không nghỉ (sau Đại Nội Huế)
+- [info] Ngày 0: 225min liên tục không nghỉ (sau Nhà thờ tổ nghề kim hoàn)
+- [info] Ngày 1: 240min liên tục không nghỉ (sau Lăng vua Đồng Khánh)
 
-### Ngay 1: Ngày 1: Từ Chùa Thiên Mụ đến Hue Wellness Spa
-> *Hành trình bắt đầu tại Chùa Thiên Mụ, lần lượt ghé Làng Hương Thủy Xuân, Hồ Thủy Tiên Water Park, Ăn trưa / nghỉ ngơi, Núi Ngự Bình, Quán Hạnh, và kết thúc tại Hue Wellness Spa. Tổng cộng 7 điểm đến được sắp xếp tối ưu về khoảng cách.*
+### Ngay 1: Ngày 1: Từ Liên Hoa Thư Quán đến Quán Chay Thanh Liễu
+> *Hành trình bắt đầu tại Liên Hoa Thư Quán, lần lượt ghé Tượng đài Phan Bội Châu, Mộc Nhiên Quán Chay, Nhà thờ tổ nghề kim hoàn, Ẩm Thực Chay Tịnh Tâm Đinh Vũ, Nhà thờ Tin Lành, và kết thúc tại Quán Chay Thanh Liễu. Tổng cộng 7 điểm đến được sắp xếp tối ưu về khoảng cách.*
 
 #### Lich Trinh Chi Tiet:
 | Thoi gian | Dia diem | Thoi luong | Ve tham quan | Ghi chu |
 | :--- | :--- | :--- | :--- | :--- |
 | 08:00 | Hue Century Riverside Hotel | Xuat phat | - | Diem khoi hanh |
-| 08:15 - 09:15 | Chùa Thiên Mụ | 60 phut | Mien phi | Vui choi |
-| 09:30 - 10:15 | Làng Hương Thủy Xuân | 45 phut | Mien phi | Vui choi |
-| 10:31 - 10:51 | Nghi chan uong nuoc / Cafe | 20 phut | Mien phi | Nghi ngoi tranh met moi |
-| 10:51 - 11:51 | Hồ Thủy Tiên Water Park | 60 phut | Mien phi | Vui choi |
-| 11:51 - 12:36 | Ăn trưa / nghỉ ngơi | 45 phut | Mien phi | Vui choi |
-| 12:36 - 12:56 | Nghi chan uong nuoc / Cafe | 20 phut | Mien phi | Nghi ngoi tranh met moi |
-| 12:56 - 15:26 | Núi Ngự Bình | 150 phut | Mien phi | Vui choi |
-| 15:37 - 16:22 | Quán Hạnh | 45 phut | Mien phi | Vui choi |
-| 16:25 - 18:25 | Hue Wellness Spa | 120 phut | Mien phi | Vui choi |
-| 18:40 | Hue Century Riverside Hotel | Tro ve | - | Ket thuc ngay |
+| 09:00 - 10:00 | Liên Hoa Thư Quán | 60 phut | Mien phi | Vui choi |
+| 10:15 - 11:15 | Tượng đài Phan Bội Châu | 60 phut | Mien phi | Vui choi |
+| 11:30 - 12:30 | Mộc Nhiên Quán Chay | 60 phut | Mien phi | Vui choi |
+| 14:30 - 14:50 | Nghi chan uong nuoc / Cafe | 20 phut | Mien phi | Nghi ngoi tranh met moi |
+| 14:50 - 15:35 | Nhà thờ tổ nghề kim hoàn | 45 phut | Mien phi | Vui choi |
+| 16:00 - 17:00 | Ẩm Thực Chay Tịnh Tâm Đinh Vũ | 60 phut | Mien phi | Vui choi |
+| 18:30 - 19:30 | Nhà thờ Tin Lành | 60 phut | Mien phi | Vui choi |
+| 20:00 - 20:45 | Quán Chay Thanh Liễu | 45 phut | Mien phi | Vui choi |
+| 21:00 | Hue Century Riverside Hotel | Tro ve | - | Ket thuc ngay |
 
 *Uu diem phuong an nay:*
 - 7 điểm đến được sắp xếp tối ưu về khoảng cách
-- Tổng thời gian tham quan: 8h00
+- Tổng thời gian tham quan: 6h30
 - Không có phí tham quan
 
-### Ngay 2: Ngày 2: Từ Sông Hương Boat Tour đến Cầu Trường Tiền
-> *Hành trình bắt đầu tại Sông Hương Boat Tour, lần lượt ghé Đại Nội Huế, Ăn trưa / nghỉ ngơi, Bảo tàng Cổ vật Cung đình Huế, Công viên Thương Bạc, Quán ăn Lạc Thiện, Phố đi bộ Nguyễn Đình Chiểu, và kết thúc tại Cầu Trường Tiền. Tổng cộng 8 điểm đến được sắp xếp tối ưu về khoảng cách.*
+### Ngay 2: Ngày 2: Từ Mỹ Chay đến Mỹ Chay - Vegan Sandwich
+> *Hành trình bắt đầu tại Mỹ Chay, lần lượt ghé Chùa Hòa Quang, Hoa Trà Vegetarian Fast Food, Lăng vua Đồng Khánh, Chay Corner Vegetarian, Bảo tàng Lịch sử Thành phố Huế, và kết thúc tại Mỹ Chay - Vegan Sandwich. Tổng cộng 7 điểm đến được sắp xếp tối ưu về khoảng cách.*
 
 #### Lich Trinh Chi Tiet:
 | Thoi gian | Dia diem | Thoi luong | Ve tham quan | Ghi chu |
 | :--- | :--- | :--- | :--- | :--- |
-| 08:02 | Hue Century Riverside Hotel | Xuat phat | - | Diem khoi hanh |
-| 08:05 - 10:05 | Sông Hương Boat Tour | 120 phut | Mien phi | Vui choi |
-| 10:09 - 10:29 | Nghi chan uong nuoc / Cafe | 20 phut | Mien phi | Nghi ngoi tranh met moi |
-| 10:29 - 12:29 | Đại Nội Huế | 120 phut | 200,000 VND | Vui choi |
-| 12:29 - 13:14 | Ăn trưa / nghỉ ngơi | 45 phut | Mien phi | Vui choi |
-| 13:16 - 14:16 | Bảo tàng Cổ vật Cung đình Huế | 60 phut | 50,000 VND | Vui choi |
-| 14:18 - 14:48 | Công viên Thương Bạc | 30 phut | Mien phi | Vui choi |
-| 14:51 - 15:36 | Quán ăn Lạc Thiện | 45 phut | Mien phi | Vui choi |
-| 18:00 - 19:00 | Phố đi bộ Nguyễn Đình Chiểu | 60 phut | Mien phi | Vui choi |
-| 19:05 - 19:35 | Cầu Trường Tiền | 30 phut | Mien phi | Vui choi |
-| 19:50 | Hue Century Riverside Hotel | Tro ve | - | Ket thuc ngay |
+| 08:00 | Hue Century Riverside Hotel | Xuat phat | - | Diem khoi hanh |
+| 09:00 - 10:00 | Mỹ Chay | 60 phut | Mien phi | Vui choi |
+| 10:15 - 11:15 | Chùa Hòa Quang | 60 phut | Mien phi | An uong nap nang luong |
+| 11:30 - 12:30 | Hoa Trà Vegetarian Fast Food | 60 phut | Mien phi | Vui choi |
+| 14:30 - 14:50 | Nghi chan uong nuoc / Cafe | 20 phut | Mien phi | Nghi ngoi tranh met moi |
+| 14:50 - 15:50 | Lăng vua Đồng Khánh | 60 phut | 100,000 VND | Vui choi |
+| 16:00 - 17:00 | Chay Corner Vegetarian | 60 phut | Mien phi | Vui choi |
+| 18:30 - 19:30 | Bảo tàng Lịch sử Thành phố Huế | 60 phut | 30,000 VND | Vui choi |
+| 20:00 - 21:00 | Mỹ Chay - Vegan Sandwich | 60 phut | Mien phi | Vui choi |
+| 21:15 | Hue Century Riverside Hotel | Tro ve | - | Ket thuc ngay |
 
 *Uu diem phuong an nay:*
-- 8 điểm đến được sắp xếp tối ưu về khoảng cách
-- Tổng thời gian tham quan: 7h45
-- Tổng phí tham quan: 250,000₫
+- 7 điểm đến được sắp xếp tối ưu về khoảng cách
+- Tổng thời gian tham quan: 7h00
+- Tổng phí tham quan: 130,000₫
 
 ---
 

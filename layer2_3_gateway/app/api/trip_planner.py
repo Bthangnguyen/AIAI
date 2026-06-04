@@ -50,6 +50,50 @@ async def _enrich_itinerary_with_db(itinerary: dict) -> dict:
     if not itinerary or not itinerary.get("days"):
         return itinerary
     
+    import os
+    if os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true":
+        logger.info("Enriching itinerary offline via CSV dataset")
+        import csv
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        csv_file = os.path.join(base_dir, "ingestion", "sample_data", "hue_pois.csv")
+        poi_map = {}
+        if os.path.exists(csv_file):
+            with open(csv_file, mode="r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    poi_map[row["name"]] = {
+                        "name": row["name"],
+                        "category": row["category"],
+                        "description": row["description"] or "",
+                        "tags": [t.strip() for t in row["tags"].split(",") if t.strip()],
+                        "entrance_fee": float(row["entrance_fee"] or 0.0),
+                        "latitude": float(row["latitude"]),
+                        "longitude": float(row["longitude"])
+                    }
+                    
+        for day in itinerary.get("days", []):
+            for stop in day.get("stops", []):
+                sname = stop.get("poi_name") or stop.get("name")
+                p = None
+                if sname in poi_map:
+                    p = poi_map[sname]
+                else:
+                    for k, v in poi_map.items():
+                        if sname and (sname.lower() in k.lower() or k.lower() in sname.lower()):
+                            p = v
+                            break
+                if p:
+                    stop["poi_name"] = p["name"]
+                    stop["category"] = p["category"]
+                    stop["description"] = stop.get("description") or p["description"]
+                    stop["tags"] = p["tags"]
+                    stop["entrance_fee"] = p["entrance_fee"]
+                    stop["location"] = {
+                        "latitude": p["latitude"],
+                        "longitude": p["longitude"]
+                    }
+        return itinerary
+
     from app.models.poi import PointOfInterest
     from geoalchemy2.functions import ST_AsGeoJSON
     from sqlalchemy import select
@@ -634,54 +678,129 @@ async def _run_pipeline(
 
     # ──── PHASE B: DATABASE I/O (FLASH OPEN/CLOSE ~50ms) ────
     hotel_fallback = False
-    async with AsyncSessionFactory() as db_session:
+    import os
+    if os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true":
+        logger.info("MOCK_LLM is enabled: using local CSV database fallback (offline mode)")
         if contract.hotel_lat is None or contract.hotel_lon is None:
+            contract.hotel_name = "Hue default hotel"
+            contract.hotel_lat = 16.4637
+            contract.hotel_lon = 107.5905
             hotel_fallback = True
-            from sqlalchemy import select
-            from geoalchemy2.functions import ST_AsGeoJSON
-            from app.models.poi import PointOfInterest
-            import json as json_lib
             
-            POI = PointOfInterest
-            stmt = select(POI.name, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
-                POI.category.ilike("%Khách sạn%")
+        import csv
+        import math
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        csv_file = os.path.join(base_dir, "ingestion", "sample_data", "hue_pois.csv")
+        raw_pois = []
+        if os.path.exists(csv_file):
+            with open(csv_file, mode="r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    raw_pois.append({
+                        "uuid": uuid.UUID(row["uuid"]) if row.get("uuid") else uuid.uuid4(),
+                        "name": row["name"],
+                        "category": row["category"],
+                        "description": row["description"],
+                        "latitude": float(row["latitude"]),
+                        "longitude": float(row["longitude"]),
+                        "visit_duration_min": int(row["visit_duration_min"]),
+                        "price": float(row["price"]),
+                        "entrance_fee": float(row["entrance_fee"]),
+                        "open_time": int(row["open_time"]),
+                        "close_time": int(row["close_time"]),
+                        "priority_score": float(row.get("priority_score", 0.8)),
+                        "tags": [t.strip() for t in row["tags"].split(",") if t.strip()],
+                        "is_outdoor": row["is_outdoor"].lower() == "true",
+                    })
+        
+        scored = []
+        for p in raw_pois:
+            lat1, lon1, lat2, lon2 = contract.hotel_lat, contract.hotel_lon, p["latitude"], p["longitude"]
+            dist = math.sqrt((lat2 - lat1)**2 + (lon2 - lon1)**2) * 111.0
+            if dist > contract.radius_km:
+                continue
+            if contract.budget_max and p["entrance_fee"] > contract.budget_max:
+                continue
+                
+            score = p["priority_score"]
+            if contract.tags:
+                match_count = len(set(contract.tags).intersection(p["tags"]))
+                score += match_count * 0.1
+                
+            poi_resp = POIResponse(
+                uuid=p["uuid"],
+                name=p["name"],
+                category=p["category"],
+                description=p["description"],
+                latitude=p["latitude"],
+                longitude=p["longitude"],
+                visit_duration_min=p["visit_duration_min"],
+                price=p["price"],
+                entrance_fee=p["entrance_fee"],
+                open_time=p["open_time"],
+                close_time=p["close_time"],
+                priority_score=p["priority_score"],
+                tags=p["tags"],
+                is_locked=False,
+                utility_score=score
             )
-            if contract.budget_max:
-                stmt = stmt.where(POI.price <= contract.budget_max * 0.3)
-            stmt = stmt.order_by(POI.priority_score.desc()).limit(1)
+            if contract.locked_pois and any(lp.lower() in p["name"].lower() for lp in contract.locked_pois):
+                poi_resp.is_locked = True
+                poi_resp.utility_score = 0.99
+                
+            scored.append(poi_resp)
             
-            result = await db_session.execute(stmt)
-            row = result.first()
-            if row:
-                contract.hotel_name = row.name
-                geojson = json_lib.loads(row.geojson)
-                contract.hotel_lon = geojson["coordinates"][0]
-                contract.hotel_lat = geojson["coordinates"][1]
-                logger.info(f"🏨 Auto-selected hotel: {contract.hotel_name}")
-            else:
-                contract.hotel_name = "Hue Default Hotel"
-                contract.hotel_lat = 16.4637
-                contract.hotel_lon = 107.5905
-                logger.warning("No hotel found matching criteria, using default.")
+        scored.sort(key=lambda x: x.utility_score, reverse=True)
+        pois = scored[:50]
+    else:
+        async with AsyncSessionFactory() as db_session:
+            if contract.hotel_lat is None or contract.hotel_lon is None:
+                hotel_fallback = True
+                from sqlalchemy import select
+                from geoalchemy2.functions import ST_AsGeoJSON
+                from app.models.poi import PointOfInterest
+                import json as json_lib
+                
+                POI = PointOfInterest
+                stmt = select(POI.name, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
+                    POI.category.ilike("%Khách sạn%")
+                )
+                if contract.budget_max:
+                    stmt = stmt.where(POI.price <= contract.budget_max * 0.3)
+                stmt = stmt.order_by(POI.priority_score.desc()).limit(1)
+                
+                result = await db_session.execute(stmt)
+                row = result.first()
+                if row:
+                    contract.hotel_name = row.name
+                    geojson = json_lib.loads(row.geojson)
+                    contract.hotel_lon = geojson["coordinates"][0]
+                    contract.hotel_lat = geojson["coordinates"][1]
+                    logger.info(f"🏨 Auto-selected hotel: {contract.hotel_name}")
+                else:
+                    contract.hotel_name = "Hue Default Hotel"
+                    contract.hotel_lat = 16.4637
+                    contract.hotel_lon = 107.5905
+                    logger.warning("No hotel found matching criteria, using default.")
 
-        pois = await spatial_service.get_optimized_pois(
-            contract=contract,
-            db_session=db_session,
-            query_vector=query_vector,
-        )
-
-        required_micro_tags = _detect_required_micro_intents(contract, request.user_prompt)
-        if required_micro_tags:
-            required_pois = await _resolve_required_micro_pois(
+            pois = await spatial_service.get_optimized_pois(
                 contract=contract,
-                required_micro_tags=required_micro_tags,
                 db_session=db_session,
+                query_vector=query_vector,
             )
-            pois = _merge_required_micro_pois(pois, required_pois)
-            logger.info(
-                f"Required micro coverage: tags={required_micro_tags}, "
-                f"locked={len(required_pois)}, pool={len(pois)}"
-            )
+
+            required_micro_tags = _detect_required_micro_intents(contract, request.user_prompt)
+            if required_micro_tags:
+                required_pois = await _resolve_required_micro_pois(
+                    contract=contract,
+                    required_micro_tags=required_micro_tags,
+                    db_session=db_session,
+                )
+                pois = _merge_required_micro_pois(pois, required_pois)
+                logger.info(
+                    f"Required micro coverage: tags={required_micro_tags}, "
+                    f"locked={len(required_pois)}, pool={len(pois)}"
+                )
 
     return contract, pois, hotel_fallback
 

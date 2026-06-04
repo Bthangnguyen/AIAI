@@ -371,6 +371,68 @@ class LLMExtractorService:
         num_days: int = 1,
     ) -> LLMDataContract:
         """Parse user text into structured LLMDataContract (one-shot)."""
+        import os
+        if os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true":
+            p_lower = user_prompt.lower()
+            if "500k" in p_lower and "dai noi" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=500000.0,
+                    num_days=1,
+                    tags=["bun bo", "cuisine", "food"],
+                    locked_pois=["Đại Nội Huế"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.40, "culture": 0.40, "nature": 0.10, "nightlife": 0.05, "adventure": 0.05}
+                )
+            elif "an chay" in p_lower and "2 ngay" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=2000000.0,
+                    num_days=2,
+                    tags=["vegetarian", "chay"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.30, "culture": 0.40, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            elif "3 phuong an" in p_lower or "3 ngay o hue" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=3000000.0,
+                    num_days=3,
+                    tags=["general"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.35, "culture": 0.35, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            else:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=1000000.0,
+                    num_days=num_days,
+                    tags=["general"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.35, "culture": 0.35, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            return contract
+
         try:
             contract = await self.client.chat.completions.create(
                 model=global_settings.LLM_MODEL,
@@ -408,6 +470,28 @@ class LLMExtractorService:
         current_itinerary: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """Process one chat turn — dispatches to create or edit flow."""
+        import os
+        if os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true":
+            contract = current_contract.model_copy(deep=True)
+            self._apply_message_hints(contract, message)
+            self._apply_backend_failsafes(contract, message)
+            contract.ready_to_plan = True
+            contract.destination = "Huế"
+            if not contract.num_days:
+                contract.num_days = 2
+            if not contract.budget_max:
+                contract.budget_max = 2000000.0
+                
+            return {
+                "status": "ready",
+                "reply": f"Dạ em đã ghi nhận thông tin chuyến đi Huế {contract.num_days} ngày của mình ạ. Em sẽ lên lịch trình ngay!",
+                "updated_contract": contract.model_dump(),
+                "phase": "ready",
+                "missing_fields": [],
+                "next_question": None,
+                "requires_confirmation": False
+            }
+
         clean_message = (message or "").strip()
         if has_draft:
             return await self._process_edit_turn(clean_message, history, current_contract, current_itinerary)

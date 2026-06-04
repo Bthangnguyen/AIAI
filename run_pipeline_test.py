@@ -7,7 +7,8 @@ import asyncio
 from uuid import UUID, uuid4
 
 # 1. Load environment variables from travel.env
-env_file = r"D:\Workspaces\AI travel optimizer\Routing Engine\layer2_3_gateway\travel.env"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+env_file = os.path.join(base_dir, "layer2_3_gateway", "travel.env")
 if os.path.exists(env_file):
     with open(env_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -17,8 +18,8 @@ if os.path.exists(env_file):
                 os.environ[key.strip()] = val.strip()
 
 # 2. Setup path resolution
-GATEWAY_PATH = r"D:\Workspaces\AI travel optimizer\Routing Engine\layer2_3_gateway"
-SOLVER_PATH = r"D:\Workspaces\AI travel optimizer\Routing Engine\fleet-route-optimizer-cvrptw"
+GATEWAY_PATH = os.path.join(base_dir, "layer2_3_gateway")
+SOLVER_PATH = os.path.join(base_dir, "fleet-route-optimizer-cvrptw")
 
 sys.path.insert(0, GATEWAY_PATH)
 sys.path.insert(0, SOLVER_PATH)
@@ -225,7 +226,7 @@ async def run_pipeline_testcase(test_id: str, prompt: str, expected_desc: str):
     print(f"   -> Scheduling Vibe: {contract.vibe}, Pace: {contract.preferred_pace}")
 
     # Load local CSV sample database
-    csv_file = r"D:\Workspaces\AI travel optimizer\Routing Engine\layer2_3_gateway\ingestion\sample_data\hue_pois.csv"
+    csv_file = os.path.join(base_dir, "layer2_3_gateway", "ingestion", "sample_data", "hue_pois.csv")
     raw_pois = []
     with open(csv_file, mode="r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -397,7 +398,7 @@ async def run_pipeline_testcase(test_id: str, prompt: str, expected_desc: str):
     # 4. Generate beautiful user-facing Vietnamese Narrative Output (Layer 5/6)
     print("[4/4] Formatting completed itinerary story...")
     
-    output_dir = r"D:\Workspaces\AI travel optimizer\Routing Engine\testing"
+    output_dir = os.path.join(base_dir, "testing")
     os.makedirs(output_dir, exist_ok=True)
     
     md_content = f"# Ket Qua Test Pipeline: {test_id}\n\n"

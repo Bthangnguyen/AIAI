@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDERS: str = "groq"
     OPENAI_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+    DEEPSEEK_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"

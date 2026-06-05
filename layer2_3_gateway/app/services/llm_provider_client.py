@@ -39,6 +39,8 @@ class LLMProviderClient:
             return global_settings.OPENROUTER_API_KEY
         if provider == "shopaikey":
             return global_settings.OPENAI_API_KEY
+        if provider == "deepseek":
+            return global_settings.DEEPSEEK_API_KEY or global_settings.OPENAI_API_KEY
         if provider == "groq":
             return global_settings.GROQ_API_KEY
         return global_settings.OPENAI_API_KEY
@@ -63,6 +65,8 @@ class LLMProviderClient:
             return "https://openrouter.ai/api/v1"
         if provider == "shopaikey":
             return "https://api.shopaikey.com/v1"
+        if provider == "deepseek":
+            return "https://api.deepseek.com/v1"
         if provider == "groq":
             return "https://api.groq.com/openai/v1"
         return None
@@ -82,7 +86,7 @@ class LLMProviderClient:
         else:
             base_client = AsyncOpenAI(api_key=api_key)
 
-        if provider in {"shopaikey", "openrouter", "groq"}:
+        if provider in {"shopaikey", "openrouter", "groq", "deepseek"}:
             client = instructor.from_openai(base_client, mode=instructor.Mode.JSON)
         else:
             client = instructor.from_openai(base_client)

@@ -15,8 +15,17 @@ class SolverConfig(BaseModel):
 
 class TravelPlanRequest(BaseModel):
     """Request to create an optimized travel itinerary."""
-    pois: List[POI] = Field(..., description="List of candidate POIs (max 50, pre-filtered by Layer 3)")
-    hotels: List[Hotel] = Field(..., description="Hotels for each day/segment of the trip")
+    pois: List[POI] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="List of candidate POIs (max 50, pre-filtered by Layer 3)",
+    )
+    hotels: List[Hotel] = Field(
+        ...,
+        min_length=1,
+        description="Hotels for each day/segment of the trip",
+    )
     constraints: TravelConstraints = Field(..., description="Hard constraints from user")
     day_plans: Optional[List[DayPlan]] = Field(None, description="Custom day plans (auto-generated if None)")
     solver_config: Optional[SolverConfig] = Field(None, description="Solver tuning parameters")

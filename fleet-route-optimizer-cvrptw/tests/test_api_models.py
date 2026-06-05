@@ -1,5 +1,6 @@
 """Tests for travel API request/response models."""
 import pytest
+from pydantic import ValidationError
 from src.models.domain import (
     Location, TimeWindow, POI, Hotel, DayPlan,
     TravelConstraints, TransportMode,
@@ -102,3 +103,42 @@ class TestTravelPlanRequest:
         )
         total_fee = sum(p.entrance_fee for p in req.pois)
         assert total_fee > req.constraints.budget_total
+
+    def test_rejects_empty_pois(self):
+        with pytest.raises(ValidationError):
+            TravelPlanRequest(
+                pois=[],
+                hotels=[
+                    Hotel(
+                        id="h1",
+                        name="H",
+                        location=Location(latitude=10.77, longitude=106.70),
+                    ),
+                ],
+                constraints=TravelConstraints(num_days=1),
+            )
+
+    def test_rejects_more_than_fifty_pois(self):
+        pois = [
+            POI(
+                id=f"poi_{idx}",
+                name=f"POI {idx}",
+                category="museum",
+                location=Location(latitude=10.77, longitude=106.70),
+                visit_duration_min=60,
+            )
+            for idx in range(51)
+        ]
+
+        with pytest.raises(ValidationError):
+            TravelPlanRequest(
+                pois=pois,
+                hotels=[
+                    Hotel(
+                        id="h1",
+                        name="H",
+                        location=Location(latitude=10.77, longitude=106.70),
+                    ),
+                ],
+                constraints=TravelConstraints(num_days=1),
+            )

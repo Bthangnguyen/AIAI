@@ -28,7 +28,19 @@ class SolverFactory:
         Raises:
             HTTPException: If solver type is invalid or unavailable
         """
-        solver_type_lower = solver_type.lower()
+        if not isinstance(solver_type, str) or not solver_type.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Solver type must be a non-empty string. Valid options: 'ortools'",
+            )
+
+        if not isinstance(problem, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="Problem must be a dictionary",
+            )
+
+        solver_type_lower = solver_type.strip().lower()
         
         if solver_type_lower == SolverType.ORTOOLS:
             logger.info("Using OR-Tools solver")

@@ -33,9 +33,12 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     LLM_PROVIDER: str = "openai"
+    LLM_FALLBACK_PROVIDERS: str = "groq"
     OPENAI_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

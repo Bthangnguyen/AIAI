@@ -11,9 +11,6 @@ import re
 import unicodedata
 from typing import Optional, List, Dict, Tuple, Iterable, Any
 
-import instructor
-from openai import AsyncOpenAI
-
 from app.config import settings as global_settings
 from app.schemas.trip import (
     ChatProcessResponse,
@@ -24,6 +21,7 @@ from app.schemas.trip import (
 )
 from app.services.distribution_policy import apply_distribution_policy
 from app.services.edit_intent_planner import EditIntentPlanner
+from app.services.llm_provider_client import LLMProviderClient
 
 logger = logging.getLogger(__name__)
 
@@ -336,27 +334,19 @@ class LLMExtractorService:
 
     @property
     def client(self):
+        """Compatibility hook for tests that patch the raw Instructor client."""
         if self._client is None:
-            if global_settings.LLM_PROVIDER == "openrouter":
-                base_client = AsyncOpenAI(
-                    base_url="https://openrouter.ai/api/v1",
-                    api_key=global_settings.OPENROUTER_API_KEY,
-                )
-            elif global_settings.LLM_PROVIDER == "shopaikey":
-                base_client = AsyncOpenAI(
-                    base_url="https://api.shopaikey.com/v1",
-                    api_key=global_settings.OPENAI_API_KEY,
-                )
-            else:
-                base_client = AsyncOpenAI(api_key=global_settings.OPENAI_API_KEY)
-
-            # shopaikey/openrouter proxy to DeepSeek which doesn't support
-            # OpenAI function calling. Use JSON mode instead.
-            if global_settings.LLM_PROVIDER in ("shopaikey", "openrouter"):
-                self._client = instructor.from_openai(base_client, mode=instructor.Mode.JSON)
-            else:
-                self._client = instructor.from_openai(base_client)
+            primary_provider = LLMProviderClient._provider_order()[0]
+            self._client = LLMProviderClient._client_for(primary_provider)
         return self._client
+
+    async def _create_completion(self, **kwargs):
+        if self._client is not None:
+            raw_kwargs = dict(kwargs)
+            raw_kwargs.pop("operation_name", None)
+            raw_kwargs.setdefault("model", global_settings.LLM_MODEL)
+            return await self._client.chat.completions.create(**raw_kwargs)
+        return await LLMProviderClient.create_chat_completion(**kwargs)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Core extraction (Layer 2 one-shot entry point)
@@ -372,13 +362,13 @@ class LLMExtractorService:
     ) -> LLMDataContract:
         """Parse user text into structured LLMDataContract (one-shot)."""
         try:
-            contract = await self.client.chat.completions.create(
-                model=global_settings.LLM_MODEL,
+            contract = await self._create_completion(
                 response_model=LLMDataContract,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
+                operation_name="intent_extraction",
                 max_retries=2,
                 timeout=60.0,
             )
@@ -451,13 +441,13 @@ class LLMExtractorService:
                 f"HISTORY:\n{history_str}\n\n"
                 f"NEW_MESSAGE:\n{message}"
             )
-            response: ChatProcessResponse = await self.client.chat.completions.create(
-                model=global_settings.LLM_MODEL,
+            response: ChatProcessResponse = await self._create_completion(
                 response_model=ChatProcessResponse,
                 messages=[
                     {"role": "system", "content": CHAT_PROCESS_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
+                operation_name="chat_turn",
                 max_tokens=LLM_MAX_TOKENS,
                 max_retries=2,
                 timeout=60.0,
@@ -628,13 +618,13 @@ class LLMExtractorService:
                     f"HISTORY:\n{history_str}\n\n"
                     f"NEW_MESSAGE:\n{message}"
                 )
-                response: ChatProcessResponse = await self.client.chat.completions.create(
-                    model=global_settings.LLM_MODEL,
+                response: ChatProcessResponse = await self._create_completion(
                     response_model=ChatProcessResponse,
                     messages=[
                         {"role": "system", "content": SEMANTIC_EDIT_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
                     ],
+                    operation_name="edit_intent",
                     max_tokens=LLM_MAX_TOKENS,
                     max_retries=2,
                     timeout=60.0,

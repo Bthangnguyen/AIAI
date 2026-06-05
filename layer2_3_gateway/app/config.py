@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MAX_TOKENS: int = 1024
 
     @computed_field  # type: ignore[prop-decorator]
     @property

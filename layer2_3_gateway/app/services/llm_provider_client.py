@@ -50,6 +50,14 @@ class LLMProviderClient:
         return global_settings.LLM_MODEL
 
     @classmethod
+    def _max_tokens_for(cls, provider: str, requested: Optional[int]) -> Optional[int]:
+        if requested is None:
+            return None
+        if provider == "groq":
+            return min(requested, global_settings.GROQ_MAX_TOKENS)
+        return requested
+
+    @classmethod
     def _base_url_for(cls, provider: str) -> Optional[str]:
         if provider == "openrouter":
             return "https://openrouter.ai/api/v1"
@@ -104,8 +112,9 @@ class LLMProviderClient:
                     "max_retries": max_retries,
                     "timeout": timeout,
                 }
-                if max_tokens is not None:
-                    kwargs["max_tokens"] = max_tokens
+                provider_max_tokens = cls._max_tokens_for(provider, max_tokens)
+                if provider_max_tokens is not None:
+                    kwargs["max_tokens"] = provider_max_tokens
 
                 result = await cls._client_for(provider).chat.completions.create(**kwargs)
                 if provider != cls._normalize_provider(global_settings.LLM_PROVIDER):

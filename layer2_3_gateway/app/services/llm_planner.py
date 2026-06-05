@@ -9,12 +9,11 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-import instructor
-from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from app.config import settings as global_settings
 from app.schemas.trip import LLMDataContract, POIResponse
+from app.services.llm_client import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -98,23 +97,7 @@ class ItineraryPlannerService:
     @property
     def client(self):
         if self._client is None:
-            if global_settings.LLM_PROVIDER == "openrouter":
-                base_client = AsyncOpenAI(
-                    base_url="https://openrouter.ai/api/v1",
-                    api_key=global_settings.OPENROUTER_API_KEY,
-                )
-            elif global_settings.LLM_PROVIDER == "shopaikey":
-                base_client = AsyncOpenAI(
-                    base_url="https://api.shopaikey.com/v1",
-                    api_key=global_settings.OPENAI_API_KEY,
-                )
-            else:
-                base_client = AsyncOpenAI(api_key=global_settings.OPENAI_API_KEY)
-
-            if global_settings.LLM_PROVIDER in ("shopaikey", "openrouter"):
-                self._client = instructor.from_openai(base_client, mode=instructor.Mode.JSON)
-            else:
-                self._client = instructor.from_openai(base_client)
+            self._client = build_llm_client()
         return self._client
 
     def _min_to_time(self, minutes: int) -> str:

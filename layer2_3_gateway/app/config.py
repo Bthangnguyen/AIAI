@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai"
     OPENAI_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "gpt-4o-mini"
+    OPENROUTER_LLM_MODEL: str = "deepseek/deepseek-v4-flash"
+    GROQ_API_KEY: str = ""
+    GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

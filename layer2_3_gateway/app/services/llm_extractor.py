@@ -11,9 +11,6 @@ import re
 import unicodedata
 from typing import Optional, List, Dict, Tuple, Iterable, Any
 
-import instructor
-from openai import AsyncOpenAI
-
 from app.config import settings as global_settings
 from app.schemas.trip import (
     ChatProcessResponse,
@@ -24,6 +21,7 @@ from app.schemas.trip import (
 )
 from app.services.distribution_policy import apply_distribution_policy
 from app.services.edit_intent_planner import EditIntentPlanner
+from app.services.llm_client import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -337,25 +335,7 @@ class LLMExtractorService:
     @property
     def client(self):
         if self._client is None:
-            if global_settings.LLM_PROVIDER == "openrouter":
-                base_client = AsyncOpenAI(
-                    base_url="https://openrouter.ai/api/v1",
-                    api_key=global_settings.OPENROUTER_API_KEY,
-                )
-            elif global_settings.LLM_PROVIDER == "shopaikey":
-                base_client = AsyncOpenAI(
-                    base_url="https://api.shopaikey.com/v1",
-                    api_key=global_settings.OPENAI_API_KEY,
-                )
-            else:
-                base_client = AsyncOpenAI(api_key=global_settings.OPENAI_API_KEY)
-
-            # shopaikey/openrouter proxy to DeepSeek which doesn't support
-            # OpenAI function calling. Use JSON mode instead.
-            if global_settings.LLM_PROVIDER in ("shopaikey", "openrouter"):
-                self._client = instructor.from_openai(base_client, mode=instructor.Mode.JSON)
-            else:
-                self._client = instructor.from_openai(base_client)
+            self._client = build_llm_client()
         return self._client
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1078,12 +1058,31 @@ class LLMExtractorService:
             return
         text = self._normalize(raw_text)
         raw_lower = raw_text.lower()
+        ascii_text = (
+            unicodedata.normalize("NFKD", raw_text.replace("đ", "d").replace("Đ", "D"))
+            .encode("ascii", "ignore")
+            .decode("ascii")
+            .lower()
+        )
 
         # 1. (Disabled) Spelling normalization for locked POIs is removed to disable background locking.
 
 
         # 2. (Disabled per request) Pure numerical time range parsing and time slot heuristics
         # Let the LLM decide time_window and time_slot completely, no overrides.
+
+        if "dai noi" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["culture", "dai_noi"])
+            contract.locked_pois = self._merge_unique(contract.locked_pois, ["\u0110\u1ea1i N\u1ed9i Hu\u1ebf"])
+
+        if "bun bo" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["bun_bo", "food"])
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["bun_bo"])
+
+        if "cafe muoi" in ascii_text or "ca phe muoi" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["cafe_muoi", "cafe"])
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["cafe_muoi"])
+            contract.allow_cafe = True
 
         # Only apply static tag filters if the LLM failed to provide a valid distribution
         if contract.target_category_distribution:

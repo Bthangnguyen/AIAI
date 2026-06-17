@@ -842,3 +842,361 @@ Operations:
    - virtual rest does not render `0 km · 0đ`
    - top cost equals `cost_summary.estimated_total_cost`
    - OR-Tools panel no longer contradicts product cost.
+
+## Addendum - Group Budget, Per-Person Cost, And Shared Expenses
+
+### O. Budget Scope Policy
+
+Problem:
+
+- Group trips need different accounting from solo trips.
+- If a user says `3 người, ngân sách 1 triệu`, real users usually mean `1 triệu / người / toàn chuyến`, not `1 triệu tổng nhóm`.
+- Shared costs such as homestay and taxi should be divided across travelers.
+- Per-person costs such as tickets and meals should be multiplied by party size.
+
+Decision:
+
+- Default budget scope:
+  - if group size is 1: `per_person` and `group_total` are equivalent
+  - if group size > 1 and user says only `ngân sách X`: interpret as `X / người / toàn chuyến`
+  - if user explicitly says `tổng nhóm`, `cả nhóm có`, `tổng budget nhóm`: use `group_total`
+- Budget period defaults to `total_trip`, not per day.
+- If user says `mỗi ngày`, use `per_day`.
+
+LLM contract additions:
+
+```json
+{
+  "party": {
+    "size": 3,
+    "type": "friends"
+  },
+  "budget": {
+    "amount": 1000000,
+    "scope": "per_person",
+    "period": "total_trip"
+  },
+  "budget_per_person": 1000000,
+  "group_budget_total": 3000000
+}
+```
+
+Enums:
+
+- `budget.scope`: `per_person | group_total | unknown`
+- `budget.period`: `total_trip | per_day | unknown`
+
+Normalization:
+
+```txt
+if budget.scope == per_person:
+  budget_per_person = amount
+  group_budget_total = amount * party_size
+
+if budget.scope == group_total:
+  group_budget_total = amount
+  budget_per_person = amount / party_size
+```
+
+### P. Cost Allocation Model
+
+Every cost must declare how it scales:
+
+1. Per-person costs
+   - entrance tickets
+   - meals
+   - cafe/dessert
+   - personal tour tickets
+   - wellness/spa if charged per person
+
+2. Shared group costs
+   - homestay/hotel room if charged per room/night
+   - taxi/car
+   - parking/fixed route fee
+
+3. Per-vehicle costs
+   - motorbike rental
+   - motorbike hailing
+   - bicycle rental
+
+Rules:
+
+- Tickets:
+
+```txt
+ticket_group_cost = ticket_price_per_person * party_size
+ticket_per_person = ticket_price_per_person
+```
+
+- Food/cafe:
+
+```txt
+food_group_cost = expected_spend_per_person * party_size
+food_per_person = expected_spend_per_person
+```
+
+- Lodging:
+
+```txt
+rooms_needed = ceil(party_size / room_capacity)
+lodging_group_cost = rooms_needed * nightly_rate * nights
+lodging_per_person = lodging_group_cost / party_size
+```
+
+- Taxi/car:
+
+```txt
+transport_group_cost = one_vehicle_leg_cost
+transport_per_person = transport_group_cost / party_size
+```
+
+- Motorbike hailing:
+
+```txt
+vehicles_needed = party_size
+transport_group_cost = one_motorbike_leg_cost * vehicles_needed
+transport_per_person = one_motorbike_leg_cost
+```
+
+- Motorbike rental:
+
+```txt
+vehicles_needed = ceil(party_size / 2)
+transport_group_cost = daily_rental_per_bike * vehicles_needed * days + fuel_estimate
+transport_per_person = transport_group_cost / party_size
+```
+
+### Q. Lodging Capacity Defaults
+
+DB should eventually store capacity fields:
+
+```json
+{
+  "room_capacity": 2,
+  "pricing_unit": "room_night"
+}
+```
+
+Until DB is extended, backend fallback defaults:
+
+- hotel room: capacity `2`
+- nha nghi / guesthouse: capacity `2`
+- homestay room: capacity `2`
+- homestay whole house / villa: capacity `4`
+- hostel dorm / capsule: pricing unit can be `per_bed` if tagged; otherwise capacity `1`
+
+Pricing units:
+
+- `per_person`
+- `room_night`
+- `whole_unit_night`
+- `vehicle_leg`
+- `vehicle_day`
+
+Rules:
+
+- Hotel/lodging `price` from DB is nightly rate for the pricing unit.
+- If pricing unit is unknown, assume `room_night`.
+- UI must label lodging estimate as shared:
+
+```txt
+Homestay 500.000đ/đêm · 2 đêm · chia 3 người ≈ 333.000đ/người
+```
+
+### R. Transport Selection With Group Cost
+
+Transport mode choice must compare group-level cost, not only single-leg unit cost.
+
+For each leg:
+
+```txt
+candidate modes:
+  walking if distance <= threshold
+  motorbike_hailing
+  taxi/car
+  own_transport if available
+  rental if selected
+
+compute:
+  group_cost
+  per_person_cost
+  travel_time
+  comfort/feasibility warning
+```
+
+Selection examples:
+
+- 1 traveler:
+  - walking if close
+  - motorbike_hailing for most paid legs
+  - taxi only if comfort/premium/weather/long leg context
+
+- 2 travelers:
+  - compare `2 motorbike_hailing` vs `1 taxi`
+  - budget-sensitive trips should prefer cheaper feasible option
+  - comfort/family/rain/luggage context can prefer taxi
+
+- 3+ travelers:
+  - taxi often becomes cheaper/more practical than multiple motorbike rides
+  - still compare costs, do not hardcode taxi blindly
+
+Acceptance criteria:
+
+- A 2-person budget trip should not default every paid leg to taxi.
+- A 2-person trip may choose taxi only when it is cheaper or contextually better.
+- Transport output should expose:
+
+```json
+{
+  "mode": "motorbike_hailing",
+  "vehicles_needed": 2,
+  "group_cost": 52000,
+  "per_person_cost": 26000,
+  "transport_cost": 52000,
+  "cost_scope": "total_group"
+}
+```
+
+### S. Cost Summary Contract V2
+
+Cost summary must expose both group and per-person totals.
+
+```json
+{
+  "cost_summary": {
+    "group_total_cost": 2450000,
+    "per_person_cost": 817000,
+    "budget_per_person": 1000000,
+    "group_budget_total": 3000000,
+    "budget_remaining_per_person": 183000,
+    "budget_remaining_group": 550000,
+    "budget_scope": "per_person",
+    "party_size": 3,
+    "breakdown_group": {
+      "tickets": 600000,
+      "food_and_drink": 900000,
+      "transport": 350000,
+      "lodging": 500000,
+      "misc_buffer": 100000
+    },
+    "breakdown_per_person": {
+      "tickets": 200000,
+      "food_and_drink": 300000,
+      "transport": 117000,
+      "lodging": 167000,
+      "misc_buffer": 33000
+    }
+  }
+}
+```
+
+Backward-compatible aliases during migration:
+
+- `estimated_total_cost` should equal `group_total_cost`
+- `budget_total` should equal:
+  - `group_budget_total` for internal validation
+  - UI must label per-person budget separately
+- `budget_remaining` should equal `budget_remaining_group`
+
+### T. Budget Feasibility With Shared Costs
+
+Budget feasibility must compare the same scope:
+
+```txt
+if budget_scope == per_person:
+  feasible = per_person_cost <= budget_per_person
+
+if budget_scope == group_total:
+  feasible = group_total_cost <= group_budget_total
+```
+
+Before planning, backend should reserve fixed/shared costs:
+
+```txt
+budget_per_person
+→ lodging_per_person reserve
+→ transport_per_person reserve
+→ buffer_per_person reserve
+→ activity_budget_per_person
+```
+
+If remaining activity budget is too low:
+
+- do not silently generate an over-budget itinerary
+- ask a follow-up or confirmation:
+
+```txt
+Với 1.000.000đ/người cho 3 ngày gồm chỗ ở và di chuyển thì khá chặt.
+Mình muốn:
+1. Giữ ngân sách, tối ưu siêu tiết kiệm
+2. Không tính chỗ ở trong ngân sách
+3. Tăng ngân sách khoảng 1.5-2 triệu/người
+```
+
+Thresholds:
+
+- `estimated <= budget`: ok
+- `estimated <= budget * 1.15`: allow with warning and cheaper suggestions
+- `estimated > budget * 1.15`: ask user before final build unless user explicitly allows flexible budget
+
+### U. UI Requirements For Group Budget
+
+Cost panel should show:
+
+```txt
+Ước tính: 817.000đ/người
+Tổng nhóm: 2.450.000đ
+Ngân sách: 1.000.000đ/người
+Còn lại: 183.000đ/người
+```
+
+Breakdown should show both when useful:
+
+```txt
+Chỗ nghỉ: 500.000đ nhóm · ~167.000đ/người
+Di chuyển: 350.000đ nhóm · ~117.000đ/người
+Vé tham quan: 600.000đ nhóm · 200.000đ/người
+```
+
+Rules:
+
+- Never show only group total when user budget was per-person.
+- Never compare group total to per-person budget.
+- If budget is group total, label:
+
+```txt
+Ngân sách nhóm: 3.000.000đ
+~1.000.000đ/người
+```
+
+### V. Implementation Plan For Group Budget
+
+1. Extend contract:
+   - budget object
+   - budget scope
+   - budget period
+   - normalized `budget_per_person`
+   - normalized `group_budget_total`
+2. Update LLM extractor:
+   - group size > 1 + ambiguous budget => default `per_person`
+   - explicit `cả nhóm/tổng nhóm` => `group_total`
+3. Update cost estimator:
+   - multiply per-person costs by party size
+   - divide shared costs by party size
+   - add lodging capacity defaults
+   - add vehicles needed for transport
+4. Update transport selector:
+   - compare taxi vs motorbike hailing using group cost
+   - avoid taxi-only behavior for two-person budget trips
+5. Update budget allocator:
+   - reserve lodging/transport/buffer before POI selection
+   - block or ask when infeasible
+6. Update UI:
+   - per-person total as primary display
+   - group total as secondary display
+   - clear budget scope label
+7. Add tests:
+   - 3 people, 1m/person, 500k/night homestay for 2 nights => lodging per person about 333k
+   - 2 people, budget trip, transport compares taxi vs 2 motorbike hailing
+   - group-total budget is not treated as per-person
+   - budget warning compares correct scope

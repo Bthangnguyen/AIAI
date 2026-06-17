@@ -1,4 +1,4 @@
-from app.schemas.trip import LLMDataContract, TransportPlanSpec
+from app.schemas.trip import LLMDataContract, PartySpec, TransportPlanSpec
 from app.services.cost_estimator import CostEstimatorService
 
 
@@ -101,3 +101,56 @@ def test_own_transport_keeps_time_but_zero_transport_cost():
     assert leg["travel_time_min"] > 0
     assert leg["transport_cost"] == 0
     assert result["cost_summary"]["local_transport_cost"] == 0
+
+
+def test_solo_needs_transport_prefers_motorbike_hailing_over_taxi():
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=1,
+        budget_max=500_000,
+        transport_policy="system_suggest_per_leg",
+        party=PartySpec(size=1, type="solo"),
+        transport_plan=TransportPlanSpec(
+            availability="needs_transport",
+            primary_mode="mixed",
+            fallback_mode="taxi",
+            cost_policy="per_leg",
+        ),
+    )
+
+    result = CostEstimatorService().enrich(_sample_itinerary(1), contract)
+
+    modes = [leg["mode"] for leg in result["days"][0]["transport_legs"] if leg["distance_km"] > 1]
+    assert modes
+    assert set(modes) == {"motorbike_hailing"}
+
+
+def test_transport_distance_supports_lat_lng_location_aliases():
+    itinerary = _sample_itinerary(1)
+    itinerary["days"][0]["start_hotel_location"] = {"lat": 16.4637, "lng": 107.5905}
+    itinerary["days"][0]["end_hotel_location"] = {"lat": 16.4637, "lng": 107.5905}
+    itinerary["days"][0]["stops"][0]["location"] = {"lat": 16.469, "lng": 107.577}
+
+    contract = LLMDataContract(destination="Hue", num_days=1, budget_max=500_000)
+    result = CostEstimatorService().enrich(itinerary, contract)
+
+    assert result["days"][0]["transport_legs"][0]["distance_km"] > 0
+    assert result["days"][0]["transport_legs"][0]["distance_confidence"] == "high"
+
+
+def test_each_day_adds_return_leg_to_lodging():
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=2,
+        budget_max=1_000_000,
+        hotel_lat=16.4637,
+        hotel_lon=107.5905,
+        hotel_name="Hue Hotel",
+    )
+
+    result = CostEstimatorService().enrich(_sample_itinerary(2), contract)
+
+    first_day_legs = result["days"][0]["transport_legs"]
+    assert first_day_legs[-1]["is_return_to_lodging"] is True
+    assert first_day_legs[-1]["to_name"] == "Hue Hotel"
+    assert first_day_legs[-1]["distance_km"] > 0

@@ -60,12 +60,13 @@ function TransportIcon({ leg }: { leg?: TransportLeg }) {
 
 function TransportLegRow({ leg }: { leg?: TransportLeg }) {
   if (!leg) return null
+  const label = leg.is_return_to_lodging ? "Quay ve cho o" : leg.mode_label || leg.mode || "Di chuyen"
   return (
     <div className="mb-3 ml-1 rounded-xl border border-orange-200 bg-orange-50/80 px-3 py-2 text-xs text-orange-950/70">
       <div className="flex flex-wrap items-center gap-2 font-bold">
         <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-orange-700">
           <TransportIcon leg={leg} />
-          {leg.mode_label || leg.mode || "Di chuyển"}
+          {label}
         </span>
         <span>{leg.travel_time_min ?? 0} phút</span>
         <span>·</span>
@@ -166,6 +167,7 @@ export function TimelineDayCard({
             </div>
           )
         })}
+        <TransportLegRow leg={day.transportLegs?.find((leg) => leg.is_return_to_lodging)} />
         {day.overnightStay ? (
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
             <Home className="h-3.5 w-3.5" />

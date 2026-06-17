@@ -199,10 +199,7 @@ export function ItineraryMap({
     if (!showRouteLines) return
 
     visibleDays.forEach((day, index) => {
-      const positions = day.items
-        .map((item) => getPoi(item.poiId))
-        .filter((poi): poi is POI => Boolean(poi))
-        .map((poi) => [poi.lat, poi.lng] as [number, number])
+      const positions = getDayRoutePositions(day)
 
       if (positions.length < 2) return
 
@@ -303,9 +300,9 @@ export function ItineraryMap({
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return
     const map = mapRef.current
-    const lat = Number(itineraryDraft.llmContract?.hotel_lat)
-    const lon = Number(itineraryDraft.llmContract?.hotel_lon)
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+    const lodgingPosition = getDraftLodgingPosition(itineraryDraft)
+    if (!lodgingPosition) return
+    const [lat, lon] = lodgingPosition
 
     const el = document.createElement("div")
     el.className = "lodging-mapbox-marker"
@@ -320,7 +317,7 @@ export function ItineraryMap({
       marker.remove()
       if (activeLodgingMarkerRef.current === marker) activeLodgingMarkerRef.current = null
     }
-  }, [mapLoaded, itineraryDraft.llmContract?.hotel_lat, itineraryDraft.llmContract?.hotel_lon, itineraryDraft.llmContract?.hotel_name])
+  }, [mapLoaded, itineraryDraft])
 
   // 3c. Render transport mode icons between POIs
   useEffect(() => {
@@ -332,28 +329,17 @@ export function ItineraryMap({
     if (!showRouteLines) return
 
     visibleDays.forEach((day) => {
-      day.items.forEach((item, index) => {
-        const poi = getPoi(item.poiId)
-        if (!poi) return
-        const leg = item.transport_from_prev || day.transportLegs?.[index]
-        if (!leg) return
+      const legs = day.transportLegs?.length
+        ? day.transportLegs
+        : day.items.map((item) => item.transport_from_prev).filter(Boolean) as TransportLeg[]
+      legs.forEach((leg, index) => {
+        if (!leg || shouldHideTransportMarker(leg, index)) return
+        const endpoints = getLegEndpointPositions(day, leg, index)
+        if (!endpoints) return
 
-        let fromLat: number | undefined
-        let fromLng: number | undefined
-        const previousItem = day.items[index - 1]
-        const previousPoi = previousItem ? getPoi(previousItem.poiId) : null
-        if (previousPoi) {
-          fromLat = previousPoi.lat
-          fromLng = previousPoi.lng
-        } else {
-          const lodgingLocation = day.startLodging?.location
-          fromLat = Number(lodgingLocation?.latitude)
-          fromLng = Number(lodgingLocation?.longitude)
-        }
-        if (!Number.isFinite(fromLat) || !Number.isFinite(fromLng)) return
-
-        const midLat = (Number(fromLat) + poi.lat) / 2
-        const midLng = (Number(fromLng) + poi.lng) / 2
+        const [[fromLat, fromLng], [toLat, toLng]] = endpoints
+        const midLat = (fromLat + toLat) / 2
+        const midLng = (fromLng + toLng) / 2
         const el = document.createElement("div")
         el.className = "transport-mapbox-marker"
         el.innerHTML = transportMarkerHTML(leg.icon || leg.mode)
@@ -435,6 +421,78 @@ function flattenMarkers(days: ItineraryDay[]): MarkerEntry[] {
       .map((item) => ({ day, item, poi: getPoi(item.poiId) }))
       .filter((entry): entry is MarkerEntry => Boolean(entry.poi))
   )
+}
+
+type RoutePosition = [number, number]
+
+function readLocationPosition(location?: Record<string, any> | null): RoutePosition | null {
+  if (!location) return null
+  const lat = Number(location.latitude ?? location.lat)
+  const lng = Number(location.longitude ?? location.lng ?? location.lon)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function getDraftLodgingPosition(draft: ItineraryDraft): RoutePosition | null {
+  const contractLat = Number(draft.llmContract?.hotel_lat)
+  const contractLon = Number(draft.llmContract?.hotel_lon)
+  if (Number.isFinite(contractLat) && Number.isFinite(contractLon)) {
+    return [contractLat, contractLon]
+  }
+  for (const day of draft.days) {
+    const position = readLocationPosition(day.startLodging?.location) || readLocationPosition(day.endLodging?.location)
+    if (position) return position
+  }
+  return null
+}
+
+function samePosition(a?: RoutePosition | null, b?: RoutePosition | null) {
+  return Boolean(a && b && Math.abs(a[0] - b[0]) < 0.00001 && Math.abs(a[1] - b[1]) < 0.00001)
+}
+
+function getDayRoutePositions(day: ItineraryDay): RoutePosition[] {
+  const positions: RoutePosition[] = []
+  const start = readLocationPosition(day.startLodging?.location)
+  if (start) positions.push(start)
+
+  day.items.forEach((item) => {
+    const poi = getPoi(item.poiId)
+    if (!poi) return
+    const next: RoutePosition = [poi.lat, poi.lng]
+    if (!samePosition(positions[positions.length - 1], next)) positions.push(next)
+  })
+
+  const end = readLocationPosition(day.endLodging?.location)
+  if (end && !samePosition(positions[positions.length - 1], end)) positions.push(end)
+  return positions
+}
+
+function findItemPositionByStopId(day: ItineraryDay, stopId?: string): RoutePosition | null {
+  if (!stopId) return null
+  const item = day.items.find((entry) => entry.poiId === stopId || entry.id === stopId)
+  const poi = item ? getPoi(item.poiId) : getPoi(stopId)
+  return poi ? [poi.lat, poi.lng] : null
+}
+
+function getLegEndpointPositions(day: ItineraryDay, leg: TransportLeg, index: number): [RoutePosition, RoutePosition] | null {
+  const start = readLocationPosition(day.startLodging?.location)
+  const end = readLocationPosition(day.endLodging?.location) || start
+  const from = leg.is_from_lodging || leg.from_stop_id === "lodging_base"
+    ? start
+    : findItemPositionByStopId(day, leg.from_stop_id) || getDayRoutePositions(day)[index] || null
+  const to = leg.is_return_to_lodging || leg.to_stop_id === "lodging_base"
+    ? end
+    : findItemPositionByStopId(day, leg.to_stop_id) || getDayRoutePositions(day)[index + 1] || null
+  if (!from || !to || samePosition(from, to)) return null
+  return [from, to]
+}
+
+function shouldHideTransportMarker(leg: TransportLeg, index: number) {
+  const distance = Number(leg.distance_km || 0)
+  if (distance <= 0) return true
+  const mode = String(leg.mode || leg.icon || "").toLowerCase()
+  if (mode.includes("walk") && distance < 0.8) return true
+  return index > 0 && distance < 0.3
 }
 
 function getPoiCategoryInfo(poi: POI) {

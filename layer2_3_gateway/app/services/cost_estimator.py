@@ -62,6 +62,7 @@ class CostEstimatorService:
 
             day["start_lodging"] = self._lodging_ref(day, contract, lodging_plan)
             day["end_lodging"] = self._lodging_ref(day, contract, lodging_plan)
+            lodging_location = self._hotel_location(day, contract)
 
             for stop in day.get("stops", []) or []:
                 self._enrich_stop_cost(stop)
@@ -75,6 +76,8 @@ class CostEstimatorService:
                     to_name=str(stop.get("poi_name") or stop.get("name") or ""),
                     solver_travel_time=stop.get("travel_time_from_prev_min"),
                 )
+                if prev_id in {"lodging_base", day.get("start_hotel_id")}:
+                    leg["is_from_lodging"] = True
                 stop["transport_from_prev"] = leg
                 stop["distance_from_prev_km"] = leg["distance_km"]
                 stop["transport_cost_from_prev"] = leg["transport_cost"]
@@ -87,6 +90,21 @@ class CostEstimatorService:
                 day_ticket += float(stop.get("ticket_cost") or 0.0)
                 day_food += float(stop.get("expected_spend") or 0.0)
                 day_transport += float(leg.get("transport_cost") or 0.0)
+
+            if (day.get("stops") or []) and lodging_location:
+                return_leg = self._build_transport_leg(
+                    contract=contract,
+                    prev_location=prev_location,
+                    next_location=lodging_location,
+                    from_stop_id=str(prev_id),
+                    from_name=str(prev_name),
+                    to_stop_id=str(day.get("end_hotel_id") or "lodging_base"),
+                    to_name=str(day.get("end_hotel_name") or lodging_plan.get("name") or "Chỗ ở"),
+                    solver_travel_time=None,
+                )
+                return_leg["is_return_to_lodging"] = True
+                legs.append(return_leg)
+                day_transport += float(return_leg.get("transport_cost") or 0.0)
 
             day["transport_legs"] = legs
             day_lodging = self._day_lodging_cost(day, lodging_plan)
@@ -224,6 +242,7 @@ class CostEstimatorService:
             "cost_scope": plan.get("cost_scope"),
             "icon": MODE_ICONS.get(mode, "route"),
             "warning": warning,
+            "distance_confidence": "high" if distance_km > 0 else "missing_or_same_location",
         }
 
     def _transport_plan_dict(self, contract: LLMDataContract) -> dict[str, Any]:
@@ -235,6 +254,8 @@ class CostEstimatorService:
         modes = [str(m).lower() for m in (contract.transport_modes or [])]
         if plan.get("availability") in (None, "unknown"):
             plan["availability"] = "unknown"
+        if getattr(contract, "transport_policy", None) == "system_suggest_per_leg" and plan.get("availability") == "unknown":
+            plan["availability"] = "needs_transport"
         if plan.get("primary_mode") in (None, "mixed") and modes:
             plan["primary_mode"] = self._normalize_mode(modes[0])
         plan.setdefault("primary_mode", "mixed")
@@ -244,6 +265,13 @@ class CostEstimatorService:
         plan.setdefault("cost_scope", "total_group")
         if plan.get("availability") == "has_own_transport":
             plan["cost_policy"] = "time_only"
+        elif plan.get("availability") == "needs_transport" or getattr(contract, "transport_policy", None) == "system_suggest_per_leg":
+            default_mode = self._default_hired_mode(contract)
+            if self._normalize_mode(str(plan.get("primary_mode") or "mixed")) in {"mixed", "taxi"} and self._party_size(contract) <= 2:
+                plan["primary_mode"] = default_mode
+            if self._normalize_mode(str(plan.get("fallback_mode") or "mixed")) in {"mixed", "taxi"} and self._party_size(contract) <= 2:
+                plan["fallback_mode"] = default_mode
+            plan["cost_policy"] = "per_leg"
         return plan
 
     def _leg_mode(self, distance_km: float, plan: dict[str, Any]) -> str:
@@ -254,6 +282,19 @@ class CostEstimatorService:
         if primary == "walking" and distance_km > threshold:
             return self._normalize_mode(str(plan.get("fallback_mode") or "taxi"))
         return primary
+
+    def _party_size(self, contract: LLMDataContract) -> int:
+        party = getattr(contract, "party", None)
+        raw_size = getattr(party, "size", None) if party else None
+        if raw_size is None:
+            raw_size = getattr(contract, "group_size", None)
+        try:
+            return max(1, int(raw_size or 1))
+        except (TypeError, ValueError):
+            return 1
+
+    def _default_hired_mode(self, contract: LLMDataContract) -> str:
+        return "taxi" if self._party_size(contract) >= 3 else "motorbike_hailing"
 
     def _normalize_mode(self, mode: str) -> str:
         mode = mode.lower()
@@ -378,7 +419,15 @@ class CostEstimatorService:
         return radius * 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h)) * 1.25
 
     def _coord(self, location: dict[str, Any], key: str) -> float | None:
-        value = location.get(key)
+        aliases = {
+            "latitude": ("latitude", "lat"),
+            "longitude": ("longitude", "lng", "lon"),
+        }
+        value = None
+        for alias in aliases.get(key, (key,)):
+            if alias in location:
+                value = location.get(alias)
+                break
         try:
             return float(value)
         except (TypeError, ValueError):

@@ -89,6 +89,9 @@ export interface TransportLeg {
   cost_scope?: string
   icon?: string
   warning?: string | null
+  is_from_lodging?: boolean
+  is_return_to_lodging?: boolean
+  distance_confidence?: string
 }
 
 export interface ItineraryItem {

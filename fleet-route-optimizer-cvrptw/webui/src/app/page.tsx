@@ -64,6 +64,10 @@ function intentFromContract(contract: LLMDataContract, rawPrompt: string): TripI
   }
 }
 
+function needsLodgingSelection(contract?: LLMDataContract | null): boolean {
+  return Boolean(contract?.has_lodging && (!contract?.hotel_lat || !contract?.hotel_lon))
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -378,6 +382,7 @@ export default function Page() {
 
     try {
       const res = await chatProcess(cleanPrompt, [], contractFromIntent())
+      setContract(res.updated_contract)
       const updatedIntent: TripIntent = {
         destination: res.updated_contract.destination || undefined,
         days: res.updated_contract.num_days,
@@ -387,7 +392,12 @@ export default function Page() {
         rawPrompt: cleanPrompt,
       }
 
-      if (res.status === "ready") {
+      if (needsLodgingSelection(res.updated_contract)) {
+        setIntent(updatedIntent)
+        setFollowUp(null)
+        setStatus("live")
+        setMessages((items) => [...items, { role: "assistant", content: "Mình đã ghi nhận bạn có chỗ ở sẵn. Bạn chọn vị trí chỗ ở trên bản đồ bên phải trước, rồi em sẽ dùng điểm đó làm base để tạo lịch nhé." }])
+      } else if (res.status === "ready") {
         const nextDraft = await buildItineraryFromIntent(updatedIntent)
         applyDraftSuccess(nextDraft, [res.reply, `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày.`])
       } else {
@@ -436,7 +446,12 @@ export default function Page() {
 
       setContract(res.updated_contract)
 
-      if (res.updated_itinerary) {
+      if (needsLodgingSelection(res.updated_contract)) {
+        setPendingEditPlan(null)
+        setFollowUp(null)
+        setStatus("live")
+        setMessages((items) => [...items, { role: "assistant", content: "Mình đã ghi nhận bạn có chỗ ở sẵn. Bạn chọn vị trí chỗ ở trên bản đồ trước, rồi em sẽ dùng điểm đó làm base để tạo lịch nhé." }])
+      } else if (res.updated_itinerary) {
         setPendingEditPlan(null)
         const nextDraft = mapLayer4ResultToDraft(
           res.updated_itinerary,
@@ -767,6 +782,8 @@ export default function Page() {
         llmContract: { ...(draft.llmContract || {}), ...lodgingPatch },
         updatedAt: new Date().toISOString(),
       })
+    } else {
+      setMessages((items) => [...items, { role: "assistant", content: "Đã chọn chỗ ở làm base. Bạn nhắn “tạo lịch” hoặc xác nhận tiếp để em build lịch theo vị trí này." }])
     }
     showToast("Đã chọn chỗ ở làm điểm xuất phát/kết thúc.", "success")
   }
@@ -797,7 +814,7 @@ export default function Page() {
             showCost={showCost}
             showCategories={showCategories}
             fitSignal={fitSignal}
-            requiresLodgingSelection={Boolean(contract?.has_lodging && (!contract?.hotel_lat || !contract?.hotel_lon))}
+            requiresLodgingSelection={needsLodgingSelection(contract)}
             buildErrorMessage={buildErrorMessage}
             onRetryBuild={handleRebuild}
             onSuggestFix={handleSuggestFix}

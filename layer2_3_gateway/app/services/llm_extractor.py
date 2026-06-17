@@ -830,7 +830,12 @@ class LLMExtractorService:
         tags = ", ".join(contract.tags) if contract.tags else "tổng hợp"
         transport = ", ".join(contract.transport_modes) if contract.transport_modes else "taxi + walking"
         group = contract.group_type or (f"{contract.group_size} người" if contract.group_size else "chưa rõ")
-        hotel = contract.hotel_name if contract.hotel_name and contract.hotel_name != "Hotel" else "khách sạn trung tâm Huế mặc định"
+        if contract.has_lodging and not (contract.hotel_lat and contract.hotel_lon):
+            hotel = "chỗ ở bạn sẽ chọn trên bản đồ"
+        elif contract.hotel_name and contract.hotel_name != "Hotel":
+            hotel = contract.hotel_name
+        else:
+            hotel = "khách sạn trung tâm Huế mặc định"
         return (
             "Dạ em tóm tắt lại trước khi tạo lịch nhé: "
             f"đi {contract.destination or 'Huế'} {contract.num_days} ngày, {budget}, "
@@ -1047,14 +1052,22 @@ class LLMExtractorService:
             contract.budget_is_unlimited = False
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["budget"])
 
-        has_hotel_text = "khach san" in text or "kh?ch s?n" in text
-        if any(phrase in text for phrase in ("da co khach san", "co khach san roi", "da co cho o", "co cho o roi")):
+        has_hotel_text = "khach san" in text or "kh?ch s?n" in text or "cho o" in text or "ch? ?" in text
+        has_existing_lodging = (
+            any(phrase in text for phrase in ("da co khach san", "co khach san roi", "da co cho o", "co cho o roi", "co cho o", "co phong roi"))
+            or (has_hotel_text and any(phrase in text for phrase in ("da co", "co san", "co roi", "san roi")))
+        )
+        needs_lodging = (
+            any(phrase in text for phrase in ("chua co khach san", "chua co cho o", "can khach san", "tim khach san", "can cho o", "tim cho o"))
+            or (has_hotel_text and any(phrase in text for phrase in ("chua co", "can ", "tim ")))
+        )
+        if has_existing_lodging:
             contract.has_lodging = True
             contract.hotel_confirmed = True
             contract.lodging_selection.status = "user_has_lodging"
             contract.lodging_selection.selection_method = "map_pin"
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
-        elif any(phrase in text for phrase in ("chua co khach san", "chua co cho o", "can khach san", "tim khach san")):
+        elif needs_lodging:
             contract.has_lodging = False
             contract.lodging_selection.status = "needs_lodging"
 
@@ -1076,24 +1089,31 @@ class LLMExtractorService:
         if any(word in text for word in ("trung tam", "gan trung tam")):
             contract.lodging_preference = self._merge_unique(contract.lodging_preference, ["central"])
 
-        parsed_group_size = re.search(r"(\d+)\s*(?:nguoi|ng|ban|khach)", text)
+        parsed_group_size = re.search(r"(\d+)\s*(?:nguoi\b|ng\b|ban\b|khach\b)", text)
         if parsed_group_size:
             contract.group_size = int(parsed_group_size.group(1))
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["group"])
 
         own_transport_phrases = (
             "co xe", "co xe may", "co o to", "tu lai", "xe rieng",
             "co phuong tien", "da co phuong tien", "nguoi cho",
         )
         needs_transport_phrases = (
-            "chua co xe", "khong co xe", "can xe", "can phuong tien",
+            "chua co xe", "khong co xe", "chua co phuong tien", "khong co phuong tien",
+            "chua co phuong tien rieng", "khong co phuong tien rieng", "can xe", "can phuong tien",
             "bat grab", "di taxi", "goi xe", "thue xe",
         )
-        if any(phrase in text for phrase in own_transport_phrases):
+        if any(phrase in text for phrase in needs_transport_phrases):
+            contract.transport_plan.availability = "needs_transport"
+            if contract.transport_plan.cost_policy == "time_only":
+                contract.transport_plan.cost_policy = "per_leg"
+            contract.transport_plan.reason = contract.transport_plan.reason or "User needs transport suggestions."
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["transport"])
+        elif any(phrase in text for phrase in own_transport_phrases):
             contract.transport_plan.availability = "has_own_transport"
             contract.transport_plan.cost_policy = "time_only"
             contract.transport_plan.reason = contract.transport_plan.reason or "User said they already have transport."
-        elif any(phrase in text for phrase in needs_transport_phrases):
-            contract.transport_plan.availability = "needs_transport"
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["transport"])
 
         if any(word in text for word in ("xe may", "motorbike")):
             contract.transport_modes = self._merge_unique(contract.transport_modes, ["motorbike"])

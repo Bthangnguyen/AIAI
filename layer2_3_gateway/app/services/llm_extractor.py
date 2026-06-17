@@ -210,6 +210,9 @@ REQUIRED_FIELDS = [
     "budget",
     "interests",
     "time_window",
+    "hotel",
+    "group",
+    "transport",
 ]
 
 FOLLOW_UP_QUESTIONS = {
@@ -552,11 +555,18 @@ class LLMExtractorService:
                         "interests": "sở thích",
                         "time_window": "khung giờ hoạt động",
                     }
+                    field_labels.update({
+                        "hotel": "chỗ ở",
+                        "group": "số người đi",
+                        "transport": "phương tiện di chuyển",
+                    })
                     labels = [field_labels[f] for f in critical_missing if f in field_labels]
                     if len(labels) > 1:
                         fields_str = ", ".join(labels[:-1]) + " và " + labels[-1]
-                    else:
+                    elif labels:
                         fields_str = labels[0]
+                    else:
+                        fields_str = "thông tin còn thiếu"
                     reply = f"Dạ, để em thiết kế lịch trình trọn vẹn nhất tại Huế, mình chia sẻ thêm giúp em về {fields_str} nhé!"
             else:
                 reply = FOLLOW_UP_QUESTIONS.get(critical_missing[0], FOLLOW_UP_QUESTIONS["general"])
@@ -1052,6 +1062,12 @@ class LLMExtractorService:
             contract.budget_is_unlimited = False
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["budget"])
 
+        parsed_time_range = self._parse_time_range(text)
+        if parsed_time_range is not None:
+            start_min, end_min = parsed_time_range
+            contract.time_window = TimeWindowSpec(start_min=start_min, end_min=end_min)
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["time_window"])
+
         has_hotel_text = "khach san" in text or "kh?ch s?n" in text or "cho o" in text or "ch? ?" in text
         has_existing_lodging = (
             any(phrase in text for phrase in ("da co khach san", "co khach san roi", "da co cho o", "co cho o roi", "co cho o", "co phong roi"))
@@ -1070,6 +1086,8 @@ class LLMExtractorService:
         elif needs_lodging:
             contract.has_lodging = False
             contract.lodging_selection.status = "needs_lodging"
+            contract.hotel_confirmed = True
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
 
         if any(phrase in text for phrase in ("chua gom khach san", "khong gom khach san", "khong bao gom khach san", "chua bao gom khach san")):
             contract.budget_scope = "excludes_hotel"
@@ -1196,13 +1214,15 @@ class LLMExtractorService:
         existing = None
         if contract.time_window and contract.time_window.start_min is not None and contract.time_window.end_min is not None:
             existing = (int(contract.time_window.start_min), int(contract.time_window.end_min))
+        if existing and "time_window" in (contract.confirmed_fields or []):
+            return
 
         generic_windows = {(480, 1260), (480, 1320), (0, 1440)}
         slot_windows = [
             (("buoi chieu", "chieu", "afternoon"), "afternoon", 780, 1080),
             (("ca ngay", "full day", "full_day"), "full_day", 480, 1260),
             (("buoi sang", "sang", "morning"), "morning", 480, 720),
-            (("buoi toi", "toi", "evening", "night"), "evening", 1080, 1320),
+            (("buoi toi", "evening", "night"), "evening", 1080, 1320),
         ]
         for keywords, slot, start, end in slot_windows:
             if any(keyword in text for keyword in keywords):
@@ -1252,6 +1272,9 @@ class LLMExtractorService:
         )
         if not has_interests:
             missing.append("interests")
+        for field in ("hotel", "group", "transport"):
+            if not self._is_field_collected(contract, field):
+                missing.append(field)
         return missing
 
     def _critical_missing_reply(self, critical_missing: List[str]) -> str:
@@ -1265,12 +1288,23 @@ class LLMExtractorService:
             "interests": "sở thích chính",
             "time_window": "khung giờ đi trong ngày",
         }
+        labels.update({
+            "hotel": "chỗ ở",
+            "group": "số người đi",
+            "transport": "phương tiện di chuyển",
+        })
         if len(critical_missing) == 1:
             field = critical_missing[0]
             if field == "time_window":
                 return "Mình muốn lịch đi trong khung giờ nào mỗi ngày ạ? Ví dụ 8h-21h, chỉ buổi chiều, hay chỉ buổi tối."
             if field == "interests":
                 return "Mình muốn chuyến đi nghiêng về gì ạ: văn hóa, ẩm thực, cafe, thiên nhiên, buổi tối hay một lịch cân bằng?"
+            if field == "hotel":
+                return "Mình đã có chỗ ở sẵn chưa ạ? Nếu có, mình chọn vị trí trên bản đồ; nếu chưa có, em sẽ chọn điểm nghỉ phù hợp từ dữ liệu."
+            if field == "group":
+                return "Mình đi mấy người để em tính chi phí di chuyển và chỗ nghỉ sát hơn ạ?"
+            if field == "transport":
+                return "Mình đã có phương tiện di chuyển riêng chưa, hay để em gợi ý taxi/xe máy công nghệ/đi bộ theo từng chặng?"
             return FOLLOW_UP_QUESTIONS.get(field, FOLLOW_UP_QUESTIONS["general"])
         picked = [labels.get(field, field) for field in critical_missing]
         fields = ", ".join(picked[:-1]) + " và " + picked[-1]
@@ -1313,7 +1347,7 @@ class LLMExtractorService:
             useful_slots = {"morning", "afternoon", "evening", "night", "full_day"}
             return contract.time_slot in useful_slots
         if field == "transport":
-            return bool(contract.transport_modes)
+            return bool(contract.transport_modes) or contract.transport_plan.availability in {"has_own_transport", "needs_transport"}
         if field == "group":
             return bool(contract.group_type or contract.group_size)
         if field == "hotel":
@@ -1321,7 +1355,7 @@ class LLMExtractorService:
                 (contract.hotel_lat is not None and contract.hotel_lon is not None)
                 or (contract.hotel_name and contract.hotel_name != "Hotel")
             )
-            return has_specific_hotel or contract.hotel_confirmed or contract.default_hotel_ok
+            return has_specific_hotel or contract.hotel_confirmed or contract.default_hotel_ok or contract.has_lodging is False
         return False
 
     def _unsupported_destination_reply(self, contract: LLMDataContract) -> Optional[str]:

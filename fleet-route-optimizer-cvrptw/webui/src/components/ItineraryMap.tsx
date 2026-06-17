@@ -106,6 +106,8 @@ export function ItineraryMap({
       activeTransportMarkersRef.current = []
       activeLodgingMarkerRef.current?.remove()
       activeLodgingMarkerRef.current = null
+      mapRef.current = null
+      setMapLoaded(false)
       map.remove()
     }
   }, [])
@@ -175,9 +177,11 @@ export function ItineraryMap({
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return
     const map = mapRef.current
+    if (!map.isStyleLoaded()) return
 
     // Clean up all existing route lines
     const cleanupRoutes = () => {
+      if (!mapRef.current || mapRef.current !== map) return
       const style = map.getStyle()
       if (style && style.sources) {
         Object.keys(style.sources).forEach((sourceId) => {
@@ -207,6 +211,7 @@ export function ItineraryMap({
       const dayColor = dayColors[(day.dayNumber - 1) % dayColors.length]
 
       const drawRoute = (coords: [number, number][]) => {
+        if (!mapRef.current || mapRef.current !== map || !map.isStyleLoaded()) return
         const sourceId = `route-source-day-${day.dayNumber}`
         const layerId = `route-layer-day-${day.dayNumber}`
         const mapboxCoords = coords.map(([lat, lng]) => [lng, lat])
@@ -220,28 +225,32 @@ export function ItineraryMap({
           }
         }
 
-        if (map.getSource(sourceId)) {
-          (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson)
-        } else {
-          map.addSource(sourceId, {
-            type: "geojson",
-            data: geojson
-          })
+        try {
+          if (map.getSource(sourceId)) {
+            (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson)
+          } else {
+            map.addSource(sourceId, {
+              type: "geojson",
+              data: geojson
+            })
 
-          map.addLayer({
-            id: layerId,
-            type: "line",
-            source: sourceId,
-            layout: {
-              "line-join": "round",
-              "line-cap": "round"
-            },
-            paint: {
-              "line-color": dayColor,
-              "line-width": 4.5,
-              "line-opacity": 0.85
-            }
-          })
+            map.addLayer({
+              id: layerId,
+              type: "line",
+              source: sourceId,
+              layout: {
+                "line-join": "round",
+                "line-cap": "round"
+              },
+              paint: {
+                "line-color": dayColor,
+                "line-width": 4.5,
+                "line-opacity": 0.85
+              }
+            })
+          }
+        } catch (error) {
+          console.warn("Skipping stale route draw:", error)
         }
       }
 
@@ -260,7 +269,7 @@ export function ItineraryMap({
                 ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
               )
               ROUTE_CACHE.set(cacheKey, coords)
-              if (mapRef.current && mapRef.current.getSource(`route-source-day-${day.dayNumber}`) === undefined) {
+              if (mapRef.current === map) {
                 drawRoute(coords)
               }
             }

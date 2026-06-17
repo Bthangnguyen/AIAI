@@ -850,7 +850,7 @@ Operations:
 Problem:
 
 - Group trips need different accounting from solo trips.
-- If a user says `3 người, ngân sách 1 triệu`, real users usually mean `1 triệu / người / toàn chuyến`, not `1 triệu tổng nhóm`.
+- When a group traveler gives an unqualified budget, real users usually mean that amount per person for the whole trip, not the total shared budget for the whole group.
 - Shared costs such as homestay and taxi should be divided across travelers.
 - Per-person costs such as tickets and meals should be multiplied by party size.
 
@@ -862,6 +862,8 @@ Decision:
   - if user explicitly says `tổng nhóm`, `cả nhóm có`, `tổng budget nhóm`: use `group_total`
 - Budget period defaults to `total_trip`, not per day.
 - If user says `mỗi ngày`, use `per_day`.
+- This is not a hardcoded rule for a specific party size. It is a semantic default applied to any `party_size > 1`.
+- LLM should output evidence for budget scope selection so backend/UI can inspect why the scope was chosen.
 
 LLM contract additions:
 
@@ -874,7 +876,8 @@ LLM contract additions:
   "budget": {
     "amount": 1000000,
     "scope": "per_person",
-    "period": "total_trip"
+    "period": "total_trip",
+    "scope_evidence": "User mentioned a group size and said 'ngân sách 1 triệu' without group-total wording."
   },
   "budget_per_person": 1000000,
   "group_budget_total": 3000000

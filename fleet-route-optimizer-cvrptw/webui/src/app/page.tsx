@@ -797,6 +797,7 @@ export default function Page() {
             showCost={showCost}
             showCategories={showCategories}
             fitSignal={fitSignal}
+            requiresLodgingSelection={Boolean(contract?.has_lodging && (!contract?.hotel_lat || !contract?.hotel_lon))}
             buildErrorMessage={buildErrorMessage}
             onRetryBuild={handleRebuild}
             onSuggestFix={handleSuggestFix}

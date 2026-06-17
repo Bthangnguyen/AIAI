@@ -50,6 +50,8 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
         <Metric label="Trạng thái" value={enoughInfo ? "Đã đủ thông tin" : "Cần hỏi thêm"} />
       </section>
 
+      {draft.costSummary ? <CostBreakdown summary={draft.costSummary} lodgingPlan={draft.lodgingPlan} /> : null}
+
       {draft.optimizationStats ? <TripStatsPanel stats={draft.optimizationStats} draft={draft} /> : null}
 
       <div className="space-y-4">
@@ -80,6 +82,45 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-400">{label}</p>
       <p className="mt-1 truncate text-sm font-black text-orange-950">{value}</p>
     </div>
+  )
+}
+
+function CostBreakdown({ summary, lodgingPlan }: { summary: Record<string, any>; lodgingPlan?: Record<string, any> }) {
+  const rows = [
+    ["Vé tham quan", summary.poi_ticket_cost],
+    ["Ăn uống/cafe", summary.food_and_drink_cost],
+    ["Di chuyển", summary.local_transport_cost],
+    ["Chỗ nghỉ", summary.lodging_cost],
+    ["Dự phòng", summary.misc_buffer],
+  ]
+  return (
+    <section className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-500">Ước tính chi phí thực tế</p>
+          <h3 className="mt-1 text-lg font-black text-orange-950">{formatCurrency(Number(summary.estimated_total_cost || 0))}</h3>
+          {typeof summary.budget_remaining === "number" ? (
+            <p className={`mt-1 text-xs font-bold ${summary.budget_remaining < 0 ? "text-red-600" : "text-blue-800"}`}>
+              {summary.budget_remaining < 0 ? "Vượt ngân sách " : "Còn lại "}
+              {formatCurrency(Math.abs(Number(summary.budget_remaining)))}
+            </p>
+          ) : null}
+        </div>
+        {lodgingPlan ? (
+          <div className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-900">
+            Nghỉ {lodgingPlan.nights || 0} đêm · {lodgingPlan.name || "chỗ nghỉ"} · {Number(lodgingPlan.nightly_rate || 0) > 0 ? `${formatCurrency(Number(lodgingPlan.nightly_rate))}/đêm` : "đã có chỗ ở"}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-xl bg-white px-3 py-2">
+            <p className="text-[10px] font-black uppercase tracking-wide text-orange-400">{label}</p>
+            <p className="mt-1 text-sm font-black text-orange-950">{formatCurrency(Number(value || 0))}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

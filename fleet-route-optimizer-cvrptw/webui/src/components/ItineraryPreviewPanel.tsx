@@ -1,6 +1,9 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { Expand, RefreshCw } from "lucide-react"
+import mapboxgl from "mapbox-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
 import { BuildErrorPanel } from "@/components/BuildErrorPanel"
 import { ConstraintSuggestionPanel } from "@/components/ConstraintSuggestionPanel"
 import { ItineraryArtifact } from "@/components/ItineraryArtifact"
@@ -17,6 +20,7 @@ interface ItineraryPreviewPanelProps {
   selectedDay: number | "all"
   showRouteLines: boolean
   fitSignal: number
+  requiresLodgingSelection?: boolean
   onViewModeChange: (mode: PreviewMode) => void
   onRebuild: () => void
   onSelectPoi: (poiId: string) => void
@@ -35,7 +39,9 @@ interface ItineraryPreviewPanelProps {
   onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
-export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onSetLodgingBase, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
+
+export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, requiresLodgingSelection, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onSetLodgingBase, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
   return (
     <div className="flex h-full min-w-0 flex-col bg-orange-50">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-orange-200 px-4">
@@ -60,7 +66,10 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
         <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(#fb923c_1px,transparent_1px),linear-gradient(90deg,#fb923c_1px,transparent_1px)] [background-size:32px_32px]" />
         {status === "building" ? <BuildingOverlay /> : null}
         {status === "error" && onRetryBuild ? <BuildErrorPanel message={buildErrorMessage ?? undefined} onRetry={onRetryBuild} /> : null}
-        {!draft && status !== "error" ? <EmptyPreview /> : null}
+        {!draft && status !== "error" && requiresLodgingSelection && onSetLodgingBase ? (
+          <LodgingPreBuildPicker onSetLodgingBase={onSetLodgingBase} />
+        ) : null}
+        {!draft && status !== "error" && !requiresLodgingSelection ? <EmptyPreview /> : null}
         {draft && onSuggestFix ? (
           <ConstraintSuggestionPanel
             notes={draft.validationNotes ?? []}
@@ -98,6 +107,66 @@ function EmptyPreview() {
       <div className="rounded-[32px] border border-dashed border-orange-200 bg-white/80 p-10 shadow-2xl shadow-orange-950/10">
         <p className="text-xl font-black text-orange-950">Chưa có lịch trình</p>
         <p className="mt-3 max-w-md text-sm leading-6 text-orange-950/60">Nhập mô tả chuyến đi để TripFlow đặt các điểm lên bản đồ.</p>
+      </div>
+    </div>
+  )
+}
+
+function LodgingPreBuildPicker({ onSetLodgingBase }: { onSetLodgingBase: (lat: number, lon: number, name?: string) => void }) {
+  const mapRef = useRef<mapboxgl.Map | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const markerRef = useRef<mapboxgl.Marker | null>(null)
+  const [selected, setSelected] = useState<{ lat: number; lon: number } | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/streets-v11",
+      center: [107.5909, 16.4637],
+      zoom: 13,
+    })
+    mapRef.current = map
+    map.addControl(new mapboxgl.NavigationControl(), "top-right")
+    map.on("click", (event) => {
+      const lat = event.lngLat.lat
+      const lon = event.lngLat.lng
+      setSelected({ lat, lon })
+      markerRef.current?.remove()
+      markerRef.current = new mapboxgl.Marker({ color: "#2563eb" })
+        .setLngLat([lon, lat])
+        .setPopup(new mapboxgl.Popup({ closeButton: false }).setHTML("<strong>Chỗ ở của bạn</strong>"))
+        .addTo(map)
+    })
+    return () => {
+      markerRef.current?.remove()
+      map.remove()
+      mapRef.current = null
+    }
+  }, [])
+
+  return (
+    <div className="relative z-10 mx-auto flex h-full min-h-[560px] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-blue-200 bg-white shadow-2xl shadow-orange-950/10">
+      <div className="border-b border-blue-100 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-500">Chọn chỗ ở trước khi tạo lịch</p>
+        <h3 className="mt-1 text-xl font-black text-orange-950">Click vào vị trí khách sạn/homestay của bạn trên bản đồ</h3>
+        <p className="mt-1 text-sm text-orange-950/60">TripFlow sẽ dùng điểm này làm base xuất phát, quay về, tính thời gian và chi phí di chuyển.</p>
+      </div>
+      <div className="relative min-h-0 flex-1">
+        <div ref={containerRef} className="h-full min-h-[420px] w-full" />
+        <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-white/95 p-3 shadow-xl backdrop-blur sm:left-auto sm:w-[360px]">
+          <div className="text-xs font-bold text-orange-950/70">
+            {selected ? "Đã chọn vị trí chỗ ở. Xác nhận để dùng làm base trước khi build." : "Chưa chọn vị trí. Click lên bản đồ để đặt pin chỗ ở."}
+          </div>
+          <button
+            type="button"
+            disabled={!selected}
+            onClick={() => selected && onSetLodgingBase(selected.lat, selected.lon, "Chỗ ở của bạn")}
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Dùng vị trí này làm chỗ ở
+          </button>
+        </div>
       </div>
     </div>
   )

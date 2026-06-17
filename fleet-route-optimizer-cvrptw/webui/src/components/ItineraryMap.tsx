@@ -9,7 +9,7 @@ import { JourneyPlayback } from "@/components/JourneyPlayback"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
 import { getPOIImage } from "@/lib/poiImages"
-import type { ItineraryDay, ItineraryDraft, ItineraryItem, POI } from "@/types/trip"
+import type { ItineraryDay, ItineraryDraft, ItineraryItem, POI, TransportLeg } from "@/types/trip"
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 
@@ -25,6 +25,8 @@ interface ItineraryMapProps {
   onJourneyStepChange?: (poiId: string, stepIndex: number) => void
   onJourneyFinish?: () => void
   onOsrmDegradedChange?: (degraded: boolean) => void
+  isSelectingLodging?: boolean
+  onLodgingSelected?: (lat: number, lon: number) => void
 }
 
 const dayColors = ["#ff385c", "#60a5fa", "#22c55e", "#f59e0b", "#a78bfa"]
@@ -41,11 +43,15 @@ export function ItineraryMap({
   isJourneyPlaying,
   onJourneyStepChange,
   onJourneyFinish,
-  onOsrmDegradedChange
+  onOsrmDegradedChange,
+  isSelectingLodging,
+  onLodgingSelected
 }: ItineraryMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const activeMarkersRef = useRef<mapboxgl.Marker[]>([])
+  const activeTransportMarkersRef = useRef<mapboxgl.Marker[]>([])
+  const activeLodgingMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const activeRootsRef = useRef<any[]>([])
   const [mapLoaded, setMapLoaded] = useState(false)
   const [osrmFailures, setOsrmFailures] = useState(0)
@@ -96,6 +102,10 @@ export function ItineraryMap({
       // Cleanup all popup roots on unmount
       activeRootsRef.current.forEach(root => root.unmount())
       activeRootsRef.current = []
+      activeTransportMarkersRef.current.forEach(m => m.remove())
+      activeTransportMarkersRef.current = []
+      activeLodgingMarkerRef.current?.remove()
+      activeLodgingMarkerRef.current = null
       map.remove()
     }
   }, [])
@@ -261,6 +271,97 @@ export function ItineraryMap({
             drawRoute(positions) // Straight line fallback
           })
       }
+    })
+  }, [mapLoaded, visibleDays, showRouteLines])
+
+  // 3b. Map click selection for lodging base
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return
+    const map = mapRef.current
+    map.getCanvas().style.cursor = isSelectingLodging ? "crosshair" : ""
+    if (!isSelectingLodging || !onLodgingSelected) return
+    const handleClick = (event: mapboxgl.MapMouseEvent) => {
+      onLodgingSelected(event.lngLat.lat, event.lngLat.lng)
+    }
+    map.on("click", handleClick)
+    return () => {
+      map.off("click", handleClick)
+      map.getCanvas().style.cursor = ""
+    }
+  }, [mapLoaded, isSelectingLodging, onLodgingSelected])
+
+  // 2b. Render lodging/home base marker when available
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return
+    const map = mapRef.current
+    const lat = Number(itineraryDraft.llmContract?.hotel_lat)
+    const lon = Number(itineraryDraft.llmContract?.hotel_lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+
+    const el = document.createElement("div")
+    el.className = "lodging-mapbox-marker"
+    el.innerHTML = lodgingMarkerHTML()
+    activeLodgingMarkerRef.current?.remove()
+    const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+      .setLngLat([lon, lat])
+      .setPopup(new mapboxgl.Popup({ offset: [0, -32], closeButton: false }).setHTML(`<strong>${escapeHtml(String(itineraryDraft.llmContract?.hotel_name || "Chỗ ở của bạn"))}</strong>`))
+      .addTo(map)
+    activeLodgingMarkerRef.current = marker
+    return () => {
+      marker.remove()
+      if (activeLodgingMarkerRef.current === marker) activeLodgingMarkerRef.current = null
+    }
+  }, [mapLoaded, itineraryDraft.llmContract?.hotel_lat, itineraryDraft.llmContract?.hotel_lon, itineraryDraft.llmContract?.hotel_name])
+
+  // 3c. Render transport mode icons between POIs
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return
+    const map = mapRef.current
+    activeTransportMarkersRef.current.forEach(m => m.remove())
+    activeTransportMarkersRef.current = []
+
+    if (!showRouteLines) return
+
+    visibleDays.forEach((day) => {
+      day.items.forEach((item, index) => {
+        const poi = getPoi(item.poiId)
+        if (!poi) return
+        const leg = item.transport_from_prev || day.transportLegs?.[index]
+        if (!leg) return
+
+        let fromLat: number | undefined
+        let fromLng: number | undefined
+        const previousItem = day.items[index - 1]
+        const previousPoi = previousItem ? getPoi(previousItem.poiId) : null
+        if (previousPoi) {
+          fromLat = previousPoi.lat
+          fromLng = previousPoi.lng
+        } else {
+          const lodgingLocation = day.startLodging?.location
+          fromLat = Number(lodgingLocation?.latitude)
+          fromLng = Number(lodgingLocation?.longitude)
+        }
+        if (!Number.isFinite(fromLat) || !Number.isFinite(fromLng)) return
+
+        const midLat = (Number(fromLat) + poi.lat) / 2
+        const midLng = (Number(fromLng) + poi.lng) / 2
+        const el = document.createElement("div")
+        el.className = "transport-mapbox-marker"
+        el.innerHTML = transportMarkerHTML(leg.icon || leg.mode)
+
+        const popup = new mapboxgl.Popup({
+          offset: [0, -18],
+          closeButton: false,
+          closeOnClick: true,
+          className: "custom-mapbox-popup"
+        }).setHTML(transportPopupHTML(leg))
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([midLng, midLat])
+          .setPopup(popup)
+          .addTo(map)
+        activeTransportMarkersRef.current.push(marker)
+      })
     })
   }, [mapLoaded, visibleDays, showRouteLines])
 
@@ -509,4 +610,69 @@ function markerIconHTML(order: number, dayNumber: number, selected: boolean, hov
       </svg>
     </div>
   `
+}
+
+function transportMarkerHTML(icon?: string) {
+  const mode = String(icon || "route").toLowerCase()
+  const symbol = mode.includes("walk") ? "🚶" : mode.includes("car") || mode.includes("taxi") ? "🚕" : mode.includes("bike") || mode.includes("motorbike") ? "🛵" : "➜"
+  return `
+    <div style="
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.95);
+      border: 2px solid #fb923c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 8px 18px rgba(67,20,7,0.18);
+    ">${symbol}</div>
+  `
+}
+
+function lodgingMarkerHTML() {
+  return `
+    <div style="
+      width: 34px;
+      height: 42px;
+      filter: drop-shadow(0 8px 16px rgba(30,64,175,0.28));
+    ">
+      <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 40C17 40 31 25 31 15.5C31 7.5 24.7 2 17 2C9.3 2 3 7.5 3 15.5C3 25 17 40 17 40Z" fill="#2563eb" stroke="white" stroke-width="2"/>
+        <circle cx="17" cy="15.5" r="8.2" fill="white"/>
+        <path d="M11.5 16.5L17 12L22.5 16.5" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M13 16V21H21V16" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  `
+}
+
+function transportPopupHTML(leg: TransportLeg) {
+  const cost = leg.cost_policy === "time_only" || leg.cost_policy === "none"
+    ? "Đã có phương tiện"
+    : leg.cost_policy === "daily_rental"
+      ? "Đã tính trong phí thuê ngày"
+      : Number(leg.transport_cost || 0) > 0
+        ? formatCurrency(Number(leg.transport_cost))
+        : "0đ"
+  const distance = Number(leg.distance_km || 0)
+  const distanceText = distance > 0 && distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`
+  return `
+    <div style="font-family: sans-serif; min-width: 190px; padding: 4px;">
+      <div style="font-weight: 800; color: #431407; margin-bottom: 4px;">${escapeHtml(leg.from_name || "Điểm trước")} → ${escapeHtml(leg.to_name || "Điểm sau")}</div>
+      <div style="font-size: 12px; color: rgba(67,20,7,0.75); font-weight: 700;">${escapeHtml(leg.mode_label || leg.mode || "Di chuyển")}</div>
+      <div style="font-size: 12px; color: rgba(67,20,7,0.72); margin-top: 3px;">${leg.travel_time_min || 0} phút · ${distanceText} · ${cost}</div>
+      ${leg.warning ? `<div style="font-size: 11px; color: #b45309; margin-top: 5px; font-weight: 700;">${escapeHtml(leg.warning)}</div>` : ""}
+    </div>
+  `
+}
+
+function escapeHtml(value: string) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
 }

@@ -90,6 +90,35 @@ def test_afternoon_prompt_fills_time_window_failsafe():
     assert contract.time_window.end_min == 1080
 
 
+def test_message_hints_extract_hue_destination_and_days_without_llm():
+    service = LLMExtractorService()
+    contract = LLMDataContract()
+
+    service._apply_message_hints(contract, "Đi Huế 3 ngày")
+
+    assert contract.destination == "Huế"
+    assert contract.num_days == 3
+    assert "destination" in contract.confirmed_fields
+    assert "num_days" in contract.confirmed_fields
+
+
+def test_message_hints_tolerate_question_mark_encoding_loss():
+    service = LLMExtractorService()
+    contract = LLMDataContract()
+
+    service._apply_message_hints(
+        contract,
+        "Hu? 8 ng?y, ng?n s?ch 8 tri?u, mu?n v?n h?a va ?m th?c, bao g?m kh?ch s?n",
+    )
+
+    assert contract.destination == "Huế"
+    assert contract.num_days == 8
+    assert contract.budget_max == 8_000_000
+    assert contract.budget_scope == "includes_hotel"
+    assert "culture" in contract.tags
+    assert "street_food" in contract.tags
+
+
 @pytest.mark.integration
 @pytest.mark.anyio
 async def test_process_chat_turn_extraction():
@@ -162,6 +191,75 @@ async def test_complete_info_requires_confirmation_before_ready():
 
 
 @pytest.mark.anyio
+async def test_llm_ready_is_blocked_when_critical_fields_missing():
+    from unittest.mock import AsyncMock
+    from app.schemas.trip import ChatProcessResponse
+
+    service = LLMExtractorService()
+    service._client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=ChatProcessResponse(
+            status="ready",
+            reply="Em tao lich ngay.",
+            updated_contract=LLMDataContract(
+                destination="Hue",
+                num_days=1,
+                budget_max=500000,
+                tags=["food"],
+            ),
+            phase="ready",
+            missing_fields=[],
+        ))))
+    )
+
+    res = await service.process_chat_turn(
+        message="Hue 1 ngay food tour 500k",
+        history=[],
+        current_contract=LLMDataContract(),
+    )
+
+    assert res["status"] == "clarifying"
+    assert res["phase"] == "collecting"
+    assert "time_window" in res["missing_fields"]
+    assert res["updated_contract"].ready_to_plan is False
+
+
+@pytest.mark.anyio
+async def test_llm_ready_requires_user_confirmation_before_building():
+    from unittest.mock import AsyncMock
+    from app.schemas.trip import ChatProcessResponse
+
+    ready_contract = complete_contract(
+        destination="Hue",
+        target_category_distribution={"food": 0.7, "cafe": 0.15, "nightlife": 0.1, "culture": 0.05},
+        distribution_description="Food tour Hue street food",
+        confirmation_pending=False,
+        ready_to_plan=False,
+    )
+    service = LLMExtractorService()
+    service._client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=ChatProcessResponse(
+            status="ready",
+            reply="Du thong tin, tao lich.",
+            updated_contract=ready_contract,
+            phase="ready",
+            missing_fields=[],
+        ))))
+    )
+
+    res = await service.process_chat_turn(
+        message="Hue 1 ngay food tour 500k, di 9h-21h",
+        history=[],
+        current_contract=LLMDataContract(),
+    )
+
+    assert res["status"] == "clarifying"
+    assert res["phase"] == "confirming"
+    assert res["requires_confirmation"] is True
+    assert res["updated_contract"].confirmation_pending is True
+    assert res["updated_contract"].ready_to_plan is False
+
+
+@pytest.mark.anyio
 async def test_confirmation_turn_returns_ready():
     service = offline_service()
     current = complete_contract(confirmation_pending=True, ready_to_plan=False)
@@ -173,6 +271,20 @@ async def test_confirmation_turn_returns_ready():
     assert res["status"] == "ready"
     assert res["phase"] == "ready"
     assert res["updated_contract"].ready_to_plan is True
+
+
+@pytest.mark.anyio
+async def test_more_than_seven_days_is_clarified_not_ready():
+    service = offline_service()
+    res = await service.process_chat_turn(
+        message="Đi Huế 8 ngày, ngân sách 5 triệu, thích văn hóa, đi 8h-21h",
+        history=[],
+        current_contract=LLMDataContract(),
+    )
+    assert res["status"] == "clarifying"
+    assert res["phase"] == "collecting"
+    assert res["updated_contract"].ready_to_plan is False
+    assert "num_days" in res["missing_fields"]
 
 
 @pytest.mark.anyio

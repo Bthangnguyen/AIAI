@@ -480,12 +480,45 @@ class LLMExtractorService:
                 missing_fields=["destination"]
             )
 
+        if contract.num_days and contract.num_days > 7:
+            contract.confirmation_pending = False
+            contract.ready_to_plan = False
+            return self._make_response(
+                contract,
+                "clarifying",
+                "Hiện tại TripFlow hỗ trợ lập lịch tối đa 7 ngày. Mình muốn em lên lịch 7 ngày đầu hay rút chuyến đi xuống tối đa 7 ngày ạ?",
+                phase="collecting",
+                missing_fields=["num_days"],
+                requires_confirmation=False,
+            )
+
+        critical_missing = self._critical_missing(contract)
+
         # ── Step 4: Fully LLM-Driven Dialog State (R1) ──
         if llm_reply:
+            if critical_missing:
+                contract.confirmation_pending = False
+                contract.ready_to_plan = False
+                contract.last_question_field = critical_missing[0]
+                return self._make_response(
+                    contract, "clarifying", self._critical_missing_reply(critical_missing),
+                    phase="collecting", missing_fields=critical_missing,
+                    requires_confirmation=False,
+                )
+
             status = "ready" if llm_ready else "clarifying"
             if llm_ready:
-                contract.confirmation_pending = False
-                contract.ready_to_plan = True
+                if current_contract.confirmation_pending and self._is_confirmation(message):
+                    contract.confirmation_pending = False
+                    contract.ready_to_plan = True
+                else:
+                    contract.confirmation_pending = True
+                    contract.ready_to_plan = False
+                    return self._make_response(
+                        contract, "clarifying", self._build_confirmation_reply(contract),
+                        phase="confirming", missing_fields=[],
+                        requires_confirmation=True,
+                    )
             else:
                 if llm_phase == "confirming":
                     contract.confirmation_pending = True
@@ -499,7 +532,6 @@ class LLMExtractorService:
             )
 
         # ── Step 5: Combined Fallback Questions on LLM Failure/Timeout (R2) ──
-        critical_missing = self._critical_missing(contract)
         if critical_missing:
             if len(critical_missing) >= 2:
                 # Specific combination 1: destination & num_days
@@ -919,12 +951,16 @@ class LLMExtractorService:
         scalar_fields = [
             "destination",
             "weather_preference",
+            "budget_scope",
             "time_slot",
             "trip_duration_hours",
             "vibe",
             "trip_type",
             "preferred_pace",
             "walking_tolerance",
+            "has_lodging",
+            "lodging_budget_per_night",
+            "cost_priority",
             "group_type",
             "group_size",
             "target_category_distribution",
@@ -953,6 +989,16 @@ class LLMExtractorService:
             merged.time_window = candidate.time_window
         if candidate.estimated_pois is not None:
             merged.estimated_pois = candidate.estimated_pois
+        if getattr(candidate, "lodging_selection", None):
+            current_selection = merged.lodging_selection.model_dump()
+            next_selection = candidate.lodging_selection.model_dump()
+            current_selection.update({k: v for k, v in next_selection.items() if v not in (None, "", "unknown", "none")})
+            merged.lodging_selection = type(merged.lodging_selection)(**current_selection)
+        if getattr(candidate, "transport_plan", None):
+            current_plan = merged.transport_plan.model_dump()
+            next_plan = candidate.transport_plan.model_dump()
+            current_plan.update({k: v for k, v in next_plan.items() if v not in (None, "", "unknown")})
+            merged.transport_plan = type(merged.transport_plan)(**current_plan)
 
         for field in [
             "tags",
@@ -960,6 +1006,7 @@ class LLMExtractorService:
             "excluded_pois",
             "food_preferences",
             "avoid_tags",
+            "lodging_preference",
             "transport_modes",
             "confirmed_fields",
         ]:
@@ -985,19 +1032,91 @@ class LLMExtractorService:
         text = self._normalize(raw_text)
         raw_lower = raw_text.lower()
 
+        if re.search(r"\bhu(?:e|\?)(?:\b|\s|$|,|\.)", text):
+            contract.destination = "Huế"
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["destination"])
+
+        parsed_days = self._parse_days(text)
+        if parsed_days:
+            contract.num_days = parsed_days
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["num_days"])
+
+        parsed_budget = self._parse_budget(text)
+        if parsed_budget is not None:
+            contract.budget_max = parsed_budget
+            contract.budget_is_unlimited = False
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["budget"])
+
+        has_hotel_text = "khach san" in text or "kh?ch s?n" in text
+        if any(phrase in text for phrase in ("da co khach san", "co khach san roi", "da co cho o", "co cho o roi")):
+            contract.has_lodging = True
+            contract.hotel_confirmed = True
+            contract.lodging_selection.status = "user_has_lodging"
+            contract.lodging_selection.selection_method = "map_pin"
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
+        elif any(phrase in text for phrase in ("chua co khach san", "chua co cho o", "can khach san", "tim khach san")):
+            contract.has_lodging = False
+            contract.lodging_selection.status = "needs_lodging"
+
+        if any(phrase in text for phrase in ("chua gom khach san", "khong gom khach san", "khong bao gom khach san", "chua bao gom khach san")):
+            contract.budget_scope = "excludes_hotel"
+        elif any(phrase in text for phrase in ("gom khach san", "bao gom khach san", "ca khach san", "bao tron khach san")) or (
+            has_hotel_text and any(phrase in text for phrase in ("bao gom", "bao g?m", "gom", "g?m", "ca "))
+        ):
+            contract.budget_scope = "includes_hotel"
+        elif parsed_budget is not None and contract.budget_scope == "unknown":
+            contract.budget_scope = "total_trip"
+
+        if any(word in text for word in ("homestay", "nha nghi", "hostel")):
+            contract.lodging_preference = self._merge_unique(contract.lodging_preference, ["budget", "homestay"])
+            contract.cost_priority = contract.cost_priority or "save_money"
+        if any(word in text for word in ("resort", "sang", "premium", "cao cap")):
+            contract.lodging_preference = self._merge_unique(contract.lodging_preference, ["premium"])
+            contract.cost_priority = contract.cost_priority or "premium"
+        if any(word in text for word in ("trung tam", "gan trung tam")):
+            contract.lodging_preference = self._merge_unique(contract.lodging_preference, ["central"])
+
+        parsed_group_size = re.search(r"(\d+)\s*(?:nguoi|ng|ban|khach)", text)
+        if parsed_group_size:
+            contract.group_size = int(parsed_group_size.group(1))
+
+        own_transport_phrases = (
+            "co xe", "co xe may", "co o to", "tu lai", "xe rieng",
+            "co phuong tien", "da co phuong tien", "nguoi cho",
+        )
+        needs_transport_phrases = (
+            "chua co xe", "khong co xe", "can xe", "can phuong tien",
+            "bat grab", "di taxi", "goi xe", "thue xe",
+        )
+        if any(phrase in text for phrase in own_transport_phrases):
+            contract.transport_plan.availability = "has_own_transport"
+            contract.transport_plan.cost_policy = "time_only"
+            contract.transport_plan.reason = contract.transport_plan.reason or "User said they already have transport."
+        elif any(phrase in text for phrase in needs_transport_phrases):
+            contract.transport_plan.availability = "needs_transport"
+
+        if any(word in text for word in ("xe may", "motorbike")):
+            contract.transport_modes = self._merge_unique(contract.transport_modes, ["motorbike"])
+            if contract.transport_plan.primary_mode in ("mixed", "walking"):
+                contract.transport_plan.primary_mode = "motorbike"
+        if "taxi" in text or "o to" in text or "oto" in text or "car" in text:
+            contract.transport_modes = self._merge_unique(contract.transport_modes, ["taxi"])
+            contract.transport_plan.primary_mode = "taxi"
+        if "grab" in text or "goi xe" in text:
+            contract.transport_modes = self._merge_unique(contract.transport_modes, ["motorbike_hailing"])
+            contract.transport_plan.primary_mode = "motorbike_hailing"
+        if "thue xe" in text:
+            contract.transport_plan.cost_policy = "daily_rental"
+
         # 1. (Disabled) Spelling normalization for locked POIs is removed to disable background locking.
 
 
         # 2. (Disabled per request) Pure numerical time range parsing and time slot heuristics
         # Let the LLM decide time_window and time_slot completely, no overrides.
 
-        # Only apply static tag filters if the LLM failed to provide a valid distribution
-        if contract.target_category_distribution:
-            return
-
         # 4. Safe interest and preference parsing (prevents "chưa" matching "chùa")
         has_culture = (
-            any(word in text for word in ("lich su", "van hoa", "dai noi", "lang tam")) or
+            any(word in text for word in ("lich su", "van hoa", "v?n h?a", "dai noi", "lang tam")) or
             "chùa" in raw_lower or
             "chua thien mu" in text or
             "ngoi chua" in text or
@@ -1008,9 +1127,15 @@ class LLMExtractorService:
 
         if any(word in text for word in ("cafe", "ca phe")):
             contract.tags = self._merge_unique(contract.tags, ["cafe"])
+        if any(word in text for word in ("cafe muoi", "ca phe muoi")):
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["cafe_muoi"])
 
-        if any(word in text for word in ("an uong", "bun bo", "am thuc", "mon an", "street food", "dac san")):
+        if any(word in text for word in ("an uong", "bun bo", "am thuc", "?m th?c", "mon an", "street food", "food tour", "dac san")):
             contract.tags = self._merge_unique(contract.tags, ["street_food"])
+            if "food tour" in text:
+                contract.trip_type = contract.trip_type or "food_tour"
+        if any(word in text for word in ("che hue", "che ")):
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["che_hue"])
 
         if any(word in text for word in ("thien nhien", "bien", "song", "nui", "ngoai troi")):
             contract.tags = self._merge_unique(contract.tags, ["nature"])
@@ -1108,6 +1233,28 @@ class LLMExtractorService:
         if not has_interests:
             missing.append("interests")
         return missing
+
+    def _critical_missing_reply(self, critical_missing: List[str]) -> str:
+        """Build one compact follow-up for missing fields that block generation."""
+        if not critical_missing:
+            return FOLLOW_UP_QUESTIONS["general"]
+        labels = {
+            "destination": "điểm đến",
+            "num_days": "số ngày đi",
+            "budget": "ngân sách",
+            "interests": "sở thích chính",
+            "time_window": "khung giờ đi trong ngày",
+        }
+        if len(critical_missing) == 1:
+            field = critical_missing[0]
+            if field == "time_window":
+                return "Mình muốn lịch đi trong khung giờ nào mỗi ngày ạ? Ví dụ 8h-21h, chỉ buổi chiều, hay chỉ buổi tối."
+            if field == "interests":
+                return "Mình muốn chuyến đi nghiêng về gì ạ: văn hóa, ẩm thực, cafe, thiên nhiên, buổi tối hay một lịch cân bằng?"
+            return FOLLOW_UP_QUESTIONS.get(field, FOLLOW_UP_QUESTIONS["general"])
+        picked = [labels.get(field, field) for field in critical_missing]
+        fields = ", ".join(picked[:-1]) + " và " + picked[-1]
+        return f"Để em lên lịch chắc hơn, mình bổ sung giúp em {fields} nhé."
 
     def _missing_fields(self, contract: LLMDataContract) -> List[str]:
         missing = []
@@ -1225,13 +1372,13 @@ class LLMExtractorService:
         """Check if destination refers to Huế."""
         if not destination:
             return False
-        normalized = destination.lower().strip()
-        return any(h in normalized for h in ("huế", "hue", "hué"))
+        normalized = LLMExtractorService._normalize(destination)
+        return "hue" in normalized
 
     @staticmethod
     def _parse_days(text: str) -> Optional[int]:
         """Parse number of days from text like '3 ngay', '2 ngày'."""
-        match = re.search(r"(\d+)\s*ngay", text)
+        match = re.search(r"(\d+)\s*ng(?:a|\?)y", text)
         if match:
             days = int(match.group(1))
             return days if 1 <= days <= 14 else None
@@ -1241,7 +1388,7 @@ class LLMExtractorService:
     def _parse_budget(text: str) -> Optional[float]:
         """Parse budget from text like '1 trieu', '500k', '2tr'."""
         # "X triệu" or "X trieu" or "Xtr"
-        match = re.search(r"(\d+(?:\.\d+)?)\s*(?:trieu|tr\b)", text)
+        match = re.search(r"(\d+(?:\.\d+)?)\s*(?:tri(?:e|\?)u|tr\b)", text)
         if match:
             return float(match.group(1)) * 1_000_000
         # "Xk"

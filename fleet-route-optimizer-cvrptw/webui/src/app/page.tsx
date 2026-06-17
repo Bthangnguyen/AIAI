@@ -493,8 +493,15 @@ export default function Page() {
           day_index: index,
           date: `Day ${d.dayNumber}`,
           start_time_min: (d as any).start_time_min ?? startTimeMin,
-          hotel_name: currentDraft.destination + " Hotel",
-          hotel_location: { latitude: 16.4637, longitude: 107.5905 },
+          hotel_name: currentDraft.llmContract?.hotel_name || currentDraft.destination + " Hotel",
+          hotel_location: {
+            latitude: currentDraft.llmContract?.hotel_lat || 16.4637,
+            longitude: currentDraft.llmContract?.hotel_lon || 107.5905,
+          },
+          transport_legs: d.transportLegs,
+          overnight_stay: d.overnightStay,
+          start_lodging: d.startLodging,
+          end_lodging: d.endLodging,
           stops: d.items.map((item) => {
             const cachedPoi = POI_CACHE.get(item.poiId) || getPoi(item.poiId);
             return {
@@ -517,6 +524,9 @@ export default function Page() {
               price: cachedPoi?.estimatedCost || 0,
               travel_time_from_prev_min: item.travel_time_from_prev_min,
               travel_time_to_next_min: item.travel_time_to_next_min,
+              transport_from_prev: item.transport_from_prev,
+              ticket_cost: item.ticket_cost,
+              expected_spend: item.expected_spend,
             };
           }),
         };
@@ -734,6 +744,33 @@ export default function Page() {
     setScreen("home")
   }
 
+  function handleSetLodgingBase(lat: number, lon: number, name = "Chỗ ở của bạn") {
+    const lodgingPatch = {
+      has_lodging: true,
+      hotel_confirmed: true,
+      hotel_name: name,
+      hotel_lat: lat,
+      hotel_lon: lon,
+      lodging_selection: {
+        status: "user_has_lodging",
+        selection_method: "map_pin",
+        lat,
+        lon,
+        name,
+        hotel_poi_id: null,
+      },
+    }
+    setContract((current: any) => ({ ...(current || {}), ...lodgingPatch }))
+    if (draft) {
+      setDraft({
+        ...draft,
+        llmContract: { ...(draft.llmContract || {}), ...lodgingPatch },
+        updatedAt: new Date().toISOString(),
+      })
+    }
+    showToast("Đã chọn chỗ ở làm điểm xuất phát/kết thúc.", "success")
+  }
+
   if (screen === "saved") {
     return <SavedTripsPage drafts={savedDrafts} onOpenDraft={openSavedDraft} onCreateNew={() => setScreen("home")} onBack={backHome} userLabel={user?.displayName || user?.email || undefined} isCloudSynced={!!user} />
   }
@@ -782,6 +819,7 @@ export default function Page() {
             onShowCategoriesChange={setShowCategories}
             onStartDateChange={handleStartDateChange}
             onFitMap={() => setFitSignal((value) => value + 1)}
+            onSetLodgingBase={handleSetLodgingBase}
             onAddPoi={handleAddPoiBackend}
             onRemovePlace={handleRemovePlaceBackend}
             onMovePlace={handleMovePlace}
@@ -799,11 +837,9 @@ export default function Page() {
     <>
       <HomePage
         prompt={prompt}
-        mode={mode}
         isLoading={isRunning}
         progressStep={activeStep}
         onPromptChange={setPrompt}
-        onModeChange={setMode}
         onSubmit={handleHomeSubmit}
         onAuthClick={() => setShowAuthModal(true)}
         onSignOut={() => void signOut()}

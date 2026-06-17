@@ -456,6 +456,15 @@ class Layer4Client:
         time_limit: int = 15,
     ) -> dict | None:
         """Forward re-route request to Layer 4 POST /re-route."""
+        state = solver_breaker.check_state()
+        if state == "OPEN":
+            logger.error("Circuit breaker is OPEN. Blocking re-route request to Layer 4 Solver.")
+            return {
+                "status": "error",
+                "error_code": "CIRCUIT_BREAKER_OPEN",
+                "message": "Há»‡ thá»‘ng Ä‘ang quÃ¡ táº£i. Vui lÃ²ng thá»­ láº¡i sau 30 giÃ¢y.",
+            }
+
         days = original_itinerary.get("days", [])
         target_day = None
         for d in days:
@@ -519,13 +528,14 @@ class Layer4Client:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=45.0) as client:
                 resp = await client.post(
                     f"{self.base_url}/re-route",
                     json=payload,
                     params={"time_limit": time_limit},
                 )
                 resp.raise_for_status()
+                solver_breaker.record_success()
                 result = resp.json()
                 if result and "stops" in result:
                     stop_map = {s.get("poi_id"): s for s in target_day.get("stops", []) if isinstance(s, dict)}
@@ -538,6 +548,11 @@ class Layer4Client:
                             if orig.get("vibe_note"):
                                 stop["vibe_note"] = orig.get("vibe_note")
                 return result
+        except httpx.TimeoutException as e:
+            solver_breaker.record_failure()
+            logger.error(f"Layer 4 re-route timed out: {e}")
+            return {"status": "error", "error_code": "TIMEOUT", "message": "QuÃ¡ thá»i gian Ä‘á»‹nh tuyáº¿n láº¡i."}
         except httpx.HTTPError as e:
+            solver_breaker.record_failure()
             logger.error(f"Layer 4 re-route failed: {e}")
-            return None
+            return {"status": "error", "error_code": "REROUTE_FAILED", "message": "KhÃ´ng thá»ƒ tá»‘i Æ°u láº¡i ngÃ y hiá»‡n táº¡i."}

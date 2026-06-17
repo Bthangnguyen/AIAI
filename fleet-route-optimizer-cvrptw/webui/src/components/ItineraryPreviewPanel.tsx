@@ -22,6 +22,7 @@ interface ItineraryPreviewPanelProps {
   onSelectPoi: (poiId: string) => void
   onHoverPoi: (poiId: string | null) => void
   onSaveDraft: () => void
+  onSetLodgingBase?: (lat: number, lon: number, name?: string) => void
   onAddPlace: (dayNumber: number) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
   onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
@@ -34,7 +35,7 @@ interface ItineraryPreviewPanelProps {
   onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
-export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
+export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onSetLodgingBase, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
   return (
     <div className="flex h-full min-w-0 flex-col bg-orange-50">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-orange-200 px-4">
@@ -77,14 +78,14 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
         {draft && viewMode === "split" ? (
           <div className="relative z-10 grid min-h-full w-full gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(420px,1.05fr)]">
             <ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onMovePlace={onMovePlace} onApplyManualOrder={onApplyManualOrder} onOptimizeDay={onOptimizeDay} />
-            <ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} />
+            <ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} onSetLodgingBase={onSetLodgingBase} />
           </div>
         ) : null}
         {draft && viewMode === "timeline" ? (
           <div className="relative z-10 w-full"><ItineraryArtifact draft={draft} selectedPoiId={selectedPoiId} onSelectPoi={onSelectPoi} onHoverPoi={onHoverPoi} onSaveDraft={onSaveDraft} onAddPlace={onAddPlace} onRemovePlace={onRemovePlace} onMovePlace={onMovePlace} onApplyManualOrder={onApplyManualOrder} onOptimizeDay={onOptimizeDay} /></div>
         ) : null}
         {draft && viewMode === "map" ? (
-          <div className="relative z-10 h-full min-h-[560px] w-full"><ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} /></div>
+          <div className="relative z-10 h-full min-h-[560px] w-full"><ItineraryMapPanel draft={draft} selectedPoiId={selectedPoiId} hoveredPoiId={hoveredPoiId} selectedDay={selectedDay} showRouteLines={showRouteLines} fitSignal={fitSignal} onSelectPoi={onSelectPoi} onOsrmDegradedChange={onOsrmDegradedChange} onSetLodgingBase={onSetLodgingBase} /></div>
         ) : null}
       </div>
     </div>

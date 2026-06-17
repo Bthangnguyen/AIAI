@@ -1,4 +1,4 @@
-import { GATEWAY_BASE_URL } from "@/lib/client"
+import { GATEWAY_BASE_URL, getGatewayAuthHeader } from "@/lib/client"
 
 export type StreamStep =
   | "intent_extraction_started"
@@ -50,12 +50,13 @@ export async function streamTripPlan(options: StreamTripPlanOptions): Promise<vo
   const { userPrompt, hotelLat, hotelLon, hotelName, numDays, onEvent, onError, onDone, signal } = options
 
   try {
+    const authHeader = await getGatewayAuthHeader()
     const res = await fetch(`${GATEWAY_BASE_URL}/v1/trip/plan_trip_stream`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
         Accept: "text/event-stream",
-        Authorization: "Bearer mock-session-token-xyz-987",
+        ...authHeader,
       },
       body: JSON.stringify({
         user_prompt: userPrompt,

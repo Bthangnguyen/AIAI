@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useState } from "react"
-import { MapPinned, Play, Square } from "lucide-react"
+import { Home, MapPinned, Play, Square } from "lucide-react"
 import type { ItineraryDraft } from "@/types/trip"
 
 const ItineraryMap = dynamic(() => import("@/components/ItineraryMap").then((mod) => mod.ItineraryMap), {
@@ -18,11 +18,13 @@ interface ItineraryMapPanelProps {
   showRouteLines: boolean
   fitSignal: number
   onSelectPoi: (poiId: string) => void
+  onSetLodgingBase?: (lat: number, lon: number, name?: string) => void
   onOsrmDegradedChange?: (degraded: boolean) => void
 }
 
-export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onSelectPoi, onOsrmDegradedChange }: ItineraryMapPanelProps) {
+export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, onSelectPoi, onSetLodgingBase, onOsrmDegradedChange }: ItineraryMapPanelProps) {
   const [isJourneyPlaying, setIsJourneyPlaying] = useState(false)
+  const [selectingLodging, setSelectingLodging] = useState(false)
   if (!draft) {
     return (
       <div className="flex h-full min-h-[360px] items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-white/60 p-8 text-center">
@@ -39,6 +41,19 @@ export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selected
     <div className="relative h-full min-h-[360px] overflow-hidden rounded-3xl border border-orange-200 bg-white">
       <div className="relative h-full w-full">
         <div className="absolute right-3 top-3 z-[1000] flex gap-2">
+          {onSetLodgingBase ? (
+            <button
+              type="button"
+              onClick={() => setSelectingLodging((value) => !value)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black shadow-lg backdrop-blur transition ${
+                selectingLodging
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-white/90 text-blue-700 hover:bg-blue-50"
+              }`}
+            >
+              <Home className="h-3.5 w-3.5" /> {selectingLodging ? "Đang chọn chỗ ở" : "Chọn chỗ ở"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setIsJourneyPlaying(!isJourneyPlaying)}
@@ -63,7 +78,17 @@ export function ItineraryMapPanel({ draft, selectedPoiId, hoveredPoiId, selected
           onJourneyStepChange={(poiId) => onSelectPoi(poiId)}
           onJourneyFinish={() => setIsJourneyPlaying(false)}
           onOsrmDegradedChange={onOsrmDegradedChange}
+          isSelectingLodging={selectingLodging}
+          onLodgingSelected={(lat, lon) => {
+            onSetLodgingBase?.(lat, lon, "Chỗ ở của bạn")
+            setSelectingLodging(false)
+          }}
         />
+        {selectingLodging ? (
+          <div className="absolute left-3 top-3 z-[1000] max-w-xs rounded-xl border border-blue-200 bg-white/95 px-3 py-2 text-xs font-bold text-blue-900 shadow-lg">
+            Click vào vị trí chỗ ở trên bản đồ để dùng làm base.
+          </div>
+        ) : null}
       </div>
       <MapLegend draft={draft} />
     </div>

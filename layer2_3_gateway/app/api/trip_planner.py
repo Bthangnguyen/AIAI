@@ -26,6 +26,7 @@ from app.services.edit_intent_planner import EditIntentPlanner
 from app.services.spatial_filter import SpatialFilterService
 from app.services.layer4_client import Layer4Client
 from app.services.embedding_service import EmbeddingService
+from app.services.cost_estimator import CostEstimatorService
 from app.utils.logging import AppLogger
 
 from slowapi import Limiter
@@ -130,6 +131,7 @@ llm_service = LLMExtractorService()
 spatial_service = SpatialFilterService()
 layer4_client = Layer4Client()
 embed_service = EmbeddingService()
+cost_estimator = CostEstimatorService()
 
 
 class IdempotencyManager:
@@ -637,26 +639,47 @@ async def _run_pipeline(
     async with AsyncSessionFactory() as db_session:
         if contract.hotel_lat is None or contract.hotel_lon is None:
             hotel_fallback = True
-            from sqlalchemy import select
+            from sqlalchemy import select, func, or_
             from geoalchemy2.functions import ST_AsGeoJSON
             from app.models.poi import PointOfInterest
             import json as json_lib
             
             POI = PointOfInterest
-            stmt = select(POI.name, ST_AsGeoJSON(POI.coordinates).label("geojson")).where(
-                POI.category.ilike("%Khách sạn%")
+            stmt = select(
+                POI.uuid,
+                POI.name,
+                POI.price,
+                ST_AsGeoJSON(POI.coordinates).label("geojson"),
+            ).where(
+                or_(
+                    func.lower(POI.category_group) == "hotel",
+                    func.lower(POI.category) == "hotel",
+                    POI.category.ilike("%Khách sạn%"),
+                )
             )
             if contract.budget_max:
-                stmt = stmt.where(POI.price <= contract.budget_max * 0.3)
+                per_night_cap = max(
+                    250_000,
+                    contract.budget_max * 0.25 / max(1, (contract.num_days or 1) - 1),
+                )
+                stmt = stmt.where(or_(POI.price == 0, POI.price <= per_night_cap))
             stmt = stmt.order_by(POI.priority_score.desc()).limit(1)
             
             result = await db_session.execute(stmt)
             row = result.first()
             if row:
+                hotel_fallback = False
                 contract.hotel_name = row.name
+                contract.lodging_budget_per_night = float(row.price or 0)
+                contract.lodging_selection.status = "needs_lodging"
+                contract.lodging_selection.selection_method = "db_poi"
+                contract.lodging_selection.name = row.name
+                contract.lodging_selection.hotel_poi_id = str(row.uuid)
                 geojson = json_lib.loads(row.geojson)
                 contract.hotel_lon = geojson["coordinates"][0]
                 contract.hotel_lat = geojson["coordinates"][1]
+                contract.lodging_selection.lon = contract.hotel_lon
+                contract.lodging_selection.lat = contract.hotel_lat
                 logger.info(f"🏨 Auto-selected hotel: {contract.hotel_name}")
             else:
                 contract.hotel_name = "Hue Default Hotel"
@@ -728,6 +751,7 @@ async def plan_trip(request: Request, body: TripPlanRequest, user: FirebaseUser 
 
         if l4_result:
             l4_result["hotel_fallback"] = hotel_fallback
+            l4_result = cost_estimator.enrich(l4_result, contract, hotel_fallback=hotel_fallback)
 
         response_data = TripPlanResponse(
             status="success" if l4_result else "partial",
@@ -804,14 +828,17 @@ async def plan_trip_stream(request: Request, body: TripPlanRequest, user: Fireba
         try:
             plan_result = None
             async for chunk in layer4_client.plan_stream(pois=pois, contract=contract, hotel_fallback=hotel_fallback):
-                yield chunk
                 if chunk.startswith("data: ") and not chunk.startswith("data: [DONE]"):
                     try:
                         data_content = json_lib.loads(chunk[6:].strip())
                         if "days" in data_content or "status" in data_content or "error_code" in data_content:
+                            if "error_code" not in data_content and "days" in data_content:
+                                data_content = cost_estimator.enrich(data_content, contract, hotel_fallback=hotel_fallback)
+                                chunk = f"data: {json_dumps(data_content)}\n\n"
                             plan_result = data_content
                     except Exception:
                         pass
+                yield chunk
 
             if idempotency_key and plan_result:
                 await idempotency_manager.set_completed(idempotency_key, plan_result)
@@ -1050,10 +1077,10 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
                     pending_edit_plan = None
             rebuild_actions = {
                 "rebuild_requested", "change_budget", "change_pace", 
-                "change_time_window", "change_time", "add_preference", 
+                "change_duration", "change_time_window", "change_time", "add_preference", 
                 "avoid_preference", "change_distribution"
             }
-            is_rebuild_in_ops = any(op.get("type") == "rebuild_requested" for op in operation_dicts) if operation_dicts else False
+            is_rebuild_in_ops = any(op.get("type") in rebuild_actions for op in operation_dicts) if operation_dicts else False
             if should_apply_edit and (not operation_dicts or is_rebuild_in_ops) and (action in rebuild_actions or is_rebuild_in_ops):
                 from app.schemas.trip import TripPlanRequest
                 contract_to_use = result.get("updated_contract")

@@ -17,6 +17,25 @@ class TimeWindowSpec(BaseModel):
     end_min: int = Field(1260, description="End time in minutes from midnight")
 
 
+class LodgingSelectionSpec(BaseModel):
+    status: str = Field("unknown", description="user_has_lodging|needs_lodging|unknown")
+    selection_method: str = Field("none", description="map_pin|db_poi|none")
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    name: Optional[str] = None
+    hotel_poi_id: Optional[str] = None
+
+
+class TransportPlanSpec(BaseModel):
+    availability: str = Field("unknown", description="has_own_transport|needs_transport|unknown")
+    primary_mode: str = Field("mixed", description="walking|bicycle|motorbike|motorbike_hailing|taxi|car|mixed")
+    fallback_mode: Optional[str] = Field("taxi", description="taxi|motorbike_hailing|car|none")
+    cost_policy: str = Field("per_leg", description="time_only|per_leg|daily_rental|none")
+    walking_threshold_km: float = Field(1.0, description="Max distance where a leg can be suggested as walking")
+    cost_scope: str = Field("total_group", description="total_group|per_person|unknown")
+    reason: Optional[str] = None
+
+
 # === Layer 2 NEW: Structured LLM Intent Extraction Output ===
 
 
@@ -192,6 +211,7 @@ class LLMDataContract(BaseModel):
     destination: Optional[str] = Field(None, description="Destination city name")
     budget_max: Optional[float] = Field(None, description="Max budget in VND")
     budget_is_unlimited: bool = Field(False, description="True when the user explicitly accepts unlimited/open budget")
+    budget_scope: str = Field("unknown", description="total_trip|per_day|excludes_hotel|includes_hotel|unknown")
     radius_km: float = Field(10.0, description="Search radius from hotel in km")
     num_days: int = Field(1, description="Number of travel days")
     time_window: Optional[TimeWindowSpec] = None
@@ -204,7 +224,13 @@ class LLMDataContract(BaseModel):
     hotel_name: Optional[str] = Field("Hotel", description="Hotel display name")
     hotel_confirmed: bool = Field(False, description="True when hotel info or default hotel choice is confirmed")
     default_hotel_ok: bool = Field(False, description="True when user agrees to use the default Hue hotel")
+    has_lodging: Optional[bool] = Field(None, description="True if user already has lodging, False if they need lodging, null if unknown")
+    lodging_preference: List[str] = Field(default_factory=list, description="central, budget, homestay, hotel, resort, quiet, etc.")
+    lodging_budget_per_night: Optional[float] = Field(None, description="Expected lodging budget per night in VND")
+    lodging_selection: LodgingSelectionSpec = Field(default_factory=LodgingSelectionSpec)
+    cost_priority: Optional[str] = Field(None, description="save_money|balanced|comfort|premium")
     transport_modes: List[str] = Field(default_factory=list, description="Preferred transport modes")
+    transport_plan: TransportPlanSpec = Field(default_factory=TransportPlanSpec)
     group_type: Optional[str] = Field(None, description="solo/couple/family/friends/business")
     group_size: Optional[int] = Field(None, description="Number of travelers")
     confirmed_fields: List[str] = Field(default_factory=list, description="Fields explicitly collected or confirmed")

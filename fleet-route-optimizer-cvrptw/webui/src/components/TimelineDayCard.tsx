@@ -1,10 +1,10 @@
-import { Plus, RefreshCw, Route } from "lucide-react"
+import { Bike, Car, Footprints, Home, Plus, RefreshCw, Route } from "lucide-react"
 import { TimelinePlaceCard } from "@/components/TimelinePlaceCard"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import { POI_CACHE } from "@/lib/api"
 import { formatCurrency } from "@/lib/format"
 import { canMoveDayItem } from "@/lib/reorderDayItems"
-import type { ItineraryDay } from "@/types/trip"
+import type { ItineraryDay, TransportLeg } from "@/types/trip"
 import type { MoveDirection } from "@/lib/reorderDayItems"
 
 interface TimelineDayCardProps {
@@ -34,6 +34,48 @@ function getFormattedDate(startDateStr: string, dayNumber: number): string {
   } catch (e) {
     return ""
   }
+}
+
+function formatDistance(km?: number): string {
+  if (!km) return "--"
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  return `${km.toFixed(1)} km`
+}
+
+function formatTransportCost(leg?: TransportLeg): string {
+  if (!leg) return ""
+  if (leg.cost_policy === "time_only" || leg.cost_policy === "none") return "Đã có phương tiện"
+  if (leg.cost_policy === "daily_rental") return "Đã tính trong phí thuê ngày"
+  const cost = Number(leg.transport_cost || 0)
+  return cost > 0 ? formatCurrency(cost) : "0đ"
+}
+
+function TransportIcon({ leg }: { leg?: TransportLeg }) {
+  const mode = (leg?.icon || leg?.mode || "").toLowerCase()
+  if (mode.includes("walk")) return <Footprints className="h-3.5 w-3.5" />
+  if (mode.includes("car") || mode.includes("taxi")) return <Car className="h-3.5 w-3.5" />
+  if (mode.includes("motorbike") || mode.includes("bike")) return <Bike className="h-3.5 w-3.5" />
+  return <Route className="h-3.5 w-3.5" />
+}
+
+function TransportLegRow({ leg }: { leg?: TransportLeg }) {
+  if (!leg) return null
+  return (
+    <div className="mb-3 ml-1 rounded-xl border border-orange-200 bg-orange-50/80 px-3 py-2 text-xs text-orange-950/70">
+      <div className="flex flex-wrap items-center gap-2 font-bold">
+        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-orange-700">
+          <TransportIcon leg={leg} />
+          {leg.mode_label || leg.mode || "Di chuyển"}
+        </span>
+        <span>{leg.travel_time_min ?? 0} phút</span>
+        <span>·</span>
+        <span>{formatDistance(leg.distance_km)}</span>
+        <span>·</span>
+        <span>{formatTransportCost(leg)}</span>
+      </div>
+      {leg.warning ? <p className="mt-1 font-semibold text-amber-700">{leg.warning}</p> : null}
+    </div>
+  )
 }
 
 export function TimelineDayCard({
@@ -98,22 +140,38 @@ export function TimelineDayCard({
         </div>
       </div>
       <div className="mt-4 space-y-3 border-l border-dashed border-orange-300 pl-4">
-        {day.items.map((item) => (
-          <div key={item.id} className="relative">
-            <span className="absolute -left-[4.35rem] top-4 rounded-full bg-white px-2 py-1 text-[10px] font-black text-orange-950">{item.time}</span>
-            <span className="absolute -left-[1.35rem] top-5 h-2.5 w-2.5 rounded-full bg-travel ring-4 ring-card" />
-            <TimelinePlaceCard
-              item={item}
-              selected={selectedPoiId === item.poiId}
-              canMoveUp={canMoveDayItem(day, item.id, "up")}
-              canMoveDown={canMoveDayItem(day, item.id, "down")}
-              onSelect={() => onSelectPoi(item.poiId)}
-              onHover={(hovered) => onHoverPoi(hovered ? item.poiId : null)}
-              onRemove={() => onRemovePlace(day.dayNumber, item.id)}
-              onMove={(direction) => onMovePlace(day.dayNumber, item.id, direction)}
-            />
+        {day.startLodging ? (
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
+            <Home className="h-3.5 w-3.5" />
+            Xuất phát từ {String(day.startLodging.name || "chỗ ở")}
           </div>
-        ))}
+        ) : null}
+        {day.items.map((item, index) => {
+          const leg = item.transport_from_prev || day.transportLegs?.[index]
+          return (
+            <div key={item.id} className="relative">
+              <TransportLegRow leg={leg} />
+              <span className="absolute -left-[4.35rem] top-14 rounded-full bg-white px-2 py-1 text-[10px] font-black text-orange-950">{item.time}</span>
+              <span className="absolute -left-[1.35rem] top-[3.75rem] h-2.5 w-2.5 rounded-full bg-travel ring-4 ring-card" />
+              <TimelinePlaceCard
+                item={item}
+                selected={selectedPoiId === item.poiId}
+                canMoveUp={canMoveDayItem(day, item.id, "up")}
+                canMoveDown={canMoveDayItem(day, item.id, "down")}
+                onSelect={() => onSelectPoi(item.poiId)}
+                onHover={(hovered) => onHoverPoi(hovered ? item.poiId : null)}
+                onRemove={() => onRemovePlace(day.dayNumber, item.id)}
+                onMove={(direction) => onMovePlace(day.dayNumber, item.id, direction)}
+              />
+            </div>
+          )
+        })}
+        {day.overnightStay ? (
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
+            <Home className="h-3.5 w-3.5" />
+            Nghỉ đêm tại {String(day.overnightStay.name || "chỗ ở")} · {Number(day.overnightStay.nightly_rate || 0) > 0 ? formatCurrency(Number(day.overnightStay.nightly_rate)) : "đã có chỗ ở"}
+          </div>
+        ) : null}
       </div>
     </section>
   )

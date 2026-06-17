@@ -114,6 +114,7 @@ def test_live_plan_trip_stream_sse_stages():
             assert response.status_code == 200, response.read().decode()[:500]
 
             stages: list[str] = []
+            terminal_statuses: list[str] = []
             buf = ""
             for chunk in response.iter_text():
                 buf += chunk
@@ -130,13 +131,17 @@ def test_live_plan_trip_stream_sse_stages():
                             data = json.loads(payload)
                         except json.JSONDecodeError:
                             continue
-                        if "stage" in data:
-                            stages.append(data["stage"])
+                        event_stage = data.get("stage") or data.get("step")
+                        if event_stage:
+                            stages.append(event_stage)
+                        if data.get("status") in {"success", "partial", "error"}:
+                            terminal_statuses.append(data["status"])
 
-    assert "intent_extraction_started" in stages
-    assert "narrative_completed" in stages
+    assert any(stage in stages for stage in ("intent_extraction_started", "l2_start", "l2_done"))
+    assert any(stage in stages for stage in ("poi_search_completed", "l3_done"))
+    assert terminal_statuses and terminal_statuses[-1] in {"success", "partial"}
     assert "[DONE]" in stages
-    assert len(stages) >= 7
+    assert len(stages) >= 3
 
 
 def test_live_plan_trip_returns_layer4():

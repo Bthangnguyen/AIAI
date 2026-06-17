@@ -213,20 +213,37 @@ export const useTripPipeline = ({
       numDays,
       contract,
       (data: any) => {
-        if (data.step === "l2_done") {
+        const stage = data.stage ?? data.step ?? ""
+        if (stage) setSseStage(stage)
+
+        if (stage === "l2_start" || stage === "intent_extraction_started") {
+          updateStep("l2", "active")
+          addLog("Analyzing intent and extracting constraints...", "info")
+          return
+        }
+
+        if (stage === "l2_done" || stage === "intent_extraction_completed") {
           updateStep("l2", "done")
           updateStep("l3", "active")
+          const contractData = data.contract ?? data
+          if (data.contract) setExtractedConstraints(data.contract)
           addLog(
-            `Intent analyzed. Prefers: ${(data.tags || []).join(", ") || "none"}`,
+            `Intent analyzed. Prefers: ${(contractData.tags || data.tags || []).join(", ") || "none"}`,
             "success",
           )
-          if ((data.locked || []).length) {
-            addLog(`Locked POIs: ${data.locked.join(", ")}`, "info")
+          const locked = contractData.locked_pois ?? data.locked ?? []
+          if (locked.length) {
+            addLog(`Locked POIs: ${locked.join(", ")}`, "info")
           }
           return
         }
 
-        if (data.step === "l3_done") {
+        if (stage === "l3_start" || stage === "poi_search_started") {
+          addLog("Querying database for relevant POIs...", "info")
+          return
+        }
+
+        if (stage === "l3_done" || stage === "poi_search_completed") {
           updateStep("l3", "done")
           updateStep("l4", "active")
           addLog(
@@ -236,7 +253,25 @@ export const useTripPipeline = ({
           return
         }
 
-        if (data.step === "error") {
+        if (stage === "l4_start" || stage === "optimization_started") {
+          updateStep("l4", "active")
+          addLog("Optimization routing solver started.", "info")
+          return
+        }
+
+        if (stage === "optimization_completed") {
+          addLog("Route optimization finished.", "success")
+          return
+        }
+
+        if (stage === "validation_completed") {
+          const notes = data.validation_notes || []
+          addLog(`Quality validator executed (${notes.length} issues found).`, "success")
+          notes.forEach((note: string) => addLog(`Warning: ${note}`, "info"))
+          return
+        }
+
+        if (stage === "error" || data.error_code) {
           setErrorMsg(data.message || "An error occurred")
           addLog(data.message || "An error occurred", "error")
           updateStep("l2", "error")
@@ -246,10 +281,10 @@ export const useTripPipeline = ({
           return
         }
 
-        if (data.status === "success" || data.days) {
+        if (data.status === "success" || data.days || stage === "narrative_completed") {
           updateStep("l4", "done")
           clearTimeout(timeoutTimer)
-          const itinerary = (data.layer4_result || data) as TravelItinerary
+          const itinerary = (data.result || data.layer4_result || data) as TravelItinerary
           itineraryRef.current = itinerary
           setCurrentItinerary(itinerary)
           addLog(

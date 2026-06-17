@@ -69,3 +69,14 @@ def test_complex_multi_edit_breakdown():
     assert plan["status"] == "pending_confirmation"
     assert plan["requires_confirmation"] is True
     assert len(plan["operations"]) == 5
+
+
+def test_change_duration_breakdown_requires_rebuild_path():
+    planner = EditIntentPlanner()
+    intent = planner.build("thêm một ngày nữa cho lịch trình")
+
+    assert intent.action == "change_duration"
+    assert len(intent.operations) == 1
+    assert intent.operations[0].type == "change_duration"
+    assert intent.constraints["status"] == "pending_confirmation"
+    assert intent.constraints["requires_confirmation"] is True

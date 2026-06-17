@@ -75,6 +75,22 @@ export interface TripIntent {
   rawPrompt: string
 }
 
+export interface TransportLeg {
+  from_stop_id?: string
+  from_name?: string
+  to_stop_id?: string
+  to_name?: string
+  mode: string
+  mode_label?: string
+  distance_km?: number
+  travel_time_min?: number
+  transport_cost?: number
+  cost_policy?: string
+  cost_scope?: string
+  icon?: string
+  warning?: string | null
+}
+
 export interface ItineraryItem {
   id: string
   poiId: string
@@ -82,6 +98,9 @@ export interface ItineraryItem {
   note: string
   travel_time_from_prev_min?: number
   travel_time_to_next_min?: number
+  transport_from_prev?: TransportLeg
+  ticket_cost?: number
+  expected_spend?: number
   vibe_note?: string
 }
 
@@ -89,6 +108,12 @@ export interface ItineraryDay {
   dayNumber: number
   title: string
   items: ItineraryItem[]
+  transportLegs?: TransportLeg[]
+  overnightStay?: Record<string, any> | null
+  startLodging?: Record<string, any> | null
+  endLodging?: Record<string, any> | null
+  dayTotalCost?: number
+  dayTransportCost?: number
 }
 
 export interface ItineraryDraft {
@@ -106,6 +131,8 @@ export interface ItineraryDraft {
   validationNotes?: ValidationNote[]
   droppedPoiCount?: number
   budgetUsed?: number
+  costSummary?: Record<string, any>
+  lodgingPlan?: Record<string, any>
   selectedPlanStyle?: PlanStyle
   manualDayNumbers?: number[]
   startDate?: string

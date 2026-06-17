@@ -52,6 +52,9 @@ interface ChatContract {
   hotel_name?: string | null
   hotel_confirmed?: boolean
   default_hotel_ok?: boolean
+  has_lodging?: boolean | null
+  lodging_selection?: Record<string, unknown>
+  transport_plan?: Record<string, unknown>
   time_window?: { start_min: number; end_min: number } | null
   time_slot?: string | null
   transport_modes?: string[]
@@ -113,6 +116,9 @@ interface Layer4Stop {
   location?: { latitude: number; longitude: number }
   travel_time_from_prev_min?: number
   travel_time_to_next_min?: number
+  transport_from_prev?: any
+  ticket_cost?: number
+  expected_spend?: number
   vibe_note?: string
 }
 
@@ -121,6 +127,12 @@ interface Layer4Day {
   date?: string
   narrative_title?: string
   stops: Layer4Stop[]
+  transport_legs?: any[]
+  overnight_stay?: any
+  start_lodging?: any
+  end_lodging?: any
+  day_total_cost?: number
+  day_transport_cost?: number
 }
 
 interface Layer4Itinerary {
@@ -134,6 +146,9 @@ interface Layer4Itinerary {
   total_entrance_fee?: number
   budget_total?: number
   budget_used?: number
+  cost_summary?: Record<string, any>
+  lodging_plan?: Record<string, any>
+  transport_plan?: Record<string, any>
   validation_notes?: string[]
 }
 
@@ -295,6 +310,9 @@ export function mapLayer4ResultToDraft(
           note: stop.poi_name ?? "",
           travel_time_from_prev_min: stop.travel_time_from_prev_min,
           travel_time_to_next_min: stop.travel_time_to_next_min,
+          transport_from_prev: stop.transport_from_prev,
+          ticket_cost: stop.ticket_cost,
+          expected_spend: stop.expected_spend,
           vibe_note: stop.vibe_note,
         }
       })
@@ -303,6 +321,12 @@ export function mapLayer4ResultToDraft(
       dayNumber: day.day_index + 1,
       title: day.narrative_title ?? `Ngày ${day.day_index + 1}`,
       items,
+      transportLegs: day.transport_legs ?? items.map((item) => item.transport_from_prev).filter(Boolean),
+      overnightStay: day.overnight_stay ?? null,
+      startLodging: day.start_lodging ?? null,
+      endLodging: day.end_lodging ?? null,
+      dayTotalCost: day.day_total_cost,
+      dayTransportCost: day.day_transport_cost,
     }
   })
 
@@ -350,6 +374,8 @@ export function mapLayer4ResultToDraft(
     validationNotes: parseValidationNotes(l4.validation_notes),
     droppedPoiCount: l4.total_pois_dropped ?? 0,
     budgetUsed: l4.budget_used ?? l4.total_entrance_fee ?? 0,
+    costSummary: l4.cost_summary,
+    lodgingPlan: l4.lodging_plan,
   }
 }
 

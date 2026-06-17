@@ -5,15 +5,12 @@ import { useEffect, useState } from "react"
 import { BuildProgressSteps } from "@/components/BuildProgressSteps"
 import { ExamplePromptChips } from "@/components/ExamplePromptChips"
 import { HomePromptBox } from "@/components/HomePromptBox"
-import type { BuilderMode } from "@/types/trip"
 
 interface HomePageProps {
   prompt: string
-  mode: BuilderMode
   isLoading: boolean
   progressStep: number
   onPromptChange: (value: string) => void
-  onModeChange: (mode: BuilderMode) => void
   onSubmit: () => void
   onAuthClick: () => void
   onSignOut: () => void
@@ -44,7 +41,7 @@ const sceneImages = [
   "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2200&q=80",
 ]
 
-export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange, onModeChange, onSubmit, onAuthClick, onSignOut, onNav, userName, userEmail }: HomePageProps) {
+export function HomePage({ prompt, isLoading, progressStep, onPromptChange, onSubmit, onAuthClick, onSignOut, onNav, userName, userEmail }: HomePageProps) {
   const [activeLine, setActiveLine] = useState(0)
   const [activeScene, setActiveScene] = useState(0)
 
@@ -139,10 +136,8 @@ export function HomePage({ prompt, mode, isLoading, progressStep, onPromptChange
 
           <HomePromptBox
             prompt={prompt}
-            mode={mode}
             isLoading={isLoading}
             onPromptChange={onPromptChange}
-            onModeChange={onModeChange}
             onSubmit={onSubmit}
             onExample={fillRandomExample}
           />

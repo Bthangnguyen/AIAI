@@ -2,8 +2,15 @@ import EventSource from "react-native-sse"
 import type { ReRoutePayload, ReRouteResponse } from "@/navigators/navigationTypes"
 import type { ChatMessage, ChatProcessResponse, LLMDataContract } from "../../types/api"
 import { FeatureFlags } from "@/config/features"
+import { loadString } from "@/utils/storage"
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8001"
+const MOCK_AUTH_TOKEN = "mock-session-token-xyz-987"
+
+function gatewayAuthHeaders(): Record<string, string> {
+  const token = loadString("AuthProvider.authToken") || MOCK_AUTH_TOKEN
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export const TripService = {
   /**
@@ -48,7 +55,7 @@ export const TripService = {
     const url = `${API_BASE_URL}/v1/trip/plan_trip_stream`
     const eventSource = new EventSource(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1", ...gatewayAuthHeaders() },
       body: JSON.stringify({
         user_prompt: prompt,
         hotel_lat: hotelLat,
@@ -223,6 +230,7 @@ export const TripService = {
           "Content-Type": "application/json",
           Accept: "application/json",
           "ngrok-skip-browser-warning": "1",
+          ...gatewayAuthHeaders(),
         },
         body: JSON.stringify(payload),
       })
@@ -256,6 +264,7 @@ export const TripService = {
           "Content-Type": "application/json",
           Accept: "application/json",
           "ngrok-skip-browser-warning": "1",
+          ...gatewayAuthHeaders(),
         },
         body: JSON.stringify({
           message,

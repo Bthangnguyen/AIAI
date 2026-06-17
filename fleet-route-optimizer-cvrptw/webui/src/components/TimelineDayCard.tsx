@@ -102,6 +102,7 @@ export function TimelineDayCard({
     },
     { cost: 0, duration: 0 },
   )
+  const displayCost = Number(day.dayTotalCost ?? totals.cost)
 
   return (
     <section className="rounded-2xl border border-orange-200 bg-white p-4">
@@ -119,7 +120,7 @@ export function TimelineDayCard({
             Ngày {day.dayNumber} {startDate ? `— ${getFormattedDate(startDate, day.dayNumber)}` : ""}
           </h3>
           <p className="mt-1 text-xs text-orange-950/60">
-            {day.items.filter(item => !item.poiId.startsWith("__")).length} điểm đến · ~{Math.max(1, Math.round(totals.duration / 60))} giờ · ước tính {formatCurrency(totals.cost)}
+            {day.items.filter(item => !item.poiId.startsWith("__")).length} điểm đến · ~{Math.max(1, Math.round(totals.duration / 60))} giờ · ước tính {formatCurrency(displayCost)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

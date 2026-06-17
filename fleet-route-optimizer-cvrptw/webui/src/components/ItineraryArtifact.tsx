@@ -22,6 +22,8 @@ interface ItineraryArtifactProps {
 export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay }: ItineraryArtifactProps) {
   const totals = draftTotals(draft)
   const enoughInfo = Boolean(draft.intent.destination && draft.intent.days && draft.intent.budget)
+  const productTotal = Number(draft.costSummary?.per_person_cost ?? draft.costSummary?.estimated_total_cost ?? totals.estimatedCost)
+  const productTotalLabel = draft.costSummary?.per_person_cost ? `${formatCurrency(productTotal)}/người` : formatCurrency(productTotal)
 
   return (
     <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-orange-200 bg-white p-4 shadow-2xl shadow-orange-950/10">
@@ -46,7 +48,7 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
         <Metric label="Số ngày" value={`${draft.days.length} ngày`} />
         <Metric label="Ngân sách" value={draft.budget ? formatCurrency(draft.budget) : "Chưa rõ"} />
         <Metric label="Tags" value={draft.tags.join(", ") || "balanced"} />
-        <Metric label="Tổng chi phí" value={formatCurrency(totals.estimatedCost)} />
+        <Metric label="Tổng chi phí" value={productTotalLabel} />
         <Metric label="Trạng thái" value={enoughInfo ? "Đã đủ thông tin" : "Cần hỏi thêm"} />
       </section>
 
@@ -86,6 +88,12 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function CostBreakdown({ summary, lodgingPlan }: { summary: Record<string, any>; lodgingPlan?: Record<string, any> }) {
+  const partySize = Number(summary.party_size || 1)
+  const perPersonCost = Number(summary.per_person_cost || 0)
+  const groupTotalCost = Number(summary.group_total_cost || summary.estimated_total_cost || 0)
+  const budgetPerPerson = Number(summary.budget_per_person || 0)
+  const groupBudgetTotal = Number(summary.group_budget_total || summary.budget_total || 0)
+  const isGroupTrip = partySize > 1
   const rows = [
     ["Vé tham quan", summary.poi_ticket_cost],
     ["Ăn uống/cafe", summary.food_and_drink_cost],
@@ -98,7 +106,16 @@ function CostBreakdown({ summary, lodgingPlan }: { summary: Record<string, any>;
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-500">Ước tính chi phí thực tế</p>
-          <h3 className="mt-1 text-lg font-black text-orange-950">{formatCurrency(Number(summary.estimated_total_cost || 0))}</h3>
+          <h3 className="mt-1 text-lg font-black text-orange-950">
+            {isGroupTrip && perPersonCost > 0 ? `${formatCurrency(perPersonCost)}/người` : formatCurrency(groupTotalCost)}
+          </h3>
+          {isGroupTrip ? (
+            <p className="mt-1 text-xs font-bold text-blue-900">
+              Tổng nhóm {formatCurrency(groupTotalCost)}
+              {budgetPerPerson > 0 ? ` · Ngân sách ${formatCurrency(budgetPerPerson)}/người` : ""}
+              {groupBudgetTotal > 0 ? ` · ${partySize} người` : ""}
+            </p>
+          ) : null}
           {typeof summary.budget_remaining === "number" ? (
             <p className={`mt-1 text-xs font-bold ${summary.budget_remaining < 0 ? "text-red-600" : "text-blue-800"}`}>
               {summary.budget_remaining < 0 ? "Vượt ngân sách " : "Còn lại "}

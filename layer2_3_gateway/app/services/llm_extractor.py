@@ -171,6 +171,7 @@ Core decision fields in updated_contract:
 - lodging_mode: user_has_lodging | system_select_lodging | not_needed | unknown
 - transport_policy: user_has_transport | system_suggest_per_leg | walking_only | unknown
 - party: {size, type}
+- budget: {amount, scope, period, scope_evidence}; budget.scope = per_person | group_total | unknown.
 - decision_state: {ready_for_confirmation, ready_for_build, missing_decisions, next_action}
 - assistant_reply and follow_up_questions.
 
@@ -181,6 +182,9 @@ Interpret "toi da co cho o/khach san" as lodging_mode=user_has_lodging, has_lodg
 Interpret "chua co phuong tien/khong co xe" as transport_policy=system_suggest_per_leg and transport_plan.availability=needs_transport.
 Interpret "co xe/tu lai/xe rieng" as transport_policy=user_has_transport and transport_plan.availability=has_own_transport.
 Interpret "di mot minh/solo/mot nguoi" as party.size=1, party.type=solo, group_size=1, group_type=solo.
+For party.size > 1, if the user gives a budget without explicit group-total wording, interpret it as per_person for the whole trip.
+Only use budget.scope=group_total when the user explicitly says "tong nhom", "ca nhom", "budget chung", or equivalent.
+Always include budget.scope_evidence when choosing per_person or group_total.
 
 Required decisions before confirmation:
 destination, num_days, budget or unlimited budget, time_window/time_slot, preference_mode, lodging_mode, party.size, transport_policy.
@@ -1215,6 +1219,32 @@ class LLMExtractorService:
             contract.party.type = "solo"
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["group"])
 
+        if parsed_budget is not None:
+            group_total_words = ("tong nhom", "ca nhom", "budget chung", "ngan sach chung", "tong budget nhom")
+            per_person_words = ("moi nguoi", "tren nguoi", "mot nguoi", "nguoi mot", "per person")
+            party_size = int(contract.group_size or contract.party.size or 1)
+            if any(phrase in text for phrase in group_total_words):
+                contract.budget_unit_scope = "group_total"
+                contract.budget.scope = "group_total"
+                contract.budget_scope_evidence = "User explicitly used group-total budget wording."
+            elif any(phrase in text for phrase in per_person_words) or party_size > 1:
+                contract.budget_unit_scope = "per_person"
+                contract.budget.scope = "per_person"
+                contract.budget_scope_evidence = "User gave a group size and did not use group-total wording."
+            else:
+                contract.budget_unit_scope = "group_total"
+                contract.budget.scope = "group_total"
+                contract.budget_scope_evidence = "Solo or no group size; per-person and group-total are equivalent."
+            contract.budget.amount = parsed_budget
+            contract.budget.period = "per_day" if "moi ngay" in text or "theo ngay" in text else "total_trip"
+            contract.budget_period = contract.budget.period
+            if contract.budget_unit_scope == "per_person":
+                contract.budget_per_person = float(parsed_budget)
+                contract.group_budget_total = float(parsed_budget) * max(1, party_size)
+            else:
+                contract.group_budget_total = float(parsed_budget)
+                contract.budget_per_person = float(parsed_budget) / max(1, party_size)
+
         own_transport_phrases = (
             "co xe", "co xe may", "co o to", "tu lai", "xe rieng",
             "co phuong tien", "da co phuong tien", "nguoi cho",
@@ -1361,6 +1391,29 @@ class LLMExtractorService:
             contract.group_type = contract.party.type
         elif contract.group_type:
             contract.party.type = contract.group_type
+
+        party_size = max(1, int(contract.group_size or contract.party.size or 1))
+        if contract.budget.amount is None and contract.budget_max is not None:
+            contract.budget.amount = contract.budget_max
+        if contract.budget.scope != "unknown" and contract.budget_unit_scope == "unknown":
+            contract.budget_unit_scope = contract.budget.scope
+        elif contract.budget_unit_scope != "unknown":
+            contract.budget.scope = contract.budget_unit_scope
+        if contract.budget_unit_scope == "unknown" and contract.budget_max is not None:
+            contract.budget_unit_scope = "per_person" if party_size > 1 else "group_total"
+            contract.budget.scope = contract.budget_unit_scope
+            contract.budget_scope_evidence = contract.budget_scope_evidence or "Semantic default based on party size."
+        if contract.budget.period and contract.budget_period == "total_trip":
+            contract.budget_period = contract.budget.period
+        else:
+            contract.budget.period = contract.budget_period
+        if contract.budget_max is not None:
+            if contract.budget_unit_scope == "per_person":
+                contract.budget_per_person = float(contract.budget_max)
+                contract.group_budget_total = float(contract.budget_max) * party_size
+            else:
+                contract.group_budget_total = float(contract.budget_max)
+                contract.budget_per_person = float(contract.budget_max) / party_size
 
         if contract.lodging_mode == "user_has_lodging":
             contract.has_lodging = True

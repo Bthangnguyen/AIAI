@@ -326,7 +326,9 @@ export function ItineraryMap({
     activeTransportMarkersRef.current.forEach(m => m.remove())
     activeTransportMarkersRef.current = []
 
-    if (!showRouteLines) return
+    // Keep the map clean by default. Transport details stay in the timeline.
+    const showTransportIcons = false
+    if (!showRouteLines || !showTransportIcons) return
 
     visibleDays.forEach((day) => {
       const legs = day.transportLegs?.length

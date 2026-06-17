@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Activity, Clock, MapPin, Route, Target, Wallet } from "lucide-react"
+import { Activity, Clock, MapPin, Route, Target } from "lucide-react"
 import type { OptimizationStats } from "@/types/stats"
 import type { ItineraryDraft } from "@/types/trip"
 import { getPoi } from "@/lib/mockItineraryFallback"
@@ -39,15 +39,6 @@ function StatCard({ icon: Icon, label, children, accent = false }: { icon: any; 
         <span className="text-[10px] font-black uppercase tracking-[0.16em]">{label}</span>
       </div>
       <div className="mt-2 text-2xl font-black text-orange-950">{children}</div>
-    </div>
-  )
-}
-
-function ProgressBar({ value, max, color = "bg-orange-500" }: { value: number; max: number; color?: string }) {
-  const percent = max > 0 ? Math.min((value / max) * 100, 100) : 0
-  return (
-    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-orange-100">
-      <div className={`h-full rounded-full transition-all duration-1000 ease-out ${color}`} style={{ width: `${percent}%` }} />
     </div>
   )
 }
@@ -105,18 +96,13 @@ export function TripStatsPanel({ stats, draft }: TripStatsPanelProps) {
           Tối ưu {stats.saturationPercent}%
         </span>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <StatCard icon={Route} label="Tổng quãng đường">
           <AnimatedNumber value={stats.totalDistanceKm} suffix=" km" decimals={1} />
         </StatCard>
         <StatCard icon={MapPin} label="Địa điểm phục vụ">
           <AnimatedNumber value={stats.customersServed} />
           <span className="text-sm font-bold text-orange-400">/{stats.totalPoisAvailable}</span>
-        </StatCard>
-        <StatCard icon={Wallet} label="Chi phí ước tính" accent>
-          <AnimatedNumber value={stats.budgetUsed} />
-          <span className="text-sm font-bold text-orange-500">đ</span>
-          {stats.budgetMax > 0 ? <ProgressBar value={stats.budgetUsed} max={stats.budgetMax} /> : null}
         </StatCard>
         <StatCard icon={Clock} label="Thời gian/ngày">
           <span>{formatMinutesShort(avgTotalTime)}</span>

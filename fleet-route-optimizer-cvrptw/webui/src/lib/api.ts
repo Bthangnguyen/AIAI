@@ -42,6 +42,12 @@ interface ChatContract {
   destination?: string | null
   budget_max?: number | null
   budget_is_unlimited?: boolean
+  budget?: Record<string, unknown>
+  budget_unit_scope?: string
+  budget_period?: string
+  budget_per_person?: number | null
+  group_budget_total?: number | null
+  budget_scope_evidence?: string | null
   radius_km?: number
   num_days?: number
   tags?: string[]
@@ -352,8 +358,8 @@ export function mapLayer4ResultToDraft(
     saturationPercent,
     vehiclesUsed: l4.num_days ?? days.length,
     totalVehicles: l4.num_days ?? days.length,
-    budgetUsed: l4.budget_used ?? l4.total_entrance_fee ?? 0,
-    budgetMax: l4.budget_total ?? intent.budget ?? 0,
+    budgetUsed: l4.cost_summary?.group_total_cost ?? l4.cost_summary?.estimated_total_cost ?? l4.budget_used ?? l4.total_entrance_fee ?? 0,
+    budgetMax: l4.cost_summary?.group_budget_total ?? l4.cost_summary?.budget_total ?? l4.budget_total ?? intent.budget ?? 0,
     avgTravelTimePerVehicleMin: 0,
     avgTotalTimePerVehicleMin: 0,
     solverTimeSeconds,
@@ -373,7 +379,7 @@ export function mapLayer4ResultToDraft(
     optimizationStats,
     validationNotes: parseValidationNotes(l4.validation_notes),
     droppedPoiCount: l4.total_pois_dropped ?? 0,
-    budgetUsed: l4.budget_used ?? l4.total_entrance_fee ?? 0,
+    budgetUsed: l4.cost_summary?.group_total_cost ?? l4.cost_summary?.estimated_total_cost ?? l4.budget_used ?? l4.total_entrance_fee ?? 0,
     costSummary: l4.cost_summary,
     lodgingPlan: l4.lodging_plan,
   }

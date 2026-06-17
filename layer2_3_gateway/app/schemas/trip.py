@@ -41,6 +41,13 @@ class PartySpec(BaseModel):
     type: str = Field("unknown", description="solo|couple|family|friends|business|unknown")
 
 
+class BudgetSpec(BaseModel):
+    amount: Optional[float] = None
+    scope: str = Field("unknown", description="per_person|group_total|unknown")
+    period: str = Field("total_trip", description="total_trip|per_day|unknown")
+    scope_evidence: Optional[str] = None
+
+
 class DecisionStateSpec(BaseModel):
     ready_for_confirmation: bool = False
     ready_for_build: bool = False
@@ -224,6 +231,12 @@ class LLMDataContract(BaseModel):
     budget_max: Optional[float] = Field(None, description="Max budget in VND")
     budget_is_unlimited: bool = Field(False, description="True when the user explicitly accepts unlimited/open budget")
     budget_scope: str = Field("unknown", description="total_trip|per_day|excludes_hotel|includes_hotel|unknown")
+    budget: BudgetSpec = Field(default_factory=BudgetSpec)
+    budget_unit_scope: str = Field("unknown", description="per_person|group_total|unknown")
+    budget_period: str = Field("total_trip", description="total_trip|per_day|unknown")
+    budget_per_person: Optional[float] = Field(None, description="Normalized budget per traveler")
+    group_budget_total: Optional[float] = Field(None, description="Normalized total budget for the whole group")
+    budget_scope_evidence: Optional[str] = Field(None, description="Why budget was interpreted as per-person or group-total")
     radius_km: float = Field(10.0, description="Search radius from hotel in km")
     num_days: int = Field(1, description="Number of travel days")
     time_window: Optional[TimeWindowSpec] = None

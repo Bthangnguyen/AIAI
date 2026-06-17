@@ -146,6 +146,7 @@ export default function Page() {
   useEffect(() => {
     if (!draft) return
     const totals = draftTotals(draft)
+    const enrichedCost = Number(draft.costSummary?.group_total_cost ?? draft.costSummary?.estimated_total_cost ?? draft.budgetUsed ?? totals.estimatedCost)
     
     // Check if stats are already synchronized to prevent infinite rendering loops
     const currentBudgetUsed = draft.budgetUsed
@@ -153,9 +154,9 @@ export default function Page() {
     const currentStatsBudgetUsed = draft.optimizationStats?.budgetUsed
     
     if (
-      currentBudgetUsed === totals.estimatedCost &&
+      currentBudgetUsed === enrichedCost &&
       currentCustomersServed === totals.poiCount &&
-      currentStatsBudgetUsed === totals.estimatedCost
+      currentStatsBudgetUsed === enrichedCost
     ) {
       return
     }
@@ -172,7 +173,7 @@ export default function Page() {
       totalPoisAvailable: Math.max(draft.optimizationStats.totalPoisAvailable, totalPoisReq),
       saturationPercent: draft.optimizationStats.saturationPercent || saturationPercent,
       solverTimeSeconds,
-      budgetUsed: totals.estimatedCost,
+      budgetUsed: enrichedCost,
     } : {
       totalDistanceKm: 0,
       customersServed: totals.poiCount,
@@ -182,8 +183,8 @@ export default function Page() {
       saturationPercent,
       vehiclesUsed: draft.days.length,
       totalVehicles: draft.days.length,
-      budgetUsed: totals.estimatedCost,
-      budgetMax: draft.budget ?? 0,
+      budgetUsed: enrichedCost,
+      budgetMax: Number(draft.costSummary?.group_budget_total ?? draft.costSummary?.budget_total ?? draft.budget ?? 0),
       avgTravelTimePerVehicleMin: 0,
       avgTotalTimePerVehicleMin: 0,
       solverTimeSeconds,
@@ -191,7 +192,7 @@ export default function Page() {
 
     setDraft({
       ...draft,
-      budgetUsed: totals.estimatedCost,
+      budgetUsed: enrichedCost,
       optimizationStats: stats,
     })
   }, [draft])

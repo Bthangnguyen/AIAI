@@ -154,3 +154,80 @@ def test_each_day_adds_return_leg_to_lodging():
     assert first_day_legs[-1]["is_return_to_lodging"] is True
     assert first_day_legs[-1]["to_name"] == "Hue Hotel"
     assert first_day_legs[-1]["distance_km"] > 0
+
+
+def test_group_budget_defaults_per_person_and_shared_homestay_cost():
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=3,
+        budget_max=1_000_000,
+        budget_unit_scope="per_person",
+        party=PartySpec(size=3, type="friends"),
+        group_size=3,
+        hotel_name="Budget Homestay",
+        lodging_preference=["homestay"],
+        lodging_budget_per_night=500_000,
+    )
+
+    result = CostEstimatorService().enrich(_sample_itinerary(3), contract)
+
+    summary = result["cost_summary"]
+    assert summary["party_size"] == 3
+    assert summary["budget_per_person"] == 1_000_000
+    assert summary["group_budget_total"] == 3_000_000
+    assert result["lodging_plan"]["room_capacity"] == 4
+    assert result["lodging_plan"]["total_cost"] == 1_000_000
+    assert result["lodging_plan"]["per_person_cost"] == 333_333
+    assert summary["per_person_cost"] == round(summary["group_total_cost"] / 3)
+
+
+def test_two_person_budget_transport_compares_taxi_and_motorbike_hailing():
+    itinerary = _sample_itinerary(1)
+    itinerary["days"][0]["stops"] = [
+        {
+            "poi_id": "far-food",
+            "poi_name": "Far Local Food",
+            "category": "food",
+            "location": {"latitude": 16.55, "longitude": 107.68},
+            "price": 60_000,
+            "entrance_fee": 0,
+        }
+    ]
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=1,
+        budget_max=500_000,
+        budget_unit_scope="per_person",
+        party=PartySpec(size=2, type="couple"),
+        group_size=2,
+        transport_policy="system_suggest_per_leg",
+        transport_plan=TransportPlanSpec(availability="needs_transport", primary_mode="mixed"),
+    )
+
+    result = CostEstimatorService().enrich(itinerary, contract)
+
+    paid_legs = [leg for leg in result["days"][0]["transport_legs"] if leg["distance_km"] > 1]
+    assert paid_legs
+    assert all(leg["vehicles_needed"] >= 1 for leg in paid_legs)
+    assert {leg["mode"] for leg in paid_legs}.issubset({"taxi", "motorbike_hailing"})
+
+
+def test_virtual_rest_stop_does_not_create_zero_transport_leg():
+    itinerary = _sample_itinerary(1)
+    itinerary["days"][0]["stops"].insert(
+        1,
+        {
+            "poi_id": "__rest_break__",
+            "poi_name": "Rest",
+            "category": "rest",
+            "visit_duration_min": 30,
+            "arrival_time_min": 600,
+        },
+    )
+    contract = LLMDataContract(destination="Hue", num_days=1, budget_max=500_000)
+
+    result = CostEstimatorService().enrich(itinerary, contract)
+
+    rest = result["days"][0]["stops"][1]
+    assert "transport_from_prev" not in rest
+    assert all(leg["distance_km"] > 0 for leg in result["days"][0]["transport_legs"])

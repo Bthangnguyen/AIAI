@@ -1175,7 +1175,11 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
             logger.error(f"JIT Editing failed: {ex}", exc_info=True)
             
     if updated_itinerary and isinstance(updated_itinerary, dict):
-        budget_total = result["updated_contract"].budget_max if result.get("updated_contract") else (body.current_contract.budget_max if body.current_contract else None)
+        contract_for_enrichment = result.get("updated_contract") or body.current_contract
+        if contract_for_enrichment:
+            updated_itinerary = CostEstimatorService().enrich(updated_itinerary, contract_for_enrichment, hotel_fallback=False) or updated_itinerary
+
+        budget_total = updated_itinerary.get("budget_total") or (contract_for_enrichment.budget_max if contract_for_enrichment else None)
         budget_used = updated_itinerary.get("budget_used", 0) or updated_itinerary.get("total_entrance_fee", 0)
         
         if budget_total and budget_used > budget_total:

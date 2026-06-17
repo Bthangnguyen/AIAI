@@ -68,6 +68,24 @@ function needsLodgingSelection(contract?: LLMDataContract | null): boolean {
   return Boolean(contract?.has_lodging && (!contract?.hotel_lat || !contract?.hotel_lon))
 }
 
+function hasPinnedLodging(contract?: LLMDataContract | null): boolean {
+  return Boolean(contract?.hotel_lat != null && contract?.hotel_lon != null)
+}
+
+function preservePinnedLodging(current: LLMDataContract | null | undefined, next: LLMDataContract): LLMDataContract {
+  if (!hasPinnedLodging(current)) return next
+  return {
+    ...next,
+    has_lodging: current?.has_lodging ?? next.has_lodging,
+    lodging_mode: current?.lodging_mode ?? next.lodging_mode,
+    hotel_confirmed: true,
+    hotel_name: current?.hotel_name ?? next.hotel_name,
+    hotel_lat: current?.hotel_lat,
+    hotel_lon: current?.hotel_lon,
+    lodging_selection: current?.lodging_selection ?? next.lodging_selection,
+  }
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -436,18 +454,19 @@ export default function Page() {
         pendingEditPlan
       )
 
+      const mergedContract = preservePinnedLodging(currentContractInput, res.updated_contract)
       const updatedIntent: TripIntent = {
-        destination: res.updated_contract.destination || undefined,
-        days: res.updated_contract.num_days,
-        budget: res.updated_contract.budget_max || undefined,
-        interests: res.updated_contract.tags || [],
-        lockedPoiNames: res.updated_contract.locked_pois || [],
+        destination: mergedContract.destination || undefined,
+        days: mergedContract.num_days,
+        budget: mergedContract.budget_max || undefined,
+        interests: mergedContract.tags || [],
+        lockedPoiNames: mergedContract.locked_pois || [],
         rawPrompt: intent?.rawPrompt ? `${intent.rawPrompt} ${message}` : message,
       }
 
-      setContract(res.updated_contract)
+      setContract(mergedContract)
 
-      if (needsLodgingSelection(res.updated_contract)) {
+      if (needsLodgingSelection(mergedContract)) {
         setPendingEditPlan(null)
         setFollowUp(null)
         setStatus("live")
@@ -457,7 +476,8 @@ export default function Page() {
         const nextDraft = mapLayer4ResultToDraft(
           res.updated_itinerary,
           updatedIntent,
-          res.updated_contract.destination || "Huế"
+          mergedContract.destination || "Huế",
+          mergedContract
         )
         applyDraftSuccess(nextDraft, [res.reply])
       } else if (res.pending_edit_plan) {
@@ -467,7 +487,7 @@ export default function Page() {
         setMessages((items) => [...items, { role: "assistant", content: res.reply }])
       } else if (res.status === "ready") {
         setPendingEditPlan(null)
-        await buildItineraryFromContract(res.updated_contract, updatedIntent.rawPrompt || message, res.reply)
+        await buildItineraryFromContract(mergedContract, updatedIntent.rawPrompt || message, res.reply)
       } else {
         setPendingEditPlan(null)
         handleClarifyingResponse(res, updatedIntent)
@@ -763,6 +783,7 @@ export default function Page() {
   function handleSetLodgingBase(lat: number, lon: number, name = "Chỗ ở của bạn") {
     const lodgingPatch = {
       has_lodging: true,
+      lodging_mode: "user_has_lodging",
       hotel_confirmed: true,
       hotel_name: name,
       hotel_lat: lat,

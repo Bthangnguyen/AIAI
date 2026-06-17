@@ -1431,6 +1431,12 @@ class LLMExtractorService:
             contract.lodging_mode = "user_has_lodging"
         elif contract.has_lodging is False and contract.lodging_mode == "unknown":
             contract.lodging_mode = "system_select_lodging"
+        if contract.hotel_lat is not None and contract.hotel_lon is not None:
+            contract.hotel_confirmed = True
+            contract.lodging_selection.lat = contract.hotel_lat
+            contract.lodging_selection.lon = contract.hotel_lon
+            if contract.lodging_selection.name is None:
+                contract.lodging_selection.name = contract.hotel_name or "Chỗ ở của bạn"
 
         if contract.transport_policy == "user_has_transport":
             contract.transport_plan.availability = "has_own_transport"
@@ -1736,6 +1742,17 @@ class LLMExtractorService:
             contract.hotel_lon = lon
         if name and name != "Hotel":
             contract.hotel_name = name
+        if contract.hotel_lat is not None and contract.hotel_lon is not None:
+            contract.hotel_confirmed = True
+            if contract.has_lodging is True or contract.lodging_mode == "user_has_lodging":
+                contract.has_lodging = True
+                contract.lodging_mode = "user_has_lodging"
+                contract.lodging_selection.status = "user_has_lodging"
+                contract.lodging_selection.selection_method = "map_pin"
+            contract.lodging_selection.lat = contract.hotel_lat
+            contract.lodging_selection.lon = contract.hotel_lon
+            contract.lodging_selection.name = contract.hotel_name or "Chỗ ở của bạn"
+            LLMExtractorService._mark_confirmed(contract, "hotel")
 
 
 

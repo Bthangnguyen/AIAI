@@ -62,6 +62,27 @@ def test_system_prompt_exists():
     assert "locked_pois" in SYSTEM_PROMPT
 
 
+def test_pinned_user_lodging_counts_as_collected_hotel():
+    service = offline_service()
+    contract = LLMDataContract(
+        destination="Huế",
+        num_days=3,
+        budget_max=1_000_000,
+        has_lodging=True,
+        lodging_mode="user_has_lodging",
+        hotel_lat=16.4637,
+        hotel_lon=107.5905,
+        hotel_name="Chỗ ở của bạn",
+    )
+
+    service._sync_decision_fields(contract)
+
+    assert contract.hotel_confirmed is True
+    assert contract.lodging_selection.lat == 16.4637
+    assert contract.lodging_selection.lon == 107.5905
+    assert service._is_field_collected(contract, "hotel") is True
+
+
 def test_fallback_contract():
     """When LLM fails, service should return a safe fallback."""
     contract = LLMDataContract(

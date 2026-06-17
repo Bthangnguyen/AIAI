@@ -159,6 +159,48 @@ XÁC NHẬN — DÙNG NGỮ CẢNH, KHÔNG MATCH TỪ KHÓA:
 Giọng em/mình, tối đa 3 câu.
 </REPLY_GENERATION>"""
 
+CHAT_PROCESS_SYSTEM_PROMPT += """
+
+<INTENT_BRAIN_V2>
+This section overrides older rules when there is a conflict.
+You are TripFlow Intent Brain. You decide the conversation state; backend validates and executes.
+Return JSON only as ChatProcessResponse.
+
+Core decision fields in updated_contract:
+- preference_mode: specific | balanced | no_preference | unknown
+- lodging_mode: user_has_lodging | system_select_lodging | not_needed | unknown
+- transport_policy: user_has_transport | system_suggest_per_leg | walking_only | unknown
+- party: {size, type}
+- decision_state: {ready_for_confirmation, ready_for_build, missing_decisions, next_action}
+- assistant_reply and follow_up_questions.
+
+Do not ask for a field if the user delegated it or said no preference.
+Interpret "khong co so thich", "khong co gi dac biet", "ban tu chon", "gi cung duoc" as a valid no-preference/balanced answer, not missing interests.
+Interpret "cho o ban tu chon", "khach san ban chon", "em tu chon cho nghi" as lodging_mode=system_select_lodging, has_lodging=false, hotel_confirmed=true.
+Interpret "toi da co cho o/khach san" as lodging_mode=user_has_lodging, has_lodging=true; user must later pin/select lodging location if coordinates are missing.
+Interpret "chua co phuong tien/khong co xe" as transport_policy=system_suggest_per_leg and transport_plan.availability=needs_transport.
+Interpret "co xe/tu lai/xe rieng" as transport_policy=user_has_transport and transport_plan.availability=has_own_transport.
+Interpret "di mot minh/solo/mot nguoi" as party.size=1, party.type=solo, group_size=1, group_type=solo.
+
+Required decisions before confirmation:
+destination, num_days, budget or unlimited budget, time_window/time_slot, preference_mode, lodging_mode, party.size, transport_policy.
+
+If required decisions are missing:
+- status="clarifying", phase="collecting"
+- reply must be a natural Vietnamese follow-up written by you.
+- missing_fields must list only truly missing decisions.
+
+If all required decisions are present but user has not confirmed:
+- status="clarifying", phase="confirming", requires_confirmation=true
+- decision_state.next_action="confirm_before_build"
+- reply must summarize the understood intent and ask for confirmation.
+
+If current_contract.confirmation_pending=true and user confirms:
+- status="ready", phase="ready", decision_state.next_action="build", decision_state.ready_for_build=true.
+
+Never output a mechanical checklist like "provide field X". Speak naturally.
+</INTENT_BRAIN_V2>"""
+
 EDIT_INTENT_SYSTEM_PROMPT = """\
 <SYSTEM>
 Bạn là Edit Intent Extractor cho TripFlow.
@@ -434,6 +476,7 @@ class LLMExtractorService:
 
         # ── Step 1: LLM extraction ──
         candidate = None
+        response = None
         llm_reply = ""
         llm_ready = False
         llm_phase = "collecting"
@@ -471,6 +514,7 @@ class LLMExtractorService:
         self._apply_message_hints(contract, message)
         self._apply_answer_to_last_question(contract, message, current_contract.last_question_field)
         self._apply_backend_failsafes(contract, message)
+        self._sync_decision_fields(contract)
         self._deduplicate_locked_pois(contract)
 
         # ── Step 3: Huế only gate ──
@@ -503,10 +547,28 @@ class LLMExtractorService:
                 contract.confirmation_pending = False
                 contract.ready_to_plan = False
                 contract.last_question_field = critical_missing[0]
+                contract.decision_state.ready_for_confirmation = False
+                contract.decision_state.ready_for_build = False
+                contract.decision_state.missing_decisions = critical_missing
+                contract.decision_state.next_action = "ask_followup"
                 return self._make_response(
-                    contract, "clarifying", self._critical_missing_reply(critical_missing),
+                    contract, "clarifying", contract.assistant_reply or llm_reply or self._critical_missing_reply(critical_missing),
                     phase="collecting", missing_fields=critical_missing,
                     requires_confirmation=False,
+                )
+
+            llm_missing_fields = response.missing_fields if response else []
+            blocking_llm_missing = [
+                field for field in llm_missing_fields
+                if field in REQUIRED_FIELDS and not self._is_field_collected(contract, field)
+            ]
+            if not llm_ready and not blocking_llm_missing:
+                contract.confirmation_pending = True
+                contract.ready_to_plan = False
+                return self._make_response(
+                    contract, "clarifying", self._build_confirmation_reply(contract),
+                    phase="confirming", missing_fields=[],
+                    requires_confirmation=True,
                 )
 
             status = "ready" if llm_ready else "clarifying"
@@ -812,6 +874,17 @@ class LLMExtractorService:
         pending_edit_plan: Optional[Dict[str, Any]] = None,
         requires_confirmation: Optional[bool] = None,
     ) -> Dict:
+        contract.assistant_reply = reply
+        contract.follow_up_questions = [reply] if status == "clarifying" and phase == "collecting" else []
+        contract.decision_state.missing_decisions = missing_fields or []
+        contract.decision_state.ready_for_confirmation = status == "clarifying" and phase == "confirming"
+        contract.decision_state.ready_for_build = status == "ready" or phase == "ready"
+        if status == "ready" or phase == "ready":
+            contract.decision_state.next_action = "build"
+        elif phase == "confirming":
+            contract.decision_state.next_action = "confirm_before_build"
+        else:
+            contract.decision_state.next_action = "ask_followup"
         return {
             "status": status,
             "reply": reply,
@@ -838,9 +911,16 @@ class LLMExtractorService:
         must_visit = ", ".join(contract.locked_pois) if contract.locked_pois else "không có điểm bắt buộc"
         avoid = ", ".join((contract.avoid_tags or []) + (contract.excluded_pois or [])) if (contract.avoid_tags or contract.excluded_pois) else "không có yêu cầu tránh riêng"
         tags = ", ".join(contract.tags) if contract.tags else "tổng hợp"
-        transport = ", ".join(contract.transport_modes) if contract.transport_modes else "taxi + walking"
-        group = contract.group_type or (f"{contract.group_size} người" if contract.group_size else "chưa rõ")
-        if contract.has_lodging and not (contract.hotel_lat and contract.hotel_lon):
+        if contract.transport_plan.availability == "needs_transport":
+            transport = "em sẽ gợi ý theo từng chặng"
+        elif contract.transport_plan.availability == "has_own_transport":
+            transport = "phương tiện riêng"
+        else:
+            transport = ", ".join(contract.transport_modes) if contract.transport_modes else "taxi + walking"
+        group = f"{contract.group_size} người" if contract.group_size else (contract.group_type or "chưa rõ")
+        if contract.has_lodging is False:
+            hotel = "chỗ nghỉ em sẽ chọn từ dữ liệu"
+        elif contract.has_lodging and not (contract.hotel_lat and contract.hotel_lon):
             hotel = "chỗ ở bạn sẽ chọn trên bản đồ"
         elif contract.hotel_name and contract.hotel_name != "Hotel":
             hotel = contract.hotel_name
@@ -974,10 +1054,14 @@ class LLMExtractorService:
             "preferred_pace",
             "walking_tolerance",
             "has_lodging",
+            "lodging_mode",
             "lodging_budget_per_night",
             "cost_priority",
+            "transport_policy",
             "group_type",
             "group_size",
+            "preference_mode",
+            "assistant_reply",
             "target_category_distribution",
             "distribution_description",
             "allow_cafe",
@@ -1014,6 +1098,16 @@ class LLMExtractorService:
             next_plan = candidate.transport_plan.model_dump()
             current_plan.update({k: v for k, v in next_plan.items() if v not in (None, "", "unknown")})
             merged.transport_plan = type(merged.transport_plan)(**current_plan)
+        if getattr(candidate, "party", None):
+            current_party = merged.party.model_dump()
+            next_party = candidate.party.model_dump()
+            current_party.update({k: v for k, v in next_party.items() if v not in (None, "", "unknown")})
+            merged.party = type(merged.party)(**current_party)
+        if getattr(candidate, "decision_state", None):
+            current_decision = merged.decision_state.model_dump()
+            next_decision = candidate.decision_state.model_dump()
+            current_decision.update({k: v for k, v in next_decision.items() if v not in (None, "", "unknown", [])})
+            merged.decision_state = type(merged.decision_state)(**current_decision)
 
         for field in [
             "tags",
@@ -1024,6 +1118,7 @@ class LLMExtractorService:
             "lodging_preference",
             "transport_modes",
             "confirmed_fields",
+            "follow_up_questions",
         ]:
             setattr(merged, field, self._merge_unique(getattr(merged, field), getattr(candidate, field)))
 
@@ -1075,16 +1170,18 @@ class LLMExtractorService:
         )
         needs_lodging = (
             any(phrase in text for phrase in ("chua co khach san", "chua co cho o", "can khach san", "tim khach san", "can cho o", "tim cho o"))
-            or (has_hotel_text and any(phrase in text for phrase in ("chua co", "can ", "tim ")))
+            or (has_hotel_text and any(phrase in text for phrase in ("chua co", "can ", "tim ", "tu chon", "ban chon", "ban tu chon", "tuy ban", "ban quyet")))
         )
         if has_existing_lodging:
             contract.has_lodging = True
+            contract.lodging_mode = "user_has_lodging"
             contract.hotel_confirmed = True
             contract.lodging_selection.status = "user_has_lodging"
             contract.lodging_selection.selection_method = "map_pin"
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
         elif needs_lodging:
             contract.has_lodging = False
+            contract.lodging_mode = "system_select_lodging"
             contract.lodging_selection.status = "needs_lodging"
             contract.hotel_confirmed = True
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
@@ -1111,6 +1208,12 @@ class LLMExtractorService:
         if parsed_group_size:
             contract.group_size = int(parsed_group_size.group(1))
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["group"])
+        if any(phrase in text for phrase in ("mot minh", "di mot minh", "solo", "mot nguoi")):
+            contract.group_size = 1
+            contract.group_type = "solo"
+            contract.party.size = 1
+            contract.party.type = "solo"
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["group"])
 
         own_transport_phrases = (
             "co xe", "co xe may", "co o to", "tu lai", "xe rieng",
@@ -1122,12 +1225,14 @@ class LLMExtractorService:
             "bat grab", "di taxi", "goi xe", "thue xe",
         )
         if any(phrase in text for phrase in needs_transport_phrases):
+            contract.transport_policy = "system_suggest_per_leg"
             contract.transport_plan.availability = "needs_transport"
             if contract.transport_plan.cost_policy == "time_only":
                 contract.transport_plan.cost_policy = "per_leg"
             contract.transport_plan.reason = contract.transport_plan.reason or "User needs transport suggestions."
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["transport"])
         elif any(phrase in text for phrase in own_transport_phrases):
+            contract.transport_policy = "user_has_transport"
             contract.transport_plan.availability = "has_own_transport"
             contract.transport_plan.cost_policy = "time_only"
             contract.transport_plan.reason = contract.transport_plan.reason or "User said they already have transport."
@@ -1182,6 +1287,16 @@ class LLMExtractorService:
             contract.tags = self._merge_unique(contract.tags, ["vegetarian"])
             contract.food_preferences = self._merge_unique(contract.food_preferences, ["vegetarian"])
 
+        if any(phrase in text for phrase in (
+            "khong co so thich", "so thich khong co", "khong co gi dac biet",
+            "khong gi dac biet", "khong dac biet", "khong yeu cau dac biet",
+            "khong co yeu cau dac biet", "gi cung duoc", "tuy ban sap xep",
+        )):
+            if not contract.tags:
+                contract.tags = ["general"]
+            contract.preference_mode = "no_preference"
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["interests"])
+
     def _apply_answer_to_last_question(
         self,
         contract: LLMDataContract,
@@ -1235,6 +1350,59 @@ class LLMExtractorService:
                     contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["time_window"])
                 return
 
+    def _sync_decision_fields(self, contract: LLMDataContract) -> None:
+        """Keep the new LLM decision-state fields compatible with legacy planner fields."""
+        if contract.party.size is not None:
+            contract.group_size = contract.party.size
+        elif contract.group_size is not None:
+            contract.party.size = contract.group_size
+
+        if contract.party.type and contract.party.type != "unknown":
+            contract.group_type = contract.party.type
+        elif contract.group_type:
+            contract.party.type = contract.group_type
+
+        if contract.lodging_mode == "user_has_lodging":
+            contract.has_lodging = True
+            contract.hotel_confirmed = True
+            contract.lodging_selection.status = "user_has_lodging"
+            if contract.lodging_selection.selection_method == "none":
+                contract.lodging_selection.selection_method = "map_pin"
+        elif contract.lodging_mode in {"system_select_lodging", "not_needed"}:
+            contract.has_lodging = False
+            contract.hotel_confirmed = True
+            if contract.lodging_mode == "system_select_lodging":
+                contract.lodging_selection.status = "needs_lodging"
+
+        if contract.has_lodging is True and contract.lodging_mode == "unknown":
+            contract.lodging_mode = "user_has_lodging"
+        elif contract.has_lodging is False and contract.lodging_mode == "unknown":
+            contract.lodging_mode = "system_select_lodging"
+
+        if contract.transport_policy == "user_has_transport":
+            contract.transport_plan.availability = "has_own_transport"
+            contract.transport_plan.cost_policy = "time_only"
+        elif contract.transport_policy == "system_suggest_per_leg":
+            contract.transport_plan.availability = "needs_transport"
+            if contract.transport_plan.cost_policy == "time_only":
+                contract.transport_plan.cost_policy = "per_leg"
+        elif contract.transport_policy == "walking_only":
+            contract.transport_plan.availability = "has_own_transport"
+            contract.transport_plan.primary_mode = "walking"
+            contract.transport_plan.cost_policy = "none"
+
+        if contract.transport_plan.availability == "has_own_transport" and contract.transport_policy == "unknown":
+            contract.transport_policy = "user_has_transport"
+        elif contract.transport_plan.availability == "needs_transport" and contract.transport_policy == "unknown":
+            contract.transport_policy = "system_suggest_per_leg"
+
+        if contract.preference_mode == "no_preference":
+            if not contract.tags:
+                contract.tags = ["general"]
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["interests"])
+        elif contract.tags and contract.preference_mode == "unknown":
+            contract.preference_mode = "specific" if contract.tags != ["general"] else "no_preference"
+
     # ═══════════════════════════════════════════════════════════════════════════
     # Field validation
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1261,11 +1429,11 @@ class LLMExtractorService:
         )
         if not has_time_window:
             missing.append("time_window")
-        # User interests — critical for target_category_distribution.
-        # Without this, distribution defaults to generic balanced which
-        # won't match user intent and biases POI selection.
+        # User preference decision. "No preference" is a valid answer and
+        # should not trigger repeated follow-up questions.
         has_interests = bool(
-            contract.tags
+            contract.preference_mode in {"specific", "balanced", "no_preference"}
+            or contract.tags
             or contract.trip_type
             or contract.locked_pois
             or contract.food_preferences
@@ -1328,7 +1496,13 @@ class LLMExtractorService:
         if field == "budget":
             return contract.budget_max is not None or contract.budget_is_unlimited
         if field == "interests":
-            return bool(contract.tags)
+            return bool(
+                contract.preference_mode in {"specific", "balanced", "no_preference"}
+                or contract.tags
+                or contract.trip_type
+                or contract.locked_pois
+                or contract.food_preferences
+            )
         if field == "pace":
             return bool(contract.preferred_pace)
         if field == "walking":
@@ -1347,15 +1521,25 @@ class LLMExtractorService:
             useful_slots = {"morning", "afternoon", "evening", "night", "full_day"}
             return contract.time_slot in useful_slots
         if field == "transport":
-            return bool(contract.transport_modes) or contract.transport_plan.availability in {"has_own_transport", "needs_transport"}
+            return (
+                contract.transport_policy in {"user_has_transport", "system_suggest_per_leg", "walking_only"}
+                or bool(contract.transport_modes)
+                or contract.transport_plan.availability in {"has_own_transport", "needs_transport"}
+            )
         if field == "group":
-            return bool(contract.group_type or contract.group_size)
+            return bool(contract.party.size or contract.group_type or contract.group_size)
         if field == "hotel":
             has_specific_hotel = bool(
                 (contract.hotel_lat is not None and contract.hotel_lon is not None)
                 or (contract.hotel_name and contract.hotel_name != "Hotel")
             )
-            return has_specific_hotel or contract.hotel_confirmed or contract.default_hotel_ok or contract.has_lodging is False
+            return (
+                contract.lodging_mode in {"user_has_lodging", "system_select_lodging", "not_needed"}
+                or has_specific_hotel
+                or contract.hotel_confirmed
+                or contract.default_hotel_ok
+                or contract.has_lodging is False
+            )
         return False
 
     def _unsupported_destination_reply(self, contract: LLMDataContract) -> Optional[str]:

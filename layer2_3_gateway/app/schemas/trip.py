@@ -36,6 +36,18 @@ class TransportPlanSpec(BaseModel):
     reason: Optional[str] = None
 
 
+class PartySpec(BaseModel):
+    size: Optional[int] = Field(None, description="Number of travelers")
+    type: str = Field("unknown", description="solo|couple|family|friends|business|unknown")
+
+
+class DecisionStateSpec(BaseModel):
+    ready_for_confirmation: bool = False
+    ready_for_build: bool = False
+    missing_decisions: List[str] = Field(default_factory=list)
+    next_action: str = Field("ask_followup", description="ask_followup|confirm_before_build|build|reject")
+
+
 # === Layer 2 NEW: Structured LLM Intent Extraction Output ===
 
 
@@ -225,14 +237,21 @@ class LLMDataContract(BaseModel):
     hotel_confirmed: bool = Field(False, description="True when hotel info or default hotel choice is confirmed")
     default_hotel_ok: bool = Field(False, description="True when user agrees to use the default Hue hotel")
     has_lodging: Optional[bool] = Field(None, description="True if user already has lodging, False if they need lodging, null if unknown")
+    lodging_mode: str = Field("unknown", description="user_has_lodging|system_select_lodging|not_needed|unknown")
     lodging_preference: List[str] = Field(default_factory=list, description="central, budget, homestay, hotel, resort, quiet, etc.")
     lodging_budget_per_night: Optional[float] = Field(None, description="Expected lodging budget per night in VND")
     lodging_selection: LodgingSelectionSpec = Field(default_factory=LodgingSelectionSpec)
     cost_priority: Optional[str] = Field(None, description="save_money|balanced|comfort|premium")
     transport_modes: List[str] = Field(default_factory=list, description="Preferred transport modes")
     transport_plan: TransportPlanSpec = Field(default_factory=TransportPlanSpec)
+    transport_policy: str = Field("unknown", description="user_has_transport|system_suggest_per_leg|walking_only|unknown")
     group_type: Optional[str] = Field(None, description="solo/couple/family/friends/business")
     group_size: Optional[int] = Field(None, description="Number of travelers")
+    party: PartySpec = Field(default_factory=PartySpec)
+    preference_mode: str = Field("unknown", description="specific|balanced|no_preference|unknown")
+    decision_state: DecisionStateSpec = Field(default_factory=DecisionStateSpec)
+    assistant_reply: str = Field("", description="LLM-authored reply/follow-up/confirmation summary")
+    follow_up_questions: List[str] = Field(default_factory=list)
     confirmed_fields: List[str] = Field(default_factory=list, description="Fields explicitly collected or confirmed")
     last_question_field: Optional[str] = Field(None, description="Field asked in the latest follow-up question")
     confirmation_pending: bool = Field(False, description="True after the assistant summarizes and waits for confirmation")

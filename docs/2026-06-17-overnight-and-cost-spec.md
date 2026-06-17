@@ -516,3 +516,329 @@ When user chooses lodging on map:
 - Map shows transport mode icons on route segments.
 - POI cost uses DB values exactly; 0 remains 0.
 - Backend deterministic transport fallback is used only when LLM is unavailable or invalid.
+
+## Addendum - Cost, Transport Map Clutter, Virtual Stops, And Post-Draft Edit Regression
+
+This addendum captures the latest product decisions after testing the MVP locally on 2026-06-17.
+
+### H. Map Transport Icon Policy
+
+Problem:
+
+- Rendering one transport icon for every route leg makes the map visually noisy.
+- Dense Hue itineraries can have 8-12 route legs per day, so icons overlap POI pins and route lines.
+- The map should help users understand geography first; detailed transport data belongs in the timeline.
+
+Decision:
+
+- Hide transport mode icons on the map by default.
+- Map should show:
+  - POI pins
+  - lodging/home pin
+  - route lines
+- Timeline remains the primary UI for transport details:
+  - mode
+  - time
+  - distance
+  - cost
+- Optional future UI:
+  - add a `Show transport icons` toggle
+  - default state is off
+  - if enabled, render only significant non-walking legs or one summarized icon per long route segment.
+
+Acceptance criteria:
+
+- Default map view has no floating transport icons between POIs.
+- Route lines and POI/hotel pins remain visible and readable.
+- No transport marker should cover POI markers.
+- Timeline still shows every valid travel leg.
+
+### I. Virtual Stop Policy
+
+Problem:
+
+- Rest/meal/free-time blocks can appear as itinerary items without real coordinates.
+- If backend treats them as real POIs, the UI can show invalid transport rows such as `0 km · 0đ`.
+
+Definitions:
+
+Virtual/non-travel stops include:
+
+- `__rest_break__`
+- `__meal_break__`
+- `__food_walk__`
+- `free_time`
+- `hotel_checkin`
+- any item with no trusted location
+
+Rules:
+
+- Virtual stops are time blocks, not travel destinations.
+- Backend must not create a paid transport leg to a virtual stop unless it has a real DB-backed coordinate.
+- Timeline may display the virtual stop as:
+  - `Nghỉ nhẹ 30 phút`
+  - `Ăn trưa tự túc`
+  - `Thời gian tự do`
+- Timeline must not display:
+  - `0 km`
+  - `0đ`
+  - fake route rows for virtual stops.
+- If the user asks to rest at a specific cafe/park/hotel and backend resolves it to a real POI, it is no longer virtual and normal transport applies.
+
+Implementation rule:
+
+- Add helper like `is_virtual_stop(stop)` in backend cost/enrichment and frontend timeline mapping.
+- When sequencing stops:
+  - travel leg should connect previous real location to next real location
+  - virtual stop only consumes time
+  - if a virtual stop sits between two real POIs, it does not reset `prev_location`.
+
+Acceptance criteria:
+
+- No `0 km · 0đ` transport row appears before/after rest blocks.
+- Rest blocks still affect time feasibility.
+- Route distance/cost ignores virtual stops unless they have real coordinates.
+
+### J. Single Cost Source Of Truth
+
+Problem:
+
+- UI currently shows multiple cost totals:
+  - real estimated cost panel after cost enrichment
+  - OR-Tools optimization panel cost
+  - day/timeline item totals
+- After adding transport and lodging, these values can diverge and confuse users.
+
+Decision:
+
+- `cost_summary.estimated_total_cost` is the only product-facing total trip cost.
+- `cost_summary` owns:
+  - tickets
+  - food/cafe
+  - local transport
+  - lodging
+  - misc buffer
+  - budget remaining/exceeded
+- OR-Tools panel must not show a competing `estimated cost` unless clearly labeled as solver-internal.
+
+UI policy:
+
+- Top cost panel:
+  - show `cost_summary.estimated_total_cost`
+  - show budget warning from `cost_summary.budget_remaining`
+- OR-Tools panel:
+  - keep route optimization stats:
+    - total distance
+    - served POIs
+    - time/day
+    - solver time
+  - remove or relabel `Chi phí ước tính`.
+- If a cost metric remains in OR-Tools, label it as:
+  - `Chi phí POI trước enrichment`
+  - or `Solver cost proxy`
+  - and do not compare it to user budget.
+- Day total should use enriched day fields:
+  - `day_ticket_cost + day_food_cost + day_transport_cost + day_lodging_cost`
+- Timeline should not recalculate total cost from POI cards alone.
+
+Acceptance criteria:
+
+- The same final total appears in top panel and any trip summary.
+- Budget exceeded/remaining is based only on `cost_summary.estimated_total_cost`.
+- OR-Tools panel cannot contradict the top cost panel.
+
+### K. Post-Draft Edit Capabilities - Current State
+
+Current deterministic/LLM-assisted edit operations:
+
+1. `add_place`
+   - Adds one resolved POI to an existing day.
+   - Can use:
+     - target day
+     - time window
+     - preferred time
+     - after-target placement
+     - vector/name search for a new POI.
+
+2. `remove_place`
+   - Removes matching POIs from the current itinerary.
+   - Supports:
+     - target day
+     - target count
+     - broad category/micro-tag matching.
+
+3. `replace_place`
+   - Finds an existing POI and replaces it with a newly resolved POI.
+   - Keeps approximate schedule position.
+
+4. `move_place`
+   - Moves an existing POI to another day/time/position.
+   - Can place a POI after another target when extracted.
+
+5. `swap_places`
+   - Swaps two existing stops if both can be matched.
+
+6. `change_time` / `change_time_window`
+   - Currently treated partly as move/rebuild depending on extraction and operation shape.
+   - Needs stricter separation:
+     - changing one POI time should edit that day only
+     - changing trip-wide active hours may require rerun/rebuild.
+
+7. `change_distribution`
+   - Rebuild-level operation.
+   - Used when user asks for more/less culture, food, cafe, evening activities, etc.
+
+8. `change_budget`
+   - Rebuild-level operation.
+   - Should preserve locked/user-liked POIs when possible.
+
+9. `change_pace`
+   - Rebuild-level operation.
+   - Should adjust number of POIs/day, rest blocks, and daily active hours.
+
+10. `change_duration`
+   - Rebuild-level operation.
+   - Must respect 1-7 day cap.
+
+11. `add_preference` / `avoid_preference`
+   - Rebuild-level operation.
+   - Should update contract distribution/preferences and regenerate around existing accepted intent.
+
+12. `rebuild_requested`
+   - Does not immediately rebuild.
+   - Assistant must summarize interpreted changes and ask confirmation.
+   - After user confirms, rebuild the full itinerary.
+
+13. `ask_info` / `answer_question` / `info_reply`
+   - No itinerary mutation.
+   - Used when user asks about cost, distance, why a POI was chosen, etc.
+
+Current known gap:
+
+- After precise edits (`add/remove/replace/move/swap`), backend retimes the draft but does not always rerun the same enrichment layer used after initial build.
+- Result: `transport_legs`, lodging references, cost summary, and day cost fields can disappear or become stale after edit.
+
+### L. Post-Draft Edit Invariant
+
+Every edit that mutates itinerary stops must produce a fully enriched itinerary.
+
+Required post-edit pipeline:
+
+```txt
+current draft
+→ apply edit operations
+→ retime affected day(s)
+→ validate no overlap
+→ rebuild transport legs
+→ rebuild hotel start/end legs
+→ rebuild stop/day/trip cost summary
+→ return updated draft
+```
+
+Rules:
+
+- `transport_legs[]` must exist after every successful edit.
+- `start_lodging`, `end_lodging`, and `overnight_stay` must survive every edit.
+- Cost summary must be recalculated after every edit.
+- Budget warning must be recalculated after every edit.
+- The editor must not reset accepted contract fields such as:
+  - destination
+  - num_days
+  - budget
+  - hotel coordinates
+  - lodging mode
+  - party size
+  - transport policy
+  - transport plan
+- Edits should preserve POI set except for the requested mutation.
+- Rebuild-level operations should preserve explicit user locks/preferences where possible.
+
+Acceptance criteria:
+
+- Add a POI after draft: timeline still shows transport mode/distance/cost.
+- Remove a POI after draft: adjacent POIs reconnect with new transport leg.
+- Replace a POI after draft: old leg data is recalculated, not reused incorrectly.
+- Move a POI after draft: affected source/destination days both get fresh transport legs.
+- Swap two POIs: both affected days get fresh timing/transport/cost.
+- Budget total changes consistently after edit.
+
+### M. Follow-Up Edit UX Policy
+
+User experience target:
+
+- Editing should feel like talking to an LLM, but backend must execute deterministic, inspectable operations.
+
+Flow:
+
+1. User sends a natural edit request.
+2. LLM breaks it into operations.
+3. Backend validates operations against current itinerary.
+4. If clear and low risk:
+   - show concise confirmation or apply if product policy allows instant edits.
+5. If ambiguous:
+   - ask one focused follow-up.
+6. After user confirms:
+   - apply operations as one transaction
+   - rerun post-edit enrichment
+   - return updated itinerary.
+
+Examples:
+
+```txt
+User: Thêm 1 quán chè vào chiều ngày 2.
+Operations:
+- add_place
+  target_day=2
+  query="quán chè"
+  target_count=1
+  target_category="food"
+  target_micro_tags=["che"]
+  time_window={start_min:840,end_min:1020}
+```
+
+```txt
+User: Bỏ 2 quán bún bò ngày 2, thêm 1 quán chè buổi chiều.
+Operations:
+- remove_place
+  target_day=2
+  target_count=2
+  target_micro_tags=["bun_bo"]
+  target_category="food"
+- add_place
+  target_day=2
+  target_count=1
+  query="quán chè"
+  target_micro_tags=["che"]
+  time_window={start_min:840,end_min:1020}
+```
+
+```txt
+User: Chuyển Đại Nội sang 7h sáng ngày mai, chèn cafe muối sau Đại Nội.
+Operations:
+- move_place
+  target="Đại Nội"
+  target_day=2
+  target_time_min=420
+- add_place
+  query="cafe muối"
+  target_day=2
+  position="after"
+  relative_to="Đại Nội"
+  target_micro_tags=["cafe_muoi"]
+```
+
+### N. Implementation Plan For This Addendum
+
+1. Hide default map transport icons.
+2. Add virtual stop detection in backend enrichment and frontend timeline.
+3. Make `cost_summary` the only product-facing total.
+4. Remove/relabel OR-Tools competing cost metric.
+5. Add post-edit enrichment wrapper:
+   - `enrich_after_edit(itinerary, contract, hotel_fallback=false)`
+   - reused by every successful precise edit.
+6. Add tests:
+   - edit add keeps `transport_legs`
+   - edit remove reconnects transport
+   - virtual rest does not render `0 km · 0đ`
+   - top cost equals `cost_summary.estimated_total_cost`
+   - OR-Tools panel no longer contradicts product cost.

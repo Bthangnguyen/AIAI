@@ -181,6 +181,25 @@ def test_group_budget_defaults_per_person_and_shared_homestay_cost():
     assert summary["per_person_cost"] == round(summary["group_total_cost"] / 3)
 
 
+def test_cost_estimator_reinterprets_non_explicit_group_budget_for_group_trip():
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=3,
+        budget_max=1_000_000,
+        budget_unit_scope="group_total",
+        budget_scope_evidence="Solo or no group size; per-person and group-total are equivalent.",
+        party=PartySpec(size=3, type="friends"),
+        group_size=3,
+    )
+
+    result = CostEstimatorService().enrich(_sample_itinerary(3), contract)
+
+    summary = result["cost_summary"]
+    assert summary["budget_unit_scope"] == "per_person"
+    assert summary["budget_per_person"] == 1_000_000
+    assert summary["group_budget_total"] == 3_000_000
+
+
 def test_two_person_budget_transport_compares_taxi_and_motorbike_hailing():
     itinerary = _sample_itinerary(1)
     itinerary["days"][0]["stops"] = [
@@ -231,3 +250,26 @@ def test_virtual_rest_stop_does_not_create_zero_transport_leg():
     rest = result["days"][0]["stops"][1]
     assert "transport_from_prev" not in rest
     assert all(leg["distance_km"] > 0 for leg in result["days"][0]["transport_legs"])
+
+
+def test_virtual_meal_stop_with_location_does_not_create_transport_cost():
+    itinerary = _sample_itinerary(1)
+    itinerary["days"][0]["stops"].insert(
+        1,
+        {
+            "poi_id": "__meal_lunch__",
+            "poi_name": "Ăn trưa / nghỉ ngơi",
+            "category": "meal_break",
+            "location": {"latitude": 16.52, "longitude": 107.65},
+            "visit_duration_min": 45,
+            "arrival_time_min": 715,
+        },
+    )
+    contract = LLMDataContract(destination="Hue", num_days=1, budget_max=500_000)
+
+    result = CostEstimatorService().enrich(itinerary, contract)
+
+    meal = result["days"][0]["stops"][1]
+    assert "transport_from_prev" not in meal
+    assert "transport_cost_from_prev" not in meal
+    assert all(leg["to_stop_id"] != "__meal_lunch__" for leg in result["days"][0]["transport_legs"])

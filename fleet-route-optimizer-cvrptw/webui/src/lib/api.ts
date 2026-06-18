@@ -327,7 +327,7 @@ export function mapLayer4ResultToDraft(
       dayNumber: day.day_index + 1,
       title: day.narrative_title ?? `Ngày ${day.day_index + 1}`,
       items,
-      transportLegs: day.transport_legs ?? items.map((item) => item.transport_from_prev).filter(Boolean),
+      transportLegs: day.transport_legs ?? [],
       overnightStay: day.overnight_stay ?? null,
       startLodging: day.start_lodging ?? null,
       endLodging: day.end_lodging ?? null,

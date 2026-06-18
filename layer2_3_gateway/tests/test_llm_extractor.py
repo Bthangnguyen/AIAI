@@ -83,6 +83,43 @@ def test_pinned_user_lodging_counts_as_collected_hotel():
     assert service._is_field_collected(contract, "hotel") is True
 
 
+def test_group_size_later_reinterprets_non_explicit_budget_as_per_person():
+    service = offline_service()
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=3,
+        budget_max=1_000_000,
+        budget_unit_scope="group_total",
+        budget_scope_evidence="Solo or no group size; per-person and group-total are equivalent.",
+        group_size=3,
+    )
+
+    service._sync_decision_fields(contract)
+
+    assert contract.budget_unit_scope == "per_person"
+    assert contract.budget.scope == "per_person"
+    assert contract.budget_per_person == 1_000_000
+    assert contract.group_budget_total == 3_000_000
+
+
+def test_explicit_group_total_budget_stays_group_total_after_group_size():
+    service = offline_service()
+    contract = LLMDataContract(
+        destination="Hue",
+        num_days=3,
+        budget_max=1_000_000,
+        budget_unit_scope="group_total",
+        budget_scope_evidence="User explicitly used group-total budget wording.",
+        group_size=3,
+    )
+
+    service._sync_decision_fields(contract)
+
+    assert contract.budget_unit_scope == "group_total"
+    assert contract.group_budget_total == 1_000_000
+    assert round(contract.budget_per_person) == 333_333
+
+
 def test_fallback_contract():
     """When LLM fails, service should return a safe fallback."""
     contract = LLMDataContract(

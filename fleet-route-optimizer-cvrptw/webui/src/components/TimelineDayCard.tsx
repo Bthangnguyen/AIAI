@@ -79,6 +79,10 @@ function TransportLegRow({ leg }: { leg?: TransportLeg }) {
   )
 }
 
+function isVirtualTimelineItem(item: { poiId: string }) {
+  return item.poiId.startsWith("__") || item.poiId === "free_time" || item.poiId === "hotel_checkin"
+}
+
 export function TimelineDayCard({
   day,
   selectedPoiId,
@@ -148,8 +152,8 @@ export function TimelineDayCard({
             Xuất phát từ {String(day.startLodging.name || "chỗ ở")}
           </div>
         ) : null}
-        {day.items.map((item, index) => {
-          const leg = item.transport_from_prev || day.transportLegs?.[index]
+        {day.items.map((item) => {
+          const leg = isVirtualTimelineItem(item) ? undefined : item.transport_from_prev
           return (
             <div key={item.id} className="relative">
               <TransportLegRow leg={leg} />

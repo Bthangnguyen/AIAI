@@ -493,6 +493,16 @@ class CostEstimatorService:
         amount = None if getattr(contract, "budget_is_unlimited", False) else getattr(contract, "budget_max", None)
         party_size = self._party_size(contract)
         unit_scope = getattr(contract, "budget_unit_scope", None) or getattr(getattr(contract, "budget", None), "scope", None) or "unknown"
+        if unit_scope not in {"per_person", "group_total", "unknown"}:
+            unit_scope = "unknown"
+        evidence = str(getattr(contract, "budget_scope_evidence", "") or "").lower()
+        if (
+            amount is not None
+            and party_size > 1
+            and unit_scope == "group_total"
+            and "explicit" not in evidence
+        ):
+            unit_scope = "per_person"
         if unit_scope == "unknown":
             unit_scope = "per_person" if party_size > 1 else "group_total"
         period = getattr(contract, "budget_period", None) or getattr(getattr(contract, "budget", None), "period", None) or "total_trip"

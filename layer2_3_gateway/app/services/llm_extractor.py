@@ -1449,11 +1449,29 @@ class LLMExtractorService:
         party_size = max(1, int(contract.group_size or contract.party.size or 1))
         if contract.budget.amount is None and contract.budget_max is not None:
             contract.budget.amount = contract.budget_max
+        valid_unit_scopes = {"per_person", "group_total"}
+        if contract.budget.scope not in valid_unit_scopes:
+            contract.budget.scope = "unknown"
+        if contract.budget_unit_scope not in valid_unit_scopes:
+            contract.budget_unit_scope = "unknown"
+
         if contract.budget.scope != "unknown" and contract.budget_unit_scope == "unknown":
             contract.budget_unit_scope = contract.budget.scope
         elif contract.budget_unit_scope != "unknown":
             contract.budget.scope = contract.budget_unit_scope
-        if contract.budget_unit_scope == "unknown" and contract.budget_max is not None:
+
+        evidence = (contract.budget_scope_evidence or "").lower()
+        should_reinterpret_as_per_person = (
+            party_size > 1
+            and contract.budget_max is not None
+            and contract.budget_unit_scope == "group_total"
+            and "explicit" not in evidence
+        )
+        if should_reinterpret_as_per_person:
+            contract.budget_unit_scope = "per_person"
+            contract.budget.scope = "per_person"
+            contract.budget_scope_evidence = "Group size was provided later; no explicit group-total wording, so budget is interpreted per person."
+        elif contract.budget_unit_scope == "unknown" and contract.budget_max is not None:
             contract.budget_unit_scope = "per_person" if party_size > 1 else "group_total"
             contract.budget.scope = contract.budget_unit_scope
             contract.budget_scope_evidence = contract.budget_scope_evidence or "Semantic default based on party size."

@@ -175,8 +175,9 @@ Core decision fields in updated_contract:
 - decision_state: {ready_for_confirmation, ready_for_build, missing_decisions, next_action}
 - assistant_reply and follow_up_questions.
 
-Do not ask for a field if the user delegated it or said no preference.
-Interpret "khong co so thich", "khong co gi dac biet", "ban tu chon", "gi cung duoc" as a valid no-preference/balanced answer, not missing interests.
+No-preference only satisfies preference/distribution. Do not infer lodging_mode or transport_policy from generic "ban tu chon", "thoai mai sap xep", "khong co so thich", or "gi cung duoc" unless the user explicitly mentions lodging/transport.
+Interpret "khong co so thich", "khong co gi dac biet", "gi cung duoc" as a valid no-preference/balanced answer, not missing interests.
+Operational decisions are separate: lodging and transport must be explicitly answered, explicitly delegated, or already present in CURRENT_CONTRACT before confirmation.
 Interpret "cho o ban tu chon", "khach san ban chon", "em tu chon cho nghi" as lodging_mode=system_select_lodging, has_lodging=false, hotel_confirmed=true.
 Interpret "toi da co cho o/khach san" as lodging_mode=user_has_lodging, has_lodging=true; user must later pin/select lodging location if coordinates are missing.
 Interpret "chua co phuong tien/khong co xe" as transport_policy=system_suggest_per_leg and transport_plan.availability=needs_transport.
@@ -518,6 +519,7 @@ class LLMExtractorService:
         self._apply_message_hints(contract, message)
         self._apply_answer_to_last_question(contract, message, current_contract.last_question_field)
         self._apply_backend_failsafes(contract, message)
+        self._enforce_operational_decision_evidence(contract, current_contract, message)
         self._sync_decision_fields(contract)
         self._deduplicate_locked_pois(contract)
 
@@ -566,6 +568,24 @@ class LLMExtractorService:
                 field for field in llm_missing_fields
                 if field in REQUIRED_FIELDS and not self._is_field_collected(contract, field)
             ]
+            if not blocking_llm_missing and current_contract.confirmation_pending:
+                if self._contract_changed_after_confirmation(current_contract, contract):
+                    contract.confirmation_pending = True
+                    contract.ready_to_plan = False
+                    return self._make_response(
+                        contract, "clarifying", self._build_confirmation_reply(contract),
+                        phase="confirming", missing_fields=[], requires_confirmation=True,
+                    )
+                contract.confirmation_pending = False
+                contract.ready_to_plan = True
+                return self._make_response(
+                    contract,
+                    "ready",
+                    "Dạ đủ thông tin rồi, em bắt đầu tạo lịch trình ngay đây!",
+                    phase="ready",
+                    missing_fields=[],
+                    requires_confirmation=False,
+                )
             if not llm_ready and not blocking_llm_missing:
                 contract.confirmation_pending = True
                 contract.ready_to_plan = False
@@ -601,6 +621,25 @@ class LLMExtractorService:
             )
 
         # ── Step 5: Combined Fallback Questions on LLM Failure/Timeout (R2) ──
+        if current_contract.confirmation_pending and not critical_missing:
+            if self._contract_changed_after_confirmation(current_contract, contract):
+                contract.confirmation_pending = True
+                contract.ready_to_plan = False
+                return self._make_response(
+                    contract, "clarifying", self._build_confirmation_reply(contract),
+                    phase="confirming", missing_fields=[], requires_confirmation=True,
+                )
+            contract.confirmation_pending = False
+            contract.ready_to_plan = True
+            return self._make_response(
+                contract,
+                "ready",
+                "Dạ đủ thông tin rồi, em bắt đầu tạo lịch trình ngay đây!",
+                phase="ready",
+                missing_fields=[],
+                requires_confirmation=False,
+            )
+
         if critical_missing:
             if len(critical_missing) >= 2:
                 # Specific combination 1: destination & num_days
@@ -1465,6 +1504,110 @@ class LLMExtractorService:
     # ═══════════════════════════════════════════════════════════════════════════
     # Field validation
     # ═══════════════════════════════════════════════════════════════════════════
+
+    def _enforce_operational_decision_evidence(
+        self,
+        contract: LLMDataContract,
+        current_contract: LLMDataContract,
+        raw_text: str,
+    ) -> None:
+        """Keep generic no-preference answers from filling lodging/transport."""
+        has_lodging_evidence = self._mentions_lodging_decision(raw_text)
+        has_transport_evidence = self._mentions_transport_decision(raw_text)
+
+        if has_lodging_evidence and self._is_field_collected(contract, "hotel"):
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["hotel"])
+        elif "hotel" not in set(current_contract.confirmed_fields or []):
+            has_specific_hotel = bool(
+                (current_contract.hotel_lat is not None and current_contract.hotel_lon is not None)
+                or (current_contract.hotel_name and current_contract.hotel_name != "Hotel")
+            )
+            if not has_specific_hotel:
+                contract.lodging_mode = "unknown"
+                contract.has_lodging = None
+                contract.hotel_confirmed = False
+                contract.default_hotel_ok = False
+                if contract.hotel_name == "Hotel":
+                    contract.hotel_lat = None
+                    contract.hotel_lon = None
+                contract.lodging_selection.status = "unknown"
+                contract.lodging_selection.selection_method = "none"
+                contract.lodging_selection.hotel_poi_id = None
+                if contract.lodging_selection.name == "Hotel":
+                    contract.lodging_selection.name = None
+
+        if has_transport_evidence and self._is_field_collected(contract, "transport"):
+            contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["transport"])
+        elif "transport" not in set(current_contract.confirmed_fields or []):
+            contract.transport_policy = "unknown"
+            contract.transport_modes = []
+            contract.transport_plan.availability = "unknown"
+            contract.transport_plan.reason = None
+
+    def _mentions_lodging_decision(self, raw_text: str) -> bool:
+        text = self._normalize(raw_text or "")
+        markers = (
+            "cho o", "khach san", "hotel", "homestay", "nha nghi", "hostel",
+            "resort", "nghi dem", "qua dem", "phong", "luu tru",
+        )
+        return any(marker in text for marker in markers)
+
+    def _mentions_transport_decision(self, raw_text: str) -> bool:
+        text = self._normalize(raw_text or "")
+        markers = (
+            "phuong tien", "taxi", "grab", "gojek",
+            "di bo", "thue xe", "tu lai", "xe rieng", "co xe",
+            "khong co xe", "chua co xe", "motorbike", "car",
+        )
+        if any(marker in text for marker in markers):
+            return True
+        return bool(re.search(r"\b(xe|be)\b", text))
+
+    def _contract_changed_after_confirmation(
+        self,
+        current_contract: LLMDataContract,
+        new_contract: LLMDataContract,
+    ) -> bool:
+        return self._confirmation_snapshot(current_contract) != self._confirmation_snapshot(new_contract)
+
+    def _confirmation_snapshot(self, contract: LLMDataContract) -> Tuple[Any, ...]:
+        time_window = None
+        if contract.time_window:
+            time_window = (contract.time_window.start_min, contract.time_window.end_min)
+        party_size = contract.party.size or contract.group_size
+        party_type = contract.party.type if contract.party.type != "unknown" else (contract.group_type or "unknown")
+        budget_unit_scope = contract.budget_unit_scope
+        if budget_unit_scope == "unknown" and contract.budget_max is not None:
+            budget_unit_scope = "per_person" if (party_size or 1) > 1 else "group_total"
+        preference_mode = contract.preference_mode
+        if preference_mode == "unknown" and contract.tags:
+            preference_mode = "specific" if contract.tags != ["general"] else "no_preference"
+        hotel_location = None
+        if contract.hotel_lat is not None and contract.hotel_lon is not None:
+            hotel_location = (round(float(contract.hotel_lat), 5), round(float(contract.hotel_lon), 5))
+        return (
+            self._normalize(contract.destination or ""),
+            contract.num_days,
+            contract.budget_max,
+            contract.budget_is_unlimited,
+            budget_unit_scope,
+            contract.budget_period,
+            time_window,
+            contract.time_slot,
+            preference_mode,
+            tuple(sorted(contract.tags or [])),
+            tuple(sorted(contract.locked_pois or [])),
+            tuple(sorted(contract.excluded_pois or [])),
+            tuple(sorted(contract.avoid_tags or [])),
+            contract.lodging_mode,
+            contract.has_lodging,
+            hotel_location,
+            contract.transport_policy,
+            contract.transport_plan.availability,
+            tuple(sorted(contract.transport_modes or [])),
+            party_size,
+            party_type,
+        )
 
     def _critical_missing(self, contract: LLMDataContract) -> List[str]:
         """Critical fields that MUST exist before any generation.

@@ -295,6 +295,67 @@ async def test_confirmation_turn_returns_ready():
 
 
 @pytest.mark.anyio
+async def test_pending_confirmation_non_mutating_reply_returns_ready():
+    service = offline_service()
+    current = complete_contract(confirmation_pending=True, ready_to_plan=False)
+    res = await service.process_chat_turn(
+        message="nghe on do",
+        history=[],
+        current_contract=current,
+    )
+    assert res["status"] == "ready"
+    assert res["phase"] == "ready"
+    assert res["updated_contract"].ready_to_plan is True
+
+
+@pytest.mark.anyio
+async def test_generic_no_preference_does_not_fill_lodging_or_transport():
+    from unittest.mock import AsyncMock
+    from app.schemas.trip import ChatProcessResponse
+
+    current = LLMDataContract(
+        destination="Hue",
+        num_days=3,
+        budget_max=1_000_000,
+        time_window=TimeWindowSpec(start_min=480, end_min=1260),
+        group_size=3,
+        confirmed_fields=["destination", "num_days", "budget", "time_window", "group"],
+    )
+    llm_contract = current.model_copy(deep=True)
+    llm_contract.preference_mode = "no_preference"
+    llm_contract.tags = ["general"]
+    llm_contract.lodging_mode = "system_select_lodging"
+    llm_contract.has_lodging = False
+    llm_contract.transport_policy = "system_suggest_per_leg"
+    llm_contract.transport_plan.availability = "needs_transport"
+
+    service = LLMExtractorService()
+    service._client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=ChatProcessResponse(
+            status="clarifying",
+            reply="Ok, em sap xep can bang.",
+            updated_contract=llm_contract,
+            phase="confirming",
+            missing_fields=[],
+            requires_confirmation=True,
+        ))))
+    )
+
+    res = await service.process_chat_turn(
+        message="khong co gi dac biet, ban thoai mai sap xep di",
+        history=[],
+        current_contract=current,
+    )
+
+    assert res["status"] == "clarifying"
+    assert res["phase"] == "collecting"
+    assert "hotel" in res["missing_fields"]
+    assert "transport" in res["missing_fields"]
+    assert res["updated_contract"].lodging_mode == "unknown"
+    assert res["updated_contract"].transport_policy == "unknown"
+
+
+@pytest.mark.anyio
 async def test_more_than_seven_days_is_clarified_not_ready():
     service = offline_service()
     res = await service.process_chat_turn(

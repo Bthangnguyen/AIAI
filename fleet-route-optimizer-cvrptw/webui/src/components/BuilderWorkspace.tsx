@@ -13,6 +13,7 @@ interface BuilderWorkspaceProps {
   draft: ItineraryDraft | null
   intent?: TripIntent
   messages: AIMessage[]
+  pendingEditPlan?: any
   isRunning: boolean
   activeStep: number
 
@@ -36,6 +37,7 @@ interface BuilderWorkspaceProps {
   onSavedTrips: () => void
   onMobilePhase: () => void
   onSendMessage: (message: string) => void
+  onChooseSuggestedPlace?: (dayNumber: number, poi: POI) => void
   onRebuild: () => void
   onSelectPoi: (poiId: string) => void
   onHoverPoi: (poiId: string | null) => void
@@ -83,7 +85,7 @@ export function BuilderWorkspace(props: BuilderWorkspaceProps) {
 
       <main className="min-h-0 flex-1 overflow-hidden md:grid md:grid-cols-[420px_minmax(0,1fr)_320px]">
         <div className={`${mobileTab === "chat" ? "block" : "hidden"} h-full min-h-0 border-r border-orange-200 md:block`}>
-          <AITripChatPanel messages={props.messages} draft={props.draft} intent={props.intent} isRunning={props.isRunning} status={props.status} onSend={props.onSendMessage} onViewItinerary={() => { props.onViewModeChange("timeline"); setMobileTab("preview") }} onAddPlace={() => openAddPlace()} onSaveDraft={props.onSaveDraft} />
+          <AITripChatPanel messages={props.messages} draft={props.draft} intent={props.intent} isRunning={props.isRunning} status={props.status} onSend={props.onSendMessage} onViewItinerary={() => { props.onViewModeChange("timeline"); setMobileTab("preview") }} onAddPlace={() => openAddPlace()} onSaveDraft={props.onSaveDraft} pendingEditPlan={props.pendingEditPlan} onChooseSuggestedPlace={props.onChooseSuggestedPlace} />
         </div>
 
         <div className={`${mobileTab === "preview" ? "block" : "hidden"} h-full min-h-0 min-w-0 md:block`}>

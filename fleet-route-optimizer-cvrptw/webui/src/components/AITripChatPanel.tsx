@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Loader2, Send, Sparkles } from "lucide-react
 import { useState } from "react"
 import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency } from "@/lib/format"
-import type { BuildStatus, ItineraryDraft, TripIntent } from "@/types/trip"
+import type { BuildStatus, ItineraryDraft, POI, TripIntent } from "@/types/trip"
 
 export interface AIMessage {
   role: "user" | "assistant"
@@ -21,17 +21,36 @@ interface AITripChatPanelProps {
   onViewItinerary: () => void
   onAddPlace: () => void
   onSaveDraft: () => void
+  pendingEditPlan?: any
+  onChooseSuggestedPlace?: (dayNumber: number, poi: POI) => void
 }
 
 const quickActions = ["Thêm cafe muối", "Giảm chi phí", "Đi nhẹ hơn", "Thêm món chay"]
 
 
-export function AITripChatPanel({ messages, draft, intent, isRunning, status, onSend, onViewItinerary, onAddPlace, onSaveDraft }: AITripChatPanelProps) {
+function suggestionToPoi(raw: any): POI {
+  return {
+    id: String(raw.id || raw.uuid),
+    name: String(raw.name || "Địa điểm"),
+    category: String(raw.category || "general"),
+    description: String(raw.description || ""),
+    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    estimatedDurationMinutes: Number(raw.estimatedDurationMinutes || raw.visit_duration_min || 60),
+    estimatedCost: Number(raw.estimatedCost || raw.entrance_fee || raw.price || 0),
+    rating: Number(raw.rating || 4.5),
+    lat: Number(raw.lat || raw.latitude || 0),
+    lng: Number(raw.lng || raw.longitude || 0),
+  }
+}
+
+export function AITripChatPanel({ messages, draft, intent, isRunning, status, onSend, onViewItinerary, onAddPlace, onSaveDraft, pendingEditPlan, onChooseSuggestedPlace }: AITripChatPanelProps) {
   const [input, setInput] = useState("")
 
   const [expanded, setExpanded] = useState(true)
   const totals = draftTotals(draft)
   const showThinking = isRunning && status !== "building"
+  const suggestions = Array.isArray(pendingEditPlan?.suggestions) ? pendingEditPlan.suggestions : []
+  const fallbackDay = Number(pendingEditPlan?.affected_days?.[0] || draft?.days?.[0]?.dayNumber || 1)
 
   function submit(text = input) {
     if (!text.trim() || isRunning) return
@@ -98,6 +117,44 @@ export function AITripChatPanel({ messages, draft, intent, isRunning, status, on
               </span>
             </div>
             <div className="pl-8 text-[13px] leading-relaxed text-orange-950/60">Đang xử lý yêu cầu của bạn...</div>
+          </div>
+        ) : null}
+
+        {suggestions.length > 0 && draft ? (
+          <div className="pl-8">
+            <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-3">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-700">Chọn địa điểm để thêm</p>
+              <div className="mt-3 space-y-2">
+                {suggestions.slice(0, 5).map((raw: any) => {
+                  const poi = suggestionToPoi(raw)
+                  const dayNumber = Number(raw.target_day || fallbackDay)
+                  return (
+                    <button
+                      key={`${poi.id}-${dayNumber}`}
+                      type="button"
+                      disabled={isRunning}
+                      onClick={() => onChooseSuggestedPlace?.(dayNumber, poi)}
+                      className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-left transition hover:border-orange-400 hover:bg-white"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-black text-orange-950">{poi.name}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-orange-950/60">{poi.description || poi.category}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-[10px] font-bold text-orange-800">
+                          Ngày {dayNumber}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-orange-950/55">
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5">{poi.category}</span>
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5">{poi.estimatedCost ? formatCurrency(poi.estimatedCost) : "Miễn phí"}</span>
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5">{poi.estimatedDurationMinutes} phút</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         ) : null}
 

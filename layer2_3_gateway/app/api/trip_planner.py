@@ -210,6 +210,11 @@ MICRO_INTENT_CATEGORY = {
     "vegetarian": "food",
 }
 
+EDIT_MICRO_TAG_ALIASES = {
+    "che": "che_hue",
+    "dessert": "che_hue",
+}
+
 
 def _normalize_text(value: str | None) -> str:
     if not value:
@@ -380,7 +385,11 @@ async def _resolve_edit_add_poi(
 
     POI = PointOfInterest
     text = (query or "").strip()
-    tags = [_normalize_text(t) for t in (micro_tags or []) if t]
+    tags = [
+        EDIT_MICRO_TAG_ALIASES.get(_normalize_text(t), _normalize_text(t))
+        for t in (micro_tags or [])
+        if t
+    ]
     category_norm = _normalize_text(category)
     start_min = int((time_window or {}).get("start_min") or 0)
     end_min = int((time_window or {}).get("end_min") or 1440)
@@ -448,6 +457,13 @@ async def _resolve_edit_add_poi(
         return score, poi_resp
 
     ranked = sorted((score_row(row) for row in rows), key=lambda item: item[0], reverse=True)
+    if tags:
+        hard_matched = [
+            item for item in ranked
+            if any(_poi_matches_micro_tag(item[1], tag) for tag in tags)
+        ]
+        if hard_matched:
+            ranked = hard_matched
     picked = [poi for score, poi in ranked if score > -0.2][:limit]
     if picked:
         logger.info(
@@ -460,6 +476,56 @@ async def _resolve_edit_add_poi(
     else:
         logger.warning("Edit semantic resolver found no POI for query=%r category=%r tags=%s", text, category, micro_tags)
     return picked
+
+
+def _poi_suggestion_payload(poi: POIResponse) -> dict[str, Any]:
+    return {
+        "id": str(poi.uuid),
+        "uuid": str(poi.uuid),
+        "name": poi.name,
+        "category": poi.category_group or poi.category,
+        "description": poi.description or "",
+        "tags": poi.tags or [],
+        "estimatedDurationMinutes": poi.visit_duration_min or 60,
+        "estimatedCost": (poi.entrance_fee if poi.entrance_fee and poi.entrance_fee > 0 else (poi.price or 0)),
+        "rating": 4.5,
+        "lat": poi.latitude,
+        "lng": poi.longitude,
+        "price": poi.price,
+        "entrance_fee": poi.entrance_fee,
+        "visit_duration_min": poi.visit_duration_min,
+    }
+
+
+async def _attach_edit_suggestions(pending_edit_plan: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not pending_edit_plan:
+        return pending_edit_plan
+    operations = list(pending_edit_plan.get("operations") or [])
+    all_suggestions: list[dict[str, Any]] = []
+    for op in operations:
+        if op.get("type") not in {"add_place", "replace_place"}:
+            continue
+        query = op.get("query") or op.get("target")
+        if not query:
+            continue
+        candidates = await _resolve_edit_add_poi(
+            query=query,
+            category=op.get("target_category"),
+            micro_tags=op.get("target_micro_tags") or [],
+            time_window=op.get("time_window") or None,
+            limit=5,
+        )
+        suggestions = [_poi_suggestion_payload(poi) for poi in candidates]
+        op["suggestions"] = suggestions
+        all_suggestions.extend({
+            **suggestion,
+            "target_day": op.get("target_day"),
+            "operation_type": op.get("type"),
+        } for suggestion in suggestions)
+    pending_edit_plan["operations"] = operations
+    if all_suggestions:
+        pending_edit_plan["suggestions"] = all_suggestions
+    return pending_edit_plan
 
 
 def _mark_confirmed(contract: LLMDataContract, field: str) -> None:
@@ -956,6 +1022,10 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
             result["phase"] = "editing"
             result["requires_confirmation"] = True
             result["reply"] = deterministic_intent.constraints.get("assistant_reply") or result.get("reply")
+    if getattr(body, "has_draft", False) and pending_edit_plan and not is_edit_confirmation:
+        pending_edit_plan = await _attach_edit_suggestions(pending_edit_plan)
+        result["pending_edit_plan"] = pending_edit_plan
+
     if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
         from app.services.itinerary_editor import ItineraryEditorService
         from app.schemas.trip import POIResponse
@@ -967,7 +1037,10 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         editor_service = ItineraryEditorService()
         action = edit_intent.action if edit_intent else "modify_itinerary"
         target = edit_intent.target if edit_intent else None
-        should_apply_edit = True
+        should_apply_edit = bool(
+            is_edit_confirmation
+            or (result.get("status") == "ready" and not result.get("requires_confirmation", False))
+        )
         operation_dicts = []
         if is_edit_confirmation:
             operation_dicts = list((body.pending_edit_plan or {}).get("operations") or [])

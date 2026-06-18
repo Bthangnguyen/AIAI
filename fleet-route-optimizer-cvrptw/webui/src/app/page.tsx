@@ -617,6 +617,12 @@ export default function Page() {
     }
   }
 
+  async function handleChooseSuggestedPlace(dayNumber: number, poi: POI) {
+    setPendingEditPlan(null)
+    setMessages((items) => [...items, { role: "user", content: `Chọn ${poi.name}` }])
+    await handleAddPoiBackend(dayNumber, poi)
+  }
+
   async function handleRemovePlaceBackend(dayNumber: number, itemId: string) {
     if (!draft) return
     const dayIndex = dayNumber - 1
@@ -824,6 +830,7 @@ export default function Page() {
             draft={draft}
             intent={intent}
             messages={messages}
+            pendingEditPlan={pendingEditPlan}
             isRunning={isRunning}
             activeStep={activeStep}
             mode={mode}
@@ -850,6 +857,7 @@ export default function Page() {
             onSavedTrips={() => setScreen("saved")}
             onMobilePhase={() => setScreen("mobile")}
             onSendMessage={handleChatSend}
+            onChooseSuggestedPlace={handleChooseSuggestedPlace}
             onRebuild={handleRebuild}
             onSelectPoi={setSelectedPoiId}
             onHoverPoi={setHoveredPoiId}

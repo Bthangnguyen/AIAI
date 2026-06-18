@@ -480,6 +480,21 @@ class LLMExtractorService:
             return self._collecting_response(contract, ["destination"])
 
         # ── Step 1: LLM extraction ──
+        if current_contract.confirmation_pending and not self._message_changes_confirmed_contract(message):
+            contract = current_contract.model_copy(deep=True)
+            contract.confirmation_pending = False
+            contract.ready_to_plan = True
+            contract.decision_state.ready_for_build = True
+            contract.decision_state.next_action = "build"
+            return self._make_response(
+                contract,
+                "ready",
+                "Dạ đủ thông tin rồi, em bắt đầu tạo lịch trình ngay đây!",
+                phase="ready",
+                missing_fields=[],
+                requires_confirmation=False,
+            )
+
         candidate = None
         response = None
         llm_reply = ""
@@ -1562,6 +1577,24 @@ class LLMExtractorService:
         if any(marker in text for marker in markers):
             return True
         return bool(re.search(r"\b(xe|be)\b", text))
+
+    def _message_changes_confirmed_contract(self, raw_text: str) -> bool:
+        text = self._normalize(raw_text or "")
+        if not text:
+            return False
+        if self._mentions_lodging_decision(raw_text) or self._mentions_transport_decision(raw_text):
+            return True
+        change_markers = (
+            "nhung", "doi", "sua", "them", "bot", "xoa", "bo ", "thay",
+            "chuyen", "khong", "chua", "khoan", "dung lai", "huy",
+            "budget", "ngan sach", "trieu", "k ", "vnd", "ngay",
+            "gio", "sang", "chieu", "toi", "dem", "nguoi", "nhom",
+            "di mot minh", "solo", "van hoa", "am thuc", "food",
+            "cafe", "thien nhien", "chill", "intense", "khong thich",
+        )
+        if any(marker in text for marker in change_markers):
+            return True
+        return bool(re.search(r"\d+\s*(ngay|h|gio|tr|trieu|k|nguoi)", text))
 
     def _contract_changed_after_confirmation(
         self,

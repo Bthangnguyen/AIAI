@@ -533,6 +533,7 @@ export default function Page() {
   function buildOriginalItinerary(currentDraft: ItineraryDraft) {
     return {
       num_days: currentDraft.days.length,
+      manualDayNumbers: currentDraft.manualDayNumbers || [],
       days: currentDraft.days.map((d, index) => {
         const firstStopArrival = d.items[0] ? (() => {
           const timeStr = d.items[0].time || "";
@@ -586,7 +587,7 @@ export default function Page() {
     };
   }
 
-  async function runReRouteForDay(dayIndex: number, remainingPoiIds: string[], excludedPoiIds: string[] = []) {
+  async function runReRouteForDay(dayIndex: number, remainingPoiIds: string[], excludedPoiIds: string[] = [], isManual = false) {
     if (!draft) return null
     const result = await reRouteDay(
       16.4637,
@@ -595,6 +596,8 @@ export default function Page() {
       buildOriginalItinerary(draft),
       dayIndex,
       excludedPoiIds,
+      480,
+      isManual,
     )
     const interpreted = processReRouteResult(dayIndex, result)
     if (!interpreted.ok) {
@@ -622,14 +625,30 @@ export default function Page() {
       const dayIndex = dayNumber - 1
       const day = draft.days[dayIndex]
       const remainingPoiIds = day.items.map((i) => i.poiId).concat(poi.id)
-      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds)
+      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [], true)
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
-      setDraft({ ...draft, days: newDays })
+      newDays[dayIndex] = recalculateDayTimes({
+        ...newDays[dayIndex],
+        items: reroute.items,
+        transportLegs: reroute.transportLegs,
+        overnightStay: reroute.overnightStay,
+        startLodging: reroute.startLodging,
+        endLodging: reroute.endLodging,
+        dayTotalCost: reroute.dayTotalCost,
+        dayTransportCost: reroute.dayTransportCost,
+      })
+      
+      const updatedDraft = markDayManual({
+        ...draft,
+        days: newDays,
+        updatedAt: new Date().toISOString(),
+      }, dayNumber)
+
+      setDraft(updatedDraft)
       setSelectedPoiId(poi.id)
-      setMessages((items) => [...items, { role: "assistant", content: `Đã thêm ${poi.name} và tối ưu lại (qua OR-Tools).` }])
+      setMessages((items) => [...items, { role: "assistant", content: `Đã thêm ${poi.name} và cập nhật lịch trình của ngày.` }])
       showToast(reroute.message, reroute.toastVariant)
     } catch (e) {
       showToast("Lỗi re-route: " + (e instanceof Error ? e.message : String(e)), "error")
@@ -676,13 +695,23 @@ export default function Page() {
     setStatus("resolving")
     try {
       const remainingPoiIds = day.items.filter((i) => i.id !== itemId).map((i) => i.poiId)
-      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [itemToRemove.poiId])
+      const isManual = draft.manualDayNumbers?.includes(dayNumber) || false
+      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [itemToRemove.poiId], isManual)
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
+      newDays[dayIndex] = recalculateDayTimes({
+        ...newDays[dayIndex],
+        items: reroute.items,
+        transportLegs: reroute.transportLegs,
+        overnightStay: reroute.overnightStay,
+        startLodging: reroute.startLodging,
+        endLodging: reroute.endLodging,
+        dayTotalCost: reroute.dayTotalCost,
+        dayTransportCost: reroute.dayTransportCost,
+      })
       setDraft({ ...draft, days: newDays })
-      setMessages((items) => [...items, { role: "assistant", content: "Đã xóa một địa điểm và tối ưu lại lịch trình." }])
+      setMessages((items) => [...items, { role: "assistant", content: "Đã xóa một địa điểm và cập nhật lịch trình." }])
       showToast(reroute.message, reroute.toastVariant)
     } catch (e) {
       showToast("Lỗi re-route: " + (e instanceof Error ? e.message : String(e)), "error")
@@ -703,11 +732,20 @@ export default function Page() {
     setUndoState(null)
     try {
       const remainingPoiIds = day.items.map((i) => i.poiId)
-      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds)
+      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [], false)
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
+      newDays[dayIndex] = recalculateDayTimes({
+        ...newDays[dayIndex],
+        items: reroute.items,
+        transportLegs: reroute.transportLegs,
+        overnightStay: reroute.overnightStay,
+        startLodging: reroute.startLodging,
+        endLodging: reroute.endLodging,
+        dayTotalCost: reroute.dayTotalCost,
+        dayTransportCost: reroute.dayTransportCost,
+      })
       setDraft(clearDayManual({ ...draft, days: newDays, updatedAt: new Date().toISOString() }, dayNumber))
       setMessages((items) => [...items, { role: "assistant", content: `Đã tối ưu lại ngày ${dayNumber}.` }])
       showToast(reroute.message, reroute.toastVariant)

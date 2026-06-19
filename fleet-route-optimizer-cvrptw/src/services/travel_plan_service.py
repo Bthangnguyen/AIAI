@@ -262,13 +262,12 @@ class TravelPlanService:
 
         try:
             self._is_busy = True
-            remaining_ids = set(request.remaining_poi_ids)
-            remaining = [p for p in request.pois if p.id in remaining_ids]
-
-            # Remove excluded
-            if request.excluded_poi_ids:
-                excluded = set(request.excluded_poi_ids)
-                remaining = [p for p in remaining if p.id not in excluded]
+            poi_map = {p.id: p for p in request.pois}
+            excluded = set(request.excluded_poi_ids or [])
+            remaining = []
+            for pid in request.remaining_poi_ids:
+                if pid in poi_map and pid not in excluded:
+                    remaining.append(poi_map[pid])
 
             # 2. Create virtual depot at current location
             virtual_hotel = Hotel(
@@ -286,15 +285,24 @@ class TravelPlanService:
             matrix = self.distance_cache.build_matrix(all_locs, mode)
 
             # 5. Solve (single-depot: start=GPS, end=hotel)
-            logger.info(f"Re-route: {len(remaining)} remaining POIs from ({request.current_location.latitude}, {request.current_location.longitude}) at t={request.current_time_min}")
-            result = self.solver.solve_day(
-                pois=remaining,
-                hotel=virtual_hotel,
-                day=day,
-                time_limit=time_limit,
-                solver_type=solver_type,
-                matrix=matrix,
-            )
+            logger.info(f"Re-route: {len(remaining)} remaining POIs from ({request.current_location.latitude}, {request.current_location.longitude}) at t={request.current_time_min} (is_manual={request.is_manual})")
+            if request.is_manual:
+                result = self._solve_day_sequential(
+                    pois=remaining,
+                    hotel=request.hotel,
+                    virtual_hotel=virtual_hotel,
+                    day=day,
+                    matrix=matrix,
+                )
+            else:
+                result = self.solver.solve_day(
+                    pois=remaining,
+                    hotel=virtual_hotel,
+                    day=day,
+                    time_limit=time_limit,
+                    solver_type=solver_type,
+                    matrix=matrix,
+                )
 
             if result:
                 self._recompute_conservative_travel_times([result], matrix)
@@ -313,6 +321,61 @@ class TravelPlanService:
         finally:
             self._is_busy = False
             self._lock.release()
+
+    def _solve_day_sequential(
+        self,
+        pois: List[POI],
+        hotel: Hotel,
+        virtual_hotel: Hotel,
+        day: DayPlan,
+        matrix: Optional[Dict] = None,
+    ) -> TravelItineraryDay:
+        """Construct a route for a single day sequentially in the exact provided order of POIs."""
+        stops = []
+        prev_location = virtual_hotel.location
+        prev_departure = day.start_time_min
+        total_fee = 0.0
+
+        for poi in pois:
+            distance_km = self._distance_between(prev_location, poi.location, matrix)
+            travel_min = self._travel_minutes(distance_km, AVERAGE_TRAVEL_SPEED_KMH)
+            arrival = prev_departure + travel_min
+            
+            stop = TravelItineraryStop(
+                poi_id=poi.id,
+                poi_name=poi.name,
+                location=poi.location,
+                arrival_time_min=arrival,
+                departure_time_min=arrival + poi.visit_duration_min,
+                visit_duration_min=poi.visit_duration_min,
+                travel_time_from_prev_min=travel_min,
+                entrance_fee=poi.entrance_fee,
+                price=poi.price,
+                description=poi.description,
+                vibe_note=poi.description,
+            )
+            stops.append(stop)
+            total_fee += poi.entrance_fee
+            prev_location = poi.location
+            prev_departure = stop.departure_time_min
+
+        return TravelItineraryDay(
+            day_index=day.day_index,
+            date=day.date,
+            start_hotel_name=virtual_hotel.name,
+            start_hotel_location=virtual_hotel.location,
+            end_hotel_name=hotel.name,
+            end_hotel_location=hotel.location,
+            stops=stops,
+            total_travel_min=0,
+            total_visit_min=sum(s.visit_duration_min for s in stops),
+            total_distance_km=0.0,
+            total_entrance_fee=total_fee,
+            num_pois=len(stops),
+            start_time_min=day.start_time_min,
+            end_time_min=day.end_time_min,
+        )
+
 
     def _generate_day_plans(self, request: TravelPlanRequest) -> List[DayPlan]:
         """Auto-generate DayPlans from constraints."""

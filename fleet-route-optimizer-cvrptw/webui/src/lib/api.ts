@@ -468,6 +468,7 @@ export async function reRouteDay(
   dayIndex: number,
   excludedPoiIds: string[] = [],
   currentTimeMin = 480,
+  isManual = false,
 ): Promise<ReRouteResult> {
   const res = await gatewayFetch("/v1/trip/re_route", {
     method: "POST",
@@ -480,6 +481,7 @@ export async function reRouteDay(
       excluded_poi_ids: excludedPoiIds.length ? excludedPoiIds : undefined,
       day_index: dayIndex,
       original_itinerary: originalItinerary,
+      is_manual: isManual,
     }),
   })
 

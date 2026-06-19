@@ -1140,10 +1140,50 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
     )
 
     if is_edit_confirmation:
+        contract_to_use = body.current_contract.model_copy(deep=True)
+        operation_dicts = list((body.pending_edit_plan or {}).get("operations") or [])
+        import re
+        for op in operation_dicts:
+            op_type = op.get("type")
+            if op_type == "change_budget" and op.get("amount") is not None:
+                contract_to_use.budget_max = float(op.get("amount"))
+                contract_to_use.budget_is_unlimited = False
+                if "budget" not in contract_to_use.confirmed_fields:
+                    contract_to_use.confirmed_fields.append("budget")
+            elif op_type == "change_pace" and op.get("value") is not None:
+                contract_to_use.preferred_pace = op.get("value")
+                if "pace" not in contract_to_use.confirmed_fields:
+                    contract_to_use.confirmed_fields.append("pace")
+            elif op_type == "change_duration":
+                raw_val = str(op.get("value") or op.get("target") or "").lower()
+                match = re.search(r"(\d+)\s*ngày", raw_val)
+                if match:
+                    contract_to_use.num_days = int(match.group(1))
+                    if "num_days" not in contract_to_use.confirmed_fields:
+                        contract_to_use.confirmed_fields.append("num_days")
+                elif "thêm một ngày" in raw_val or "thêm 1 ngày" in raw_val or "tăng 1 ngày" in raw_val:
+                    contract_to_use.num_days = (contract_to_use.num_days or 1) + 1
+                elif "bớt một ngày" in raw_val or "bớt 1 ngày" in raw_val or "giảm 1 ngày" in raw_val:
+                    contract_to_use.num_days = max(1, (contract_to_use.num_days or 1) - 1)
+            elif op_type == "add_preference" and op.get("target"):
+                pref = op.get("target")
+                if not contract_to_use.tags:
+                    contract_to_use.tags = []
+                if pref not in contract_to_use.tags:
+                    contract_to_use.tags.append(pref)
+                if "interests" not in contract_to_use.confirmed_fields:
+                    contract_to_use.confirmed_fields.append("interests")
+            elif op_type == "avoid_preference" and op.get("target"):
+                avoid = op.get("target")
+                if not contract_to_use.avoid_tags:
+                    contract_to_use.avoid_tags = []
+                if avoid not in contract_to_use.avoid_tags:
+                    contract_to_use.avoid_tags.append(avoid)
+
         result = {
             "status": "ready",
             "reply": "Dạ, em đã cập nhật lịch trình và chi phí theo các thay đổi anh xác nhận rồi ạ.",
-            "updated_contract": body.current_contract,
+            "updated_contract": contract_to_use,
             "phase": "ready",
             "missing_fields": [],
             "next_question": None,
@@ -1621,6 +1661,7 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
                                 }
                                 target_day.setdefault("stops", []).append(new_stop)
                                 logger.info(f"✨ Successfully enriched target_day with new JIT POI: {poi.name}")
+        is_manual = body.is_manual or (body.day_index + 1) in body.original_itinerary.get("manualDayNumbers", [])
         result = await layer4_client.re_route(
             current_lat=body.current_lat,
             current_lon=body.current_lon,
@@ -1629,6 +1670,7 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
             original_itinerary=body.original_itinerary,
             day_index=body.day_index,
             excluded_poi_ids=body.excluded_poi_ids,
+            is_manual=is_manual,
         )
 
         if result is None:
@@ -1638,11 +1680,58 @@ async def re_route(request: Request, body: MobileReRouteRequest, user: FirebaseU
             )
 
         solver_status = result.get("status", "success")
+        
+        day_result = None
+        if solver_status in ["success", "optimized_with_warning"] and "stops" in result:
+            try:
+                from copy import deepcopy
+                updated_itinerary = deepcopy(body.original_itinerary)
+                days = updated_itinerary.get("days", [])
+                target_day_idx = None
+                for idx, d in enumerate(days):
+                    if d.get("day_index") == body.day_index or d.get("dayNumber") == body.day_index + 1:
+                        target_day_idx = idx
+                        break
+                if target_day_idx is None and days:
+                    target_day_idx = min(body.day_index, len(days) - 1)
+                    
+                if target_day_idx is not None:
+                    # Update stops in the targeted day
+                    days[target_day_idx]["stops"] = result["stops"]
+                    
+                    # 2. Reconstruct the contract
+                    contract_dict = (
+                        body.original_itinerary.get("llm_contract")
+                        or body.original_itinerary.get("llmContract")
+                        or {}
+                    )
+                    contract = LLMDataContract(**contract_dict)
+                    
+                    # 3. Enrich the entire itinerary
+                    enriched = CostEstimatorService().enrich(updated_itinerary, contract)
+                    if enriched and "days" in enriched:
+                        day_result = enriched["days"][target_day_idx]
+                        
+                        # Preserve status, message and day_index
+                        day_result["status"] = solver_status
+                        day_result["message"] = result.get("message")
+                        day_result["day_index"] = body.day_index
+                    else:
+                        day_result = result
+                else:
+                    day_result = result
+            except Exception as enrich_error:
+                logger.error(f"Failed to enrich re-route result: {enrich_error}")
+                day_result = result
+        else:
+            day_result = result
+
         return ReRouteResponse(
             status=solver_status, 
-            day=result if solver_status in ["success", "optimized_with_warning"] else None,
+            day=day_result if solver_status in ["success", "optimized_with_warning"] else None,
             message=result.get("message")
         )
+
 
     except Exception as e:
         logger.error(f"Re-route proxy error: {e}")

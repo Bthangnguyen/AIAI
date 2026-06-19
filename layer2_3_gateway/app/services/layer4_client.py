@@ -454,6 +454,7 @@ class Layer4Client:
         day_index: int,
         excluded_poi_ids: list[str] | None = None,
         time_limit: int = 15,
+        is_manual: bool = False,
     ) -> dict | None:
         """Forward re-route request to Layer 4 POST /re-route."""
         state = solver_breaker.check_state()
@@ -525,6 +526,7 @@ class Layer4Client:
             "day": day_plan,
             "constraints": constraints,
             "excluded_poi_ids": excluded_poi_ids,
+            "is_manual": is_manual,
         }
 
         try:

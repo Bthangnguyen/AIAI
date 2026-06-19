@@ -70,3 +70,4 @@ layer2_3_gateway/app/scratch/
 *.csv
 .agents_backup_merge/
 .codex-backup/
+.vercel

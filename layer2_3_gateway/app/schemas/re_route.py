@@ -24,6 +24,8 @@ class MobileReRouteRequest(BaseModel):
     day_index: int = Field(..., description="Current day index in the itinerary")
     # Full original itinerary from mobile — Gateway extracts POIs/hotel/constraints
     original_itinerary: dict = Field(..., description="Full TravelItinerary from the original plan")
+    is_manual: bool = Field(False, description="Whether to preserve exact order of remaining_poi_ids")
+
 
 
 class ReRouteResponse(BaseModel):

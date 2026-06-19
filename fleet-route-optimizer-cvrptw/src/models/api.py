@@ -46,3 +46,5 @@ class ReRouteRequest(BaseModel):
     day: DayPlan = Field(..., description="Current day plan")
     constraints: TravelConstraints = Field(..., description="User constraints")
     excluded_poi_ids: Optional[List[str]] = Field(None, description="POI IDs to skip (e.g. due to traffic)")
+    is_manual: bool = Field(False, description="Preserve exact order of remaining_poi_ids")
+

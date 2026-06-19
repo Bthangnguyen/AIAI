@@ -19,7 +19,7 @@ import threading
 from typing import List, Optional, Dict, Any
 from ..models.domain import (
     POI, Hotel, DayPlan, Location, TravelConstraints, TransportMode,
-    TravelItinerary, TravelItineraryDay, TimeWindow,
+    TravelItinerary, TravelItineraryDay, TimeWindow, TravelItineraryStop,
 )
 from ..models.api import TravelPlanRequest, ReRouteRequest
 from .travel_solver import TravelSolverAdapter

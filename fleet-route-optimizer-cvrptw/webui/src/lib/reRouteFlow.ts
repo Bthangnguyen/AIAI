@@ -10,6 +10,12 @@ export type ProcessReRouteSuccess = {
   items: ItineraryItem[]
   toastVariant: ReRouteToastVariant
   message: string
+  transportLegs?: any[]
+  overnightStay?: any
+  startLodging?: any
+  endLodging?: any
+  dayTotalCost?: number
+  dayTransportCost?: number
 }
 
 export type ProcessReRouteFailure = {
@@ -36,5 +42,11 @@ export function processReRouteResult(dayIndex: number, result: ReRouteResult): P
     items: reRouteStopsToItems(dayIndex, interpreted.day),
     toastVariant: interpreted.outcome === "warning" ? "warning" : "success",
     message: interpreted.message,
+    transportLegs: interpreted.day.transport_legs,
+    overnightStay: interpreted.day.overnight_stay,
+    startLodging: interpreted.day.start_lodging,
+    endLodging: interpreted.day.end_lodging,
+    dayTotalCost: interpreted.day.day_total_cost,
+    dayTransportCost: interpreted.day.day_transport_cost,
   }
 }

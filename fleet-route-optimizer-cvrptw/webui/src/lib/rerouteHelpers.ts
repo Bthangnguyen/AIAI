@@ -13,6 +13,11 @@ export function reRouteStopsToItems(dayIndex: number, day: NonNullable<ReRouteRe
         time: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
         note: stop.poi_name ?? "",
         vibe_note: (stop as any).vibe_note,
+        transport_from_prev: (stop as any).transport_from_prev,
+        travel_time_from_prev_min: (stop as any).travel_time_from_prev_min,
+        travel_time_to_next_min: (stop as any).travel_time_to_next_min,
+        ticket_cost: (stop as any).ticket_cost,
+        expected_spend: (stop as any).expected_spend,
       }
     })
 }

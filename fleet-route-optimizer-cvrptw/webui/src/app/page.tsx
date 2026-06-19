@@ -605,6 +605,12 @@ export default function Page() {
       items: interpreted.items,
       toastVariant: interpreted.toastVariant,
       message: interpreted.message,
+      transportLegs: interpreted.transportLegs,
+      overnightStay: interpreted.overnightStay,
+      startLodging: interpreted.startLodging,
+      endLodging: interpreted.endLodging,
+      dayTotalCost: interpreted.dayTotalCost,
+      dayTransportCost: interpreted.dayTransportCost,
     }
   }
 
@@ -720,7 +726,7 @@ export default function Page() {
     setFitSignal((value) => value + 1)
   }
 
-  function handleReorderPlace(dayNumber: number, draggedId: string, targetId: string) {
+  async function handleReorderPlace(dayNumber: number, draggedId: string, targetId: string) {
     if (!draft) return
     const dayIndex = draft.days.findIndex((day) => day.dayNumber === dayNumber)
     if (dayIndex < 0) return
@@ -730,22 +736,82 @@ export default function Page() {
     const targetIndex = items.findIndex((i) => i.id === targetId)
     if (draggedIndex < 0 || targetIndex < 0) return
 
+    // Reorder locally first for instant UI response
     const [moved] = items.splice(draggedIndex, 1)
     items.splice(targetIndex, 0, moved)
 
     const timedDay = recalculateDayTimes({ ...day, items })
-    const newDays = [...draft.days]
-    newDays[dayIndex] = timedDay
+    const newDaysLocal = [...draft.days]
+    newDaysLocal[dayIndex] = timedDay
 
-    const nextDraft = markDayManual({
+    const localDraft = markDayManual({
       ...draft,
-      days: newDays,
+      days: newDaysLocal,
       updatedAt: new Date().toISOString(),
     }, dayNumber)
 
-    setDraft(nextDraft)
+    setDraft(localDraft)
     setFitSignal((value) => value + 1)
-    showToast("Đã thay đổi thứ tự địa điểm.", "success")
+    showToast("Đang tối ưu lộ trình và chi phí di chuyển...", "info")
+
+    // Call backend to update transport legs, distances, and costs
+    setIsRunning(true)
+    setStatus("resolving")
+    try {
+      const orderedIds = items.map((i) => i.poiId)
+      const reroute = await runReRouteForDay(dayIndex, orderedIds)
+      if (!reroute) return
+
+      setDraft((currentDraft) => {
+        if (!currentDraft) return null
+        const updatedDays = [...currentDraft.days]
+        updatedDays[dayIndex] = recalculateDayTimes({
+          ...updatedDays[dayIndex],
+          items: reroute.items,
+          transportLegs: reroute.transportLegs,
+          overnightStay: reroute.overnightStay,
+          startLodging: reroute.startLodging,
+          endLodging: reroute.endLodging,
+          dayTotalCost: reroute.dayTotalCost,
+          dayTransportCost: reroute.dayTransportCost,
+        })
+
+        // Recalculate total cost summary
+        const totalCost = updatedDays.reduce((sum, d) => sum + Number(d.dayTotalCost || 0), 0)
+        const totalTransportCost = updatedDays.reduce((sum, d) => sum + Number(d.dayTransportCost || 0), 0)
+        const totalPoiCost = updatedDays.reduce((sum, d) => {
+          return sum + d.items.reduce((daySum, item) => {
+            const poi = getPoi(item.poiId) || POI_CACHE.get(item.poiId)
+            return daySum + (poi?.estimatedCost || 0)
+          }, 0)
+        }, 0)
+
+        const partySize = Number(currentDraft.costSummary?.party_size || 1)
+        const updatedCostSummary = currentDraft.costSummary ? {
+          ...currentDraft.costSummary,
+          local_transport_cost: totalTransportCost,
+          poi_ticket_cost: totalPoiCost,
+          group_total_cost: totalCost,
+          per_person_cost: Math.round(totalCost / partySize),
+          budget_remaining: Number(currentDraft.costSummary.budget_max || currentDraft.budget || 0) - totalCost,
+        } : undefined
+
+        return {
+          ...currentDraft,
+          days: updatedDays,
+          costSummary: updatedCostSummary,
+          budgetUsed: totalCost,
+          updatedAt: new Date().toISOString(),
+        }
+      })
+      setFitSignal((value) => value + 1)
+      showToast("Đã tối ưu hóa chi phí di chuyển mới.", "success")
+    } catch (e) {
+      showToast("Lỗi tối ưu chi phí di chuyển: " + (e instanceof Error ? e.message : String(e)), "error")
+    } finally {
+      setIsRunning(false)
+      setStatus("live")
+    }
   }
 
   async function handleApplyManualOrder(dayNumber: number) {
@@ -762,13 +828,44 @@ export default function Page() {
       if (!reroute) return
 
       const newDays = [...draft.days]
-      newDays[dayIndex] = recalculateDayTimes({ ...newDays[dayIndex], items: reroute.items })
+      newDays[dayIndex] = recalculateDayTimes({ 
+        ...newDays[dayIndex], 
+        items: reroute.items,
+        transportLegs: reroute.transportLegs,
+        overnightStay: reroute.overnightStay,
+        startLodging: reroute.startLodging,
+        endLodging: reroute.endLodging,
+        dayTotalCost: reroute.dayTotalCost,
+        dayTransportCost: reroute.dayTransportCost,
+      })
       const resultOrder = reroute.items.map((item) => item.poiId)
       const orderPreserved = orderedIds.length === resultOrder.length && orderedIds.every((id, index) => id === resultOrder[index])
+
+      // Recalculate total cost summary
+      const totalCost = newDays.reduce((sum, d) => sum + Number(d.dayTotalCost || 0), 0)
+      const totalTransportCost = newDays.reduce((sum, d) => sum + Number(d.dayTransportCost || 0), 0)
+      const totalPoiCost = newDays.reduce((sum, d) => {
+        return sum + d.items.reduce((daySum, item) => {
+          const poi = getPoi(item.poiId) || POI_CACHE.get(item.poiId)
+          return daySum + (poi?.estimatedCost || 0)
+        }, 0)
+      }, 0)
+
+      const partySize = Number(draft.costSummary?.party_size || 1)
+      const updatedCostSummary = draft.costSummary ? {
+        ...draft.costSummary,
+        local_transport_cost: totalTransportCost,
+        poi_ticket_cost: totalPoiCost,
+        group_total_cost: totalCost,
+        per_person_cost: Math.round(totalCost / partySize),
+        budget_remaining: Number(draft.costSummary.budget_max || draft.budget || 0) - totalCost,
+      } : undefined
 
       let nextDraft: ItineraryDraft = {
         ...draft,
         days: newDays,
+        costSummary: updatedCostSummary,
+        budgetUsed: totalCost,
         updatedAt: new Date().toISOString(),
       }
       if (orderPreserved) {

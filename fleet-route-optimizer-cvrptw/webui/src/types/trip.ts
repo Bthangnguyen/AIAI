@@ -105,6 +105,7 @@ export interface ItineraryItem {
   ticket_cost?: number
   expected_spend?: number
   vibe_note?: string
+  location?: { latitude: number; longitude: number }
 }
 
 export interface ItineraryDay {

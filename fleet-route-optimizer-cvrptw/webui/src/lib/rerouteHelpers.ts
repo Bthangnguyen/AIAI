@@ -18,6 +18,7 @@ export function reRouteStopsToItems(dayIndex: number, day: NonNullable<ReRouteRe
         travel_time_to_next_min: (stop as any).travel_time_to_next_min,
         ticket_cost: (stop as any).ticket_cost,
         expected_spend: (stop as any).expected_spend,
+        location: stop.location,
       }
     })
 }

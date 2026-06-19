@@ -320,6 +320,7 @@ export function mapLayer4ResultToDraft(
           ticket_cost: stop.ticket_cost,
           expected_spend: stop.expected_spend,
           vibe_note: stop.vibe_note,
+          location: stop.location,
         }
       })
 

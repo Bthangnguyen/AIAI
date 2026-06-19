@@ -563,7 +563,7 @@ export default function Page() {
               category: cachedPoi?.category || "general",
               description: cachedPoi?.description || item.vibe_note || "",
               vibe_note: item.vibe_note || "",
-              location: {
+              location: item.location || {
                 latitude: cachedPoi?.lat || 0,
                 longitude: cachedPoi?.lng || 0,
               },
@@ -797,7 +797,7 @@ export default function Page() {
     setStatus("resolving")
     try {
       const orderedIds = items.map((i) => i.poiId)
-      const reroute = await runReRouteForDay(dayIndex, orderedIds)
+      const reroute = await runReRouteForDay(dayIndex, orderedIds, [], true)
       if (!reroute) return
 
       setDraft((currentDraft) => {
@@ -862,7 +862,7 @@ export default function Page() {
     setIsRunning(true)
     setStatus("resolving")
     try {
-      const reroute = await runReRouteForDay(dayIndex, orderedIds)
+      const reroute = await runReRouteForDay(dayIndex, orderedIds, [], true)
       if (!reroute) return
 
       const newDays = [...draft.days]

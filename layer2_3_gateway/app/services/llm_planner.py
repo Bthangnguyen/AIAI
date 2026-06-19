@@ -12,7 +12,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.schemas.trip import LLMDataContract, POIResponse
-from app.services.llm_provider_client import LLMProviderClient
+from app.services.llm_client import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,15 @@ Trả về kết quả dưới định dạng JSON khớp chính xác với cấ
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class ItineraryPlannerService:
+    def __init__(self):
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = build_llm_client()
+        return self._client
+    
     def _min_to_time(self, minutes: int) -> str:
         h = minutes // 60
         m = minutes % 60
@@ -137,13 +146,12 @@ class ItineraryPlannerService:
         )
 
         try:
-            skeleton: ItinerarySkeleton = await LLMProviderClient.create_chat_completion(
+            skeleton: ItinerarySkeleton = await self.client.chat.completions.create(
                 response_model=ItinerarySkeleton,
                 messages=[
                     {"role": "system", "content": LLM_PLANNER_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
-                operation_name="itinerary_skeleton",
                 max_retries=2,
                 timeout=60.0,
             )

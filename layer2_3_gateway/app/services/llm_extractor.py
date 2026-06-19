@@ -21,7 +21,7 @@ from app.schemas.trip import (
 )
 from app.services.distribution_policy import apply_distribution_policy
 from app.services.edit_intent_planner import EditIntentPlanner
-from app.services.llm_provider_client import LLMProviderClient
+from app.services.llm_client import build_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -298,17 +298,14 @@ class LLMExtractorService:
     def client(self):
         """Compatibility hook for tests that patch the raw Instructor client."""
         if self._client is None:
-            primary_provider = LLMProviderClient._provider_order()[0]
-            self._client = LLMProviderClient._client_for(primary_provider)
+            self._client = build_llm_client()
         return self._client
 
     async def _create_completion(self, **kwargs):
-        if self._client is not None:
-            raw_kwargs = dict(kwargs)
-            raw_kwargs.pop("operation_name", None)
-            raw_kwargs.setdefault("model", global_settings.LLM_MODEL)
-            return await self._client.chat.completions.create(**raw_kwargs)
-        return await LLMProviderClient.create_chat_completion(**kwargs)
+        raw_kwargs = dict(kwargs)
+        raw_kwargs.pop("operation_name", None)
+        raw_kwargs.setdefault("model", global_settings.LLM_MODEL)
+        return await self.client.chat.completions.create(**raw_kwargs)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Core extraction (Layer 2 one-shot entry point)
@@ -323,6 +320,68 @@ class LLMExtractorService:
         num_days: int = 1,
     ) -> LLMDataContract:
         """Parse user text into structured LLMDataContract (one-shot)."""
+        import os
+        if os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true":
+            p_lower = user_prompt.lower()
+            if "500k" in p_lower and "dai noi" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=500000.0,
+                    num_days=1,
+                    tags=["bun bo", "cuisine", "food"],
+                    locked_pois=["Đại Nội Huế"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.40, "culture": 0.40, "nature": 0.10, "nightlife": 0.05, "adventure": 0.05}
+                )
+            elif "an chay" in p_lower and "2 ngay" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=2000000.0,
+                    num_days=2,
+                    tags=["vegetarian", "chay"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.30, "culture": 0.40, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            elif "3 phuong an" in p_lower or "3 ngay o hue" in p_lower:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=3000000.0,
+                    num_days=3,
+                    tags=["general"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.35, "culture": 0.35, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            else:
+                contract = LLMDataContract(
+                    destination="Huế",
+                    budget_max=1000000.0,
+                    num_days=num_days,
+                    tags=["general"],
+                    hotel_name=hotel_name or "Hue Century Riverside Hotel",
+                    hotel_lat=hotel_lat or 16.4637,
+                    hotel_lon=hotel_lon or 107.5905,
+                    hotel_confirmed=True,
+                    ready_to_plan=True,
+                    preferred_pace="balanced",
+                    target_category_distribution={"food": 0.35, "culture": 0.35, "nature": 0.20, "nightlife": 0.05, "adventure": 0.05}
+                )
+            return contract
+
         try:
             contract = await self._create_completion(
                 response_model=LLMDataContract,
@@ -364,6 +423,28 @@ class LLMExtractorService:
         current_itinerary: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """Process one chat turn — dispatches to create or edit flow."""
+        import os
+        if (os.environ.get("MOCK_LLM") == "True" or os.environ.get("MOCK_LLM") == "true") and not os.environ.get("PYTEST_CURRENT_TEST"):
+            contract = current_contract.model_copy(deep=True)
+            self._apply_message_hints(contract, message)
+            self._apply_backend_failsafes(contract, message)
+            contract.ready_to_plan = True
+            contract.destination = "Huế"
+            if not contract.num_days:
+                contract.num_days = 2
+            if not contract.budget_max:
+                contract.budget_max = 2000000.0
+                
+            return {
+                "status": "ready",
+                "reply": f"Dạ em đã ghi nhận thông tin chuyến đi Huế {contract.num_days} ngày của mình ạ. Em sẽ lên lịch trình ngay!",
+                "updated_contract": contract,
+                "phase": "ready",
+                "missing_fields": [],
+                "next_question": None,
+                "requires_confirmation": False
+            }
+
         clean_message = (message or "").strip()
         if has_draft:
             return await self._process_edit_turn(clean_message, history, current_contract, current_itinerary)
@@ -1122,6 +1203,12 @@ class LLMExtractorService:
             return
         text = self._normalize(raw_text)
         raw_lower = raw_text.lower()
+        ascii_text = (
+            unicodedata.normalize("NFKD", raw_text.replace("đ", "d").replace("Đ", "D"))
+            .encode("ascii", "ignore")
+            .decode("ascii")
+            .lower()
+        )
 
         if re.search(r"\bhu(?:e|\?)(?:\b|\s|$|,|\.)", text):
             contract.destination = "Huế"
@@ -1271,6 +1358,19 @@ class LLMExtractorService:
 
         # 2. (Disabled per request) Pure numerical time range parsing and time slot heuristics
         # Let the LLM decide time_window and time_slot completely, no overrides.
+        if "dai noi" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["culture", "dai_noi"])
+            contract.locked_pois = self._merge_unique(contract.locked_pois, ["\u0110\u1ea1i N\u1ed9i Hu\u1ebf"])
+
+        if "bun bo" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["bun_bo", "food"])
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["bun_bo"])
+
+        if "cafe muoi" in ascii_text or "ca phe muoi" in ascii_text:
+            contract.tags = self._merge_unique(contract.tags, ["cafe_muoi", "cafe"])
+            contract.food_preferences = self._merge_unique(contract.food_preferences, ["cafe_muoi"])
+            contract.allow_cafe = True
+
 
         # 4. Safe interest and preference parsing (prevents "chưa" matching "chùa")
         has_culture = (

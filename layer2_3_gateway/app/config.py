@@ -36,10 +36,13 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDERS: str = "groq"
     OPENAI_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_LLM_MODEL: str = "deepseek/deepseek-v4-flash"
     DEEPSEEK_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_MAX_TOKENS: int = 1024
 
     @computed_field  # type: ignore[prop-decorator]

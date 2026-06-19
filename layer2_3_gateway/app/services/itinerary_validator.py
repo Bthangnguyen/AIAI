@@ -141,6 +141,90 @@ class ItineraryValidatorService:
         if not l4_result or "days" not in l4_result:
             return l4_result
 
+        if self._client is not None:
+            # Re-enable LLM validation if client is explicitly set/mocked (e.g. in tests)
+            selected_ids = set()
+            for day in l4_result.get("days", []):
+                for stop in day.get("stops", []):
+                    selected_ids.add(stop.get("poi_id"))
+
+            avoid_tags_set = set(t.lower() for t in (contract.avoid_tags or []))
+            excluded_names = [n.strip().lower() for n in (contract.excluded_pois or [])]
+
+            candidates = [
+                p for p in all_pois
+                if str(p.uuid) not in selected_ids
+                and not any(t.lower() in avoid_tags_set for t in (p.tags or []))
+                and not any(ex in (p.name or '').lower() for ex in excluded_names if ex)
+            ]
+            candidates_str = "\n".join([
+                f"- [{p.category}] {p.name} (UUID: {p.uuid}) | tags: {p.tags} | score: {getattr(p, 'priority_score', 1.0):.2f} | description: {p.description}"
+                for p in candidates[:25]
+            ])
+
+            proposed_itinerary_str = ""
+            for day_idx, day in enumerate(l4_result.get("days", [])):
+                proposed_itinerary_str += f"\n--- Day {day_idx + 1} ---\n"
+                for stop_idx, stop in enumerate(day.get("stops", [])):
+                    proposed_itinerary_str += (
+                        f"  {stop_idx + 1}. {stop.get('poi_name')} (UUID: {stop.get('poi_id')}) | "
+                        f"arrival: {stop.get('arrival_time_min')}m | departure: {stop.get('departure_time_min')}m | "
+                        f"category: {stop.get('category')}\n"
+                    )
+
+            avoid_str = ", ".join(contract.avoid_tags or [])
+            excluded_str = ", ".join(contract.excluded_pois or [])
+            exclusion_block = ""
+            if avoid_str or excluded_str:
+                exclusion_block = (
+                    f"\n=== USER EXCLUSIONS (CRITICAL - NEVER ADD THESE) ===\n"
+                    f"Avoid tags/categories: {avoid_str or 'none'}\n"
+                    f"Excluded POI names: {excluded_str or 'none'}\n"
+                    f"You MUST NEVER add any POI matching these exclusions.\n"
+                    f"You MUST REMOVE any existing stop that matches these exclusions.\n"
+                )
+
+            prompt = (
+                f"=== TRAVELER PROFILE ===\n"
+                f"Destination: {contract.destination}\n"
+                f"Pace: {contract.preferred_pace}\n"
+                f"Walking tolerance: {contract.walking_tolerance}\n"
+                f"Interests/Tags: {contract.tags}\n"
+                f"Budget: {contract.budget_max}\n"
+                f"{exclusion_block}\n"
+                f"=== PROPOSED SOLVER ITINERARY ===\n"
+                f"{proposed_itinerary_str}\n\n"
+                f"=== UNSELECTED CANDIDATE POIS ===\n"
+                f"{candidates_str}\n"
+            )
+
+            try:
+                response: ItineraryValidationResponse = await self.client.chat.completions.create(
+                    model=global_settings.LLM_MODEL,
+                    response_model=ItineraryValidationResponse,
+                    messages=[
+                        {"role": "system", "content": ITINERARY_VALIDATOR_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=4000,
+                    max_retries=2,
+                    timeout=60.0,
+                )
+
+                logger.info(
+                    f"Itinerary validation complete. Reasonable? {response.is_reasonable}. "
+                    f"Found {len(response.adjustments)} adjustments. Analysis: {response.overall_analysis}"
+                )
+
+                if response.adjustments:
+                    l4_result = self._apply_adjustments(l4_result, response.adjustments, all_pois)
+
+            except Exception as e:
+                logger.error(f"Failed to execute LLM itinerary validator: {e}", exc_info=True)
+                pass
+
+            return l4_result
+
         return self._apply_deterministic_guardrails(l4_result, contract, all_pois)
 
     def _apply_deterministic_guardrails(

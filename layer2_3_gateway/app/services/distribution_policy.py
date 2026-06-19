@@ -84,6 +84,8 @@ def derive_distribution(contract: Any, raw_text: str | None = None) -> dict[str,
 
 
 def apply_distribution_policy(contract: Any, raw_text: str | None = None) -> Any:
+    if getattr(contract, "distribution_description", None) and getattr(contract, "target_category_distribution", None):
+        return contract
     contract.target_category_distribution = derive_distribution(contract, raw_text)
     if not getattr(contract, "distribution_description", None):
         dist = contract.target_category_distribution

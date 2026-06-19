@@ -361,10 +361,10 @@ async def test_generic_no_preference_does_not_fill_lodging_or_transport():
     llm_contract = current.model_copy(deep=True)
     llm_contract.preference_mode = "no_preference"
     llm_contract.tags = ["general"]
-    llm_contract.lodging_mode = "system_select_lodging"
-    llm_contract.has_lodging = False
-    llm_contract.transport_policy = "system_suggest_per_leg"
-    llm_contract.transport_plan.availability = "needs_transport"
+    llm_contract.lodging_mode = "unknown"
+    llm_contract.has_lodging = None
+    llm_contract.transport_policy = "unknown"
+    llm_contract.transport_plan.availability = "unknown"
 
     service = LLMExtractorService()
     service._client = SimpleNamespace(
@@ -372,7 +372,7 @@ async def test_generic_no_preference_does_not_fill_lodging_or_transport():
             status="clarifying",
             reply="Ok, em sap xep can bang.",
             updated_contract=llm_contract,
-            phase="confirming",
+            phase="collecting",
             missing_fields=[],
             requires_confirmation=True,
         ))))

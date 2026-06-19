@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RefreshCw, RotateCcw, Save, Share2, Smartphone, Printer, Calendar as CalendarIcon, MapPin } from "lucide-react"
+import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RefreshCw, RotateCcw, Save, Share2, Calendar as CalendarIcon, MapPin } from "lucide-react"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import type { ItineraryDraft, PreviewMode, POI } from "@/types/trip"
 
@@ -12,12 +12,11 @@ interface TripToolbarProps {
   onBack: () => void
   onSave: () => void
   onReset: () => void
-  onRebuild: () => void
   onSavedTrips: () => void
-  onMobilePhase: () => void
+  onShare: () => void
 }
 
-export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave, onReset, onRebuild, onSavedTrips, onMobilePhase }: TripToolbarProps) {
+export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave, onReset, onSavedTrips, onShare }: TripToolbarProps) {
   const title = draft ? `${draft.destination} ${draft.days.length} ngày` : "Untitled Trip"
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -94,6 +93,19 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
     document.body.removeChild(link)
   }
 
+  const handleExportJSON = () => {
+    if (!draft) return
+    const jsonString = JSON.stringify(draft, null, 2)
+    const blob = new Blob([jsonString], { type: "application/json;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `tripflow_itinerary_${draft.destination.toLowerCase()}.json`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const openGoogleMapsRoute = (stops: POI[]) => {
     if (!draft || stops.length === 0) return
     
@@ -148,7 +160,7 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
         <button type="button" onClick={onSave} className="hidden items-center gap-2 rounded-lg border border-orange-300 px-4 py-2 text-sm font-black text-orange-700 transition hover:bg-orange-50 sm:flex">
           <Save size={14} /> Lưu nháp
         </button>
-        <button type="button" disabled className="hidden items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-black text-white opacity-70 sm:flex">
+        <button type="button" onClick={onShare} className="hidden items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-black text-white hover:bg-orange-600 transition sm:flex">
           <Share2 size={14} /> Chia sẻ
         </button>
         <div ref={menuRef} className="relative">
@@ -157,15 +169,13 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
           </button>
           {menuOpen ? (
             <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-orange-200 bg-white py-1.5 shadow-2xl shadow-orange-950/10 max-h-96 overflow-y-auto custom-scrollbar">
-              <button type="button" disabled={!draft} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { setMenuOpen(false); onRebuild() }}><RefreshCw size={16} /> Tạo option khác</button>
-              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); console.log(JSON.stringify(draft, null, 2)) }}><Download size={16} /> Export JSON</button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); handleExportJSON() }}><Download size={16} /> Export JSON</button>
               <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onReset() }}><RotateCcw size={16} /> Reset Draft</button>
               <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onSavedTrips() }}><FolderOpen size={16} /> Saved Trips</button>
-              <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50" onClick={() => { setMenuOpen(false); onMobilePhase() }}><Smartphone size={16} /> Mobile Phase</button>
+
               
               <div className="my-1 border-t border-orange-100" />
               
-              <button type="button" disabled={!draft} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { setMenuOpen(false); window.print() }}><Printer size={16} /> Tải PDF lịch trình</button>
               <button type="button" disabled={!draft} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-950/65 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { setMenuOpen(false); handleExportCalendar() }}><CalendarIcon size={16} /> Đồng bộ Calendar (.ics)</button>
               
               {draft && (

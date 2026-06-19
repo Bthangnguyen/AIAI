@@ -78,19 +78,31 @@ button { cursor: pointer; }
 
 @media print {
   /* Hide non-printable elements */
-  header, footer, nav,
+  header, footer, nav, aside,
   .no-print,
   button,
-  .leaflet-control-container,
   input,
-  textarea {
+  select,
+  textarea,
+  .leaflet-control-container,
+  .mapboxgl-control-container,
+  .mapboxgl-map,
+  .leaflet-container,
+  #map,
+  [class*="map"],
+  .TripToolbar_container,
+  .AITripChatPanel_container,
+  .TripControlPanel_container,
+  div[class*="border-orange-200"],
+  .custom-scrollbar::-webkit-scrollbar,
+  div.flex.h-12.shrink-0 { /* Hide preview panel's header tabs */
     display: none !important;
   }
 
   /* Reset body and root backgrounds */
   body, html {
     background: #ffffff !important;
-    color: #1a1a1a !important;
+    color: #000000 !important;
     font-family: "Segoe UI", Roboto, sans-serif !important;
   }
 
@@ -114,6 +126,9 @@ button { cursor: pointer; }
     max-width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
   }
 
   /* Ensure no elements inside the list are clipped by scrollbar wrappers */
@@ -130,6 +145,27 @@ button { cursor: pointer; }
     background: #ffffff !important;
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Ensure ItineraryArtifact wrapper expands fully */
+  .mx-auto.w-full.max-w-4xl {
+    max-w: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent page breaks inside cards */
+  .space-y-4, section {
+    page-break-inside: avoid !important;
+  }
+
+  /* Force background colors for progress bars and stacked bar during print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

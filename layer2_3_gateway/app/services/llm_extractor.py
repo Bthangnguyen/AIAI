@@ -30,181 +30,93 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT = """Bạn là trợ lý du lịch chuyên trích xuất thông tin từ yêu cầu của khách.
-Trả về JSON theo LLMDataContract. Không tự bịa thông tin.
+Trả về JSON theo LLMDataContract. Không tự bịa thông tin địa điểm hay rating.
 
-Trích xuất:
-- destination: chỉ hỗ trợ Huế/Hue.
-- budget_max hoặc budget_is_unlimited.
-- num_days, tags, locked_pois, excluded_pois.
-- preferred_pace, walking_tolerance, food_preferences, avoid_tags.
-- time_slot, trip_duration_hours, time_window nếu có.
-- transport_modes, group_type, group_size, hotel info nếu user nói.
-
-THÊM: Phân tích và suy luận các trường sau:
-- estimated_pois: Ước lượng số điểm user muốn đi (tối đa 6 POI/ngày). "buổi tối 2-3 quán" → 3. "đi Huế 3 ngày" → 18. "tìm 1 quán cafe" → 1. KHÔNG vượt quá num_days × 6.
-- time_slot: Khung giờ. "buổi tối" → "evening". "cả ngày" → "full_day". "sáng mai" → "morning".
-- trip_duration_hours: Thời lượng. "buổi tối" → 4-5h. "cả ngày" → 10-12h. "1 buổi sáng" → 3-4h.
-- vibe: "lãng mạn" → "romantic". "khám phá" → "adventure". "chill" → "chill". "ăn uống" → "foodie".
-- trip_type: "food tour" → "food_tour". "ngắm cảnh" → "sightseeing".
-- allow_cafe: True nếu khách nhắc đến thích uống cafe, cafe muối, trà quán, quán nước... Mặc định False.
-- allow_art: True nếu khách nhắc đến nghệ thuật, tranh ảnh, bảo tàng tranh, triển lãm... Mặc định False.
-- allow_shopping: True nếu khách nhắc đến chợ Đông Ba, mua quà, mua sắm... Mặc định False.
-- target_category_distribution: Phân bổ % chỉ cho 5 nhóm chính: food, culture, nature, nightlife, adventure. Tổng phải bằng đúng 1.0. Các nhóm cafe, art, shopping, wellness không bao giờ được xuất hiện trong phân bổ này! VD "văn hóa lịch sử" → {"culture": 0.70, "food": 0.20, "nature": 0.10}
-- avoid_tags: "không muốn đông" → ["crowded"]. "tránh chỗ đắt" → ["expensive"].
-- walking_tolerance: "low" nếu khách không muốn/hạn chế đi bộ; "high" nếu thích đi bộ khám phá; "medium" nếu không nêu."""
+Quy tắc Trích xuất & Suy luận:
+1. destination: chỉ hỗ trợ Huế/Hue.
+2. Ngân sách (Budget):
+   - Trích xuất số tiền tối đa (budget_max) dưới dạng số (float) từ các cụm từ (ví dụ: "1tr5" -> 1500000, "800k" -> 800000, "2 củ" -> 2000000).
+   - Nếu ngân sách không giới hạn, đặt budget_is_unlimited = True.
+   - Xác định budget.scope ("per_person" nếu đi nhóm và không nói tổng cộng, hoặc "group_total" nếu ghi rõ "tổng nhóm", "chung") và budget.period ("total_trip" hoặc "per_day").
+   - normalized budget: Tính toán và điền budget_per_person và group_budget_total tương ứng dựa trên group_size.
+3. Khung giờ & Buổi hoạt động (Time Window Specs):
+   - Chuyển các buổi hoạt động trong ngày thành time_window (phút tính từ nửa đêm):
+     * "buổi sáng" / "sáng" -> time_slot="morning", time_window: {start_min: 480, end_min: 720}
+     * "buổi chiều" / "chiều" -> time_slot="afternoon", time_window: {start_min: 780, end_min: 1080}
+     * "buổi tối" / "tối" -> time_slot="evening", time_window: {start_min: 1080, end_min: 1320}
+     * "cả ngày" -> time_slot="full_day", time_window: {start_min: 480, end_min: 1260}
+4. Quyết định Vận hành (Chỗ ở & Phương tiện):
+   - Nếu khách đã có chỗ ở ("đã có khách sạn/chỗ ở", "co phong roi") -> lodging_mode="user_has_lodging", has_lodging=True.
+   - Nếu khách chưa có hoặc nhờ chọn hộ ("chưa có", "chọn giúp tôi", "cho o em tu chon") -> lodging_mode="system_select_lodging", has_lodging=False.
+   - Nếu khách đã có phương tiện ("tự lái", "có xe") -> transport_policy="user_has_transport".
+   - Nếu khách chưa có phương tiện ("đi taxi/grab", "chưa có xe", "thuê xe") -> transport_policy="system_suggest_per_leg".
+5. target_category_distribution: Phân bổ % chỉ cho 5 nhóm chính: food, culture, nature, nightlife, adventure. Tổng phải bằng đúng 1.0. Các nhóm cafe, art, shopping, wellness không bao giờ được xuất hiện trong phân bổ này!
+   - allow_cafe: True nếu khách nhắc đến thích uống cafe, cafe muối, trà quán, quán nước... Mặc định False.
+   - allow_art: True nếu khách nhắc đến nghệ thuật, bảo tàng tranh, triển lãm... Mặc định False.
+   - allow_shopping: True nếu khách nhắc đến chợ Đông Ba, mua quà, mua sắm... Mặc định False.
+   - walking_tolerance: Mức đi bộ ưa thích (low, medium, high).
+6. trích xuất các điểm du lịch bắt buộc (locked_pois), điểm loại trừ (excluded_pois) và tags nếu người dùng đề cập.
+   - Nếu khách nói "đi kết hợp luôn", "kết hợp", "đi cả ngày", hoặc không nêu rõ sở thích cụ thể -> đặt tags = ["culture", "street_food", "sightseeing"], vibe = "chill", và trip_type = "mixed".
+"""
 
 CHAT_PROCESS_SYSTEM_PROMPT = """\
 <SYSTEM>
 Bạn là LLM INTENT EXTRACTOR cho hệ thống AI-Driven Dynamic Itinerary Optimizer.
-Đây là chế độ MULTI-TURN CHAT: bạn nhận conversation_state và tin nhắn mới.
+Đây là chế độ MULTI-TURN CHAT: bạn nhận conversation_state hiện tại (CURRENT_CONTRACT) và tin nhắn mới (NEW_MESSAGE).
 
-Nhiệm vụ:
+Nhiệm vụ chính:
 1. Đọc conversation_state hiện tại (CURRENT_CONTRACT).
 2. Đọc tin nhắn mới (NEW_MESSAGE).
-3. Extract thông tin mới từ tin nhắn.
-4. Merge với state cũ — giữ nguyên dữ liệu cũ nếu tin nhắn mới không sửa nó.
-5. Cập nhật status (clarifying/ready) và sinh reply.
-
-Bạn KHÔNG phải chatbot tư vấn du lịch.
-Bạn KHÔNG được tự bịa địa điểm, quán ăn, rating.
-Bạn chỉ extract và merge.
-Luôn ưu tiên: ĐÚNG > RÕ > ĐỦ > ĐẸP.
+3. Trích xuất thông tin mới từ tin nhắn và suy luận các giá trị tương ứng.
+4. Gộp (Merge) thông minh với dữ liệu cũ — GIỮ NGUYÊN các dữ liệu cũ nếu tin nhắn mới không sửa đổi hay mâu thuẫn với chúng. Đặc biệt giữ nguyên thông tin tọa độ khách sạn (hotel_lat, hotel_lon) và phương tiện di chuyển một khi đã thu thập, tránh reset trạng thái về unknown.
+5. Cập nhật trạng thái đàm thoại (status: "ready" hoặc "clarifying"), giai đoạn (phase: "collecting", "confirming", hoặc "ready") và sinh câu trả lời tự nhiên (reply).
 </SYSTEM>
 
 <CORE_RULES>
-1. Giữ nguyên dữ liệu cũ nếu message không sửa nó.
-2. Nếu user sửa thông tin cũ, ưu tiên thông tin mới nhất.
-3. Không tự set status="ready" khi chưa đủ: destination + num_days + budget + time_window + ≥1 preference.
-4. Nếu user xác nhận tóm tắt trước đó → status="ready".
-5. Nếu user phủ định → đưa vào excluded hoặc avoid.
-6. Chuẩn hóa tag tiếng Việt sang snake_case không dấu.
+1. Giữ nguyên dữ liệu cũ nếu tin nhắn không sửa đổi nó. Tránh reset lodging_mode, transport_policy, hotel_lat, hotel_lon về unknown khi người dùng không nhắc lại.
+2. Nếu người dùng sửa thông tin cũ, ưu tiên thông tin mới nhất.
+3. Không tự ý thiết lập status="ready" nếu chưa thu thập đủ các trường quyết định bắt buộc: destination, num_days, budget (hoặc budget_is_unlimited), time_window/time_slot, lodging_mode, transport_policy, party.size.
+4. Nếu tất cả các thông tin đã đầy đủ nhưng người dùng chưa xác nhận bản tóm tắt -> đặt status="clarifying", phase="confirming", requires_confirmation=True.
+5. Nếu người dùng xác nhận tóm tắt trước đó (bằng các từ như "ok", "được", "đúng rồi", "ừ", "chốt", "đi thôi", "đồng ý") -> đặt status="ready", phase="ready".
+6. Nếu khách nói "đi kết hợp luôn", "kết hợp", "đi cả ngày", hoặc không nêu rõ sở thích cụ thể -> đặt tags = ["culture", "street_food", "sightseeing"], vibe = "chill", và trip_type = "mixed" để tránh lỗi thiếu thông tin chi tiết.
 </CORE_RULES>
 
 <NORMALIZATION_GUIDE>
-- "cafe muối" → "cafe_muoi"
-- "bún bò" → "bun_bo"
-- "ăn chay" → food_preferences: ["vegetarian"], tags: ["vegetarian"]
-- "đi chill" → preferred_pace: "chill"
-- "Đại Nội" → tags: ["culture"]
-
-- "không đi chùa" → excluded_pois: ["chùa"], avoid_tags: ["pagoda", "temple"]
-- "8h-17h" → time_window: {start_min: 480, end_min: 1020}
-- "cả ngày" → time_slot: "full_day", time_window: {start_min: 480, end_min: 1260}
-- "buổi tối" → time_slot: "evening", time_window: {start_min: 1080, end_min: 1320}
-- "hạn chế đi bộ" → walking_tolerance: "low"
+- Ngân sách (Budget):
+  * "1tr5" -> budget_max=1500000, budget.amount=1500000
+  * "800k" -> budget_max=800000, budget.amount=800000
+  * "2 triệu/2tr" -> budget_max=2000000, budget.amount=2000000
+  * "2 củ" -> budget_max=2000000, budget.amount=2000000
+  * Nếu đi nhóm 3 người và nói "ngân sách 1 triệu" -> budget.scope="per_person", budget.amount=1000000, budget_per_person=1000000, group_budget_total=3000000.
+  * Chỉ dùng budget.scope="group_total" khi khách nói rõ "tổng nhóm", "cả nhóm", "chung".
+- Khung giờ hoạt động (Time Window):
+  * "buổi sáng" -> time_slot="morning", time_window: {start_min: 480, end_min: 720}
+  * "buổi chiều" -> time_slot="afternoon", time_window: {start_min: 780, end_min: 1080}
+  * "buổi tối" -> time_slot="evening", time_window: {start_min: 1080, end_min: 1320}
+  * "cả ngày" -> time_slot="full_day", time_window: {start_min: 480, end_min: 1260}
+- Chỗ ở & Phương tiện:
+  * "đã có khách sạn/chỗ ở" -> lodging_mode="user_has_lodging", has_lodging=True.
+  * "chưa có/chọn giúp tôi" -> lodging_mode="system_select_lodging", has_lodging=False.
+  * "tự lái/có xe riêng" -> transport_policy="user_has_transport".
+  * "đi taxi/grab/chưa có xe" -> transport_policy="system_suggest_per_leg".
 </NORMALIZATION_GUIDE>
 
-<FOLLOW_UP_RULES>
-Chỉ hỏi follow-up khi thiếu dữ liệu bắt buộc hoặc dữ liệu quá mơ hồ.
-Tối đa 2 câu hỏi. Ngắn, dễ trả lời, ưu tiên dạng lựa chọn.
-
-Các trường BẮT BUỘC cần hỏi nếu chưa có:
-- destination, num_days, budget (hoặc budget_is_unlimited)
-- time_window: giờ bắt đầu/kết thúc mỗi ngày (VD: "8h-17h", "cả ngày", "buổi tối")
-
-Ví dụ tốt:
-- "Mình muốn đi mấy ngày, ngân sách khoảng bao nhiêu?"
-- "Mỗi ngày mình muốn đi từ mấy giờ đến mấy giờ? Hay cả ngày?"
-- "Mình thích ẩm thực đường phố hay nhà hàng?"
-
-Ví dụ xấu:
-- "Bạn có thể cung cấp thêm đầy đủ thông tin chi tiết về chuyến đi không?"
-</FOLLOW_UP_RULES>
-
 <DISTRIBUTION_RULES>
-Bạn PHẢI sinh target_category_distribution cho MỌI request.
-Chỉ phân bổ cho 5 category keys chính: food, culture, nature, nightlife, adventure. Tổng = 1.0. Các category khác (cafe, art, shopping, wellness) KHÔNG ĐƯỢC PHÂN BỔ PHẦN TRĂM ở đây.
-Nếu khách muốn đi uống nước, cafe muối, đi chợ, bảo tàng nghệ thuật, hãy đặt allow_cafe=True, allow_shopping=True, allow_art=True tương ứng trong updated_contract.
-
-distribution_description: viết 1-2 câu tiếng Việt mô tả CỤ THỂ phong cách.
-- VD "food tour" → "Ẩm thực đường phố Huế: bún bò, bánh khoái, cơm hến, chè Huế, cà phê muối"
-- VD "healing" → "Không gian yên tĩnh bên sông Hương, đi bộ chậm ngắm cảnh"
-
-Nếu user không nói rõ, dùng balanced: {food: 0.35, culture: 0.35, nature: 0.20, nightlife: 0.05, adventure: 0.05}
-
-LUẬT CÂN BẰNG PHÂN PHỐI (DISTRIBUTION BALANCE GATES):
-Nếu bạn sinh ra target_category_distribution có một nhóm chiếm >60% (Ví dụ: food: 0.80) mà người dùng KHÔNG yêu cầu rõ rệt loại hình tour lệch (như foodtour thuần túy):
-1. Bạn PHẢI đặt status="clarifying", phase="confirming", distribution_locked=False.
-2. Trả lời bằng câu hỏi gợi ý cân bằng để khách cân nhắc trong trường `reply`: "Em thấy mình muốn đi ẩm thực nhiều đúng không ạ? Mình có muốn kết hợp thêm địa danh văn hóa, lăng tẩm hoặc thiên nhiên ở Huế để lịch trình đa dạng hơn không, hay chỉ tập trung ăn uống thôi ạ?".
-3. Nếu khách trả lời "đồng ý", "chỉ tập trung ăn thôi", "không cần", "đúng rồi" hoặc gật đầu, hãy đặt distribution_locked=True và cho phép lịch trình đi lệch.
+Bạn PHẢI phân bổ target_category_distribution cho MỌI yêu cầu.
+1. Chỉ phân bổ cho 5 category keys chính: food, culture, nature, nightlife, adventure. Tổng = 1.0. Các category khác (cafe, art, shopping, wellness) KHÔNG ĐƯỢC PHÂN BỔ % ở đây.
+2. Nếu khách thích uống nước, cafe, đi chợ, bảo tàng nghệ thuật -> đặt allow_cafe=True, allow_shopping=True, allow_art=True tương ứng.
+   - walking_tolerance: Mức đi bộ ưa thích (low, medium, high).
+3. Nếu khách không nói rõ sở thích -> dùng balanced: {food: 0.35, culture: 0.35, nature: 0.20, nightlife: 0.05, adventure: 0.05}.
+4. Nếu khách chỉ tập trung vào một danh mục lệch (ví dụ: food: 0.80) mà người dùng không yêu cầu rõ rệt tour chuyên biệt -> hỏi làm rõ để cân bằng, trừ khi khách xác nhận đồng ý đi lệch thì khóa distribution_locked=True.
 </DISTRIBUTION_RULES>
 
-<SCOPE_RULES>
-Xác định SCOPE:
-- estimated_pois: Tối đa 6 POI mỗi ngày. "1 quán cafe" → 1. "food tour" → 5-6. "cả ngày" → 5-6. Nhiều ngày: num_days × (4-6). Không rõ → null. KHÔNG BAO GIỜ vượt quá num_days × 6.
-- trip_duration_hours: "uống cafe sáng" → 1.5. "cả ngày" → 10. Không rõ → null.
-- KHÔNG tự scale up. "1 quán cafe" không được thành "lịch trình 1 ngày".
-</SCOPE_RULES>
-
 <REPLY_GENERATION>
-Bạn PHẢI sinh reply trong trường `reply` của ChatProcessResponse.
-
-NGUYÊN TẮC TỔNG QUÁT:
-- Tự nhiên, đừng máy móc. Đọc hiểu ý user thay vì match từ khóa.
-- Nếu user cung cấp đủ thông tin (destination, days, budget, ≥1 preference) → hỏi xác nhận ngắn, phase="confirming".
-- Nếu user xác nhận (bất kỳ cách nào: "ok", "được", "đúng rồi", "ừ", "đi", gật đầu ngữ cảnh) → status="ready", phase="ready".
-- Nếu thiếu thông tin quan trọng → hỏi 1-2 câu ngắn, status="clarifying", phase="collecting".
-- Nếu user nói thêm thông tin sau khi xác nhận → merge và hỏi xác nhận lại.
-
-LẦN ĐẦU (chưa có history):
-- Diễn giải lại ý user, đề xuất defaults hợp lý.
-- Nếu thiếu info quan trọng: hỏi 1-2 câu. status="clarifying", phase="collecting".
-- Nếu user đã cho đủ info (VD: "Huế 2 ngày, 1 triệu, văn hóa ẩm thực"): tóm tắt ngắn, hỏi xác nhận. status="clarifying", phase="confirming".
-
-XÁC NHẬN — DÙNG NGỮ CẢNH, KHÔNG MATCH TỪ KHÓA:
-- User nói "đúng rồi", "ok", "được", "ừ", "chốt", "đi thôi", "vâng", "đồng ý" → ĐÓ LÀ XÁC NHẬN → status="ready".
-- User nói "ok nhưng đổi budget 2 triệu" → CHƯA xác nhận, cần merge rồi hỏi lại.
-- User nói thêm info mới mà KHÔNG phản đối → merge, hỏi xác nhận lại.
-
-Giọng em/mình, tối đa 3 câu.
-</REPLY_GENERATION>"""
-
-CHAT_PROCESS_SYSTEM_PROMPT += """
-
-<INTENT_BRAIN_V2>
-This section overrides older rules when there is a conflict.
-You are TripFlow Intent Brain. You decide the conversation state; backend validates and executes.
-Return JSON only as ChatProcessResponse.
-
-Core decision fields in updated_contract:
-- preference_mode: specific | balanced | no_preference | unknown
-- lodging_mode: user_has_lodging | system_select_lodging | not_needed | unknown
-- transport_policy: user_has_transport | system_suggest_per_leg | walking_only | unknown
-- party: {size, type}
-- budget: {amount, scope, period, scope_evidence}; budget.scope = per_person | group_total | unknown.
-- decision_state: {ready_for_confirmation, ready_for_build, missing_decisions, next_action}
-- assistant_reply and follow_up_questions.
-
-No-preference only satisfies preference/distribution. Do not infer lodging_mode or transport_policy from generic "ban tu chon", "thoai mai sap xep", "khong co so thich", or "gi cung duoc" unless the user explicitly mentions lodging/transport.
-Interpret "khong co so thich", "khong co gi dac biet", "gi cung duoc" as a valid no-preference/balanced answer, not missing interests.
-Operational decisions are separate: lodging and transport must be explicitly answered, explicitly delegated, or already present in CURRENT_CONTRACT before confirmation.
-Interpret "cho o ban tu chon", "khach san ban chon", "em tu chon cho nghi" as lodging_mode=system_select_lodging, has_lodging=false, hotel_confirmed=true.
-Interpret "toi da co cho o/khach san" as lodging_mode=user_has_lodging, has_lodging=true; user must later pin/select lodging location if coordinates are missing.
-Interpret "chua co phuong tien/khong co xe" as transport_policy=system_suggest_per_leg and transport_plan.availability=needs_transport.
-Interpret "co xe/tu lai/xe rieng" as transport_policy=user_has_transport and transport_plan.availability=has_own_transport.
-Interpret "di mot minh/solo/mot nguoi" as party.size=1, party.type=solo, group_size=1, group_type=solo.
-For party.size > 1, if the user gives a budget without explicit group-total wording, interpret it as per_person for the whole trip.
-Only use budget.scope=group_total when the user explicitly says "tong nhom", "ca nhom", "budget chung", or equivalent.
-Always include budget.scope_evidence when choosing per_person or group_total.
-
-Required decisions before confirmation:
-destination, num_days, budget or unlimited budget, time_window/time_slot, preference_mode, lodging_mode, party.size, transport_policy.
-
-If required decisions are missing:
-- status="clarifying", phase="collecting"
-- reply must be a natural Vietnamese follow-up written by you.
-- missing_fields must list only truly missing decisions.
-
-If all required decisions are present but user has not confirmed:
-- status="clarifying", phase="confirming", requires_confirmation=true
-- decision_state.next_action="confirm_before_build"
-- reply must summarize the understood intent and ask for confirmation.
-
-If current_contract.confirmation_pending=true and user confirms:
-- status="ready", phase="ready", decision_state.next_action="build", decision_state.ready_for_build=true.
-
-Never output a mechanical checklist like "provide field X". Speak naturally.
-</INTENT_BRAIN_V2>"""
+Phát biểu tự nhiên bằng tiếng Việt trong vai trợ lý TripFlow, tối đa 3 câu.
+- Nếu thiếu thông tin quan trọng -> đặt status="clarifying", phase="collecting", hỏi tự nhiên 1-2 câu để thu thập.
+- Nếu đủ thông tin -> đặt status="clarifying", phase="confirming", tóm tắt lại các điểm hiểu được và hỏi xác nhận: "Dạ em tóm tắt lại trước khi tạo lịch nhé: đi Huế 3 ngày, ngân sách 1 triệu/người... Mình xác nhận tạo lịch trình theo thông tin này chứ ạ?"
+- Nếu khách đồng ý/xác nhận -> đặt status="ready", phase="ready", trả lời ngắn gọn xác nhận tạo lịch trình.
+</REPLY_GENERATION>
+"""
 
 EDIT_INTENT_SYSTEM_PROMPT = """\
 <SYSTEM>
@@ -425,13 +337,17 @@ class LLMExtractorService:
         except Exception as e:
             logger.error(f"LLM extraction failed: {e}")
             contract = LLMDataContract(num_days=num_days, tags=["general"])
+            llm_success = False
+        else:
+            llm_success = True
 
         self._override_hotel(contract, hotel_lat, hotel_lon, hotel_name)
         if contract.num_days == 1 and num_days > 1:
             contract.num_days = num_days
             self._mark_confirmed(contract, "num_days")
-        self._apply_message_hints(contract, user_prompt)
-        self._apply_backend_failsafes(contract, user_prompt)
+        if not llm_success:
+            self._apply_message_hints(contract, user_prompt)
+            self._apply_backend_failsafes(contract, user_prompt)
         logger.debug(f"LLM extracted: {contract.model_dump_json(indent=2)}")
         return contract
 
@@ -530,11 +446,13 @@ class LLMExtractorService:
             logger.error(f"Chat turn LLM failed, using deterministic: {e}")
 
         # ── Step 2: Merge + post-processing ──
+        llm_success = response is not None and candidate is not None
         contract = self._merge_contracts(current_contract, candidate)
-        self._apply_message_hints(contract, message)
-        self._apply_answer_to_last_question(contract, message, current_contract.last_question_field)
-        self._apply_backend_failsafes(contract, message)
-        self._enforce_operational_decision_evidence(contract, current_contract, message)
+        if not llm_success:
+            self._apply_message_hints(contract, message)
+            self._apply_answer_to_last_question(contract, message, current_contract.last_question_field)
+            self._apply_backend_failsafes(contract, message)
+            self._enforce_operational_decision_evidence(contract, current_contract, message)
         self._sync_decision_fields(contract)
         self._deduplicate_locked_pois(contract)
 
@@ -809,8 +727,10 @@ class LLMExtractorService:
                 if planned_intent.operations:
                     intent = planned_intent
 
-        self._apply_message_hints(contract, message)
-        self._apply_backend_failsafes(contract, message)
+        llm_success = message and 'response' in locals() and response is not None
+        if not llm_success:
+            self._apply_message_hints(contract, message)
+            self._apply_backend_failsafes(contract, message)
         self._deduplicate_locked_pois(contract)
 
         action = intent.action
@@ -1054,7 +974,8 @@ class LLMExtractorService:
 
         if action == "remove_place":
             # Check if message contains a recognizable target (POI or category)
-            has_poi = any(poi_key in text for poi_key in LOCKED_POI_MAP)
+            has_target = any(op.target for op in (intent.operations or []) if op.type == "remove_place")
+            has_poi = any(poi_key in text for poi_key in LOCKED_POI_MAP) or bool(intent.target) or has_target
             # Use specific category phrases to avoid false matches (e.g. "chỗ" → "cho")
             category_phrases = (
                 "quan cafe", "ca phe", "cafe", "chua ", "lang ",
@@ -1133,7 +1054,8 @@ class LLMExtractorService:
                 setattr(merged, field, value)
 
         if candidate.num_days and candidate.num_days > 0:
-            merged.num_days = candidate.num_days
+            if candidate.num_days != 1 or "num_days" in (candidate.confirmed_fields or []) or merged.num_days == 1:
+                merged.num_days = candidate.num_days
         if candidate.budget_is_unlimited:
             merged.budget_is_unlimited = True
             merged.budget_max = None
@@ -1141,7 +1063,8 @@ class LLMExtractorService:
             merged.budget_max = candidate.budget_max
             merged.budget_is_unlimited = False
         if candidate.radius_km:
-            merged.radius_km = candidate.radius_km
+            if candidate.radius_km != 10.0 or "radius" in (candidate.confirmed_fields or []) or merged.radius_km == 10.0:
+                merged.radius_km = candidate.radius_km
         if candidate.time_window is not None and candidate.time_window.start_min is not None:
             merged.time_window = candidate.time_window
         if candidate.estimated_pois is not None:
@@ -1222,13 +1145,21 @@ class LLMExtractorService:
             contract.confirmed_fields = self._merge_unique(contract.confirmed_fields, ["time_window"])
 
         has_hotel_text = "khach san" in text or "kh?ch s?n" in text or "cho o" in text or "ch? ?" in text
-        has_existing_lodging = (
-            any(phrase in text for phrase in ("da co khach san", "co khach san roi", "da co cho o", "co cho o roi", "co cho o", "co phong roi"))
-            or (has_hotel_text and any(phrase in text for phrase in ("da co", "co san", "co roi", "san roi")))
-        )
+        has_existing_lodging = any(phrase in text for phrase in (
+            "da co khach san", "co khach san roi", "da co cho o", "co cho o roi", "co cho o", "co phong roi",
+            "co san khach san", "co san cho o", "khach san co san", "cho o co san", "phong co san",
+            "khach san co roi", "cho o co roi", "phong co roi", "khach san san roi", "cho o san roi"
+        ))
         needs_lodging = (
-            any(phrase in text for phrase in ("chua co khach san", "chua co cho o", "can khach san", "tim khach san", "can cho o", "tim cho o"))
-            or (has_hotel_text and any(phrase in text for phrase in ("chua co", "can ", "tim ", "tu chon", "ban chon", "ban tu chon", "tuy ban", "ban quyet")))
+            any(phrase in text for phrase in (
+                "chua co khach san", "chua co cho o", "can khach san", "tim khach san", "can cho o", "tim cho o",
+                "ban chon khach san", "ban chon cho o", "em chon khach san", "em chon cho o", "he thong chon",
+                "chon giup toi", "chon ho", "tim ho", "dat ho"
+            ))
+            or (has_hotel_text and any(phrase in text for phrase in (
+                "chua co", "can ", "tim ", "tu chon", "ban chon", "ban tu chon", "tuy ban", "ban quyet",
+                "chon giup", "chon ho", "tim ho"
+            )))
         )
         if has_existing_lodging:
             contract.has_lodging = True
@@ -1845,7 +1776,22 @@ class LLMExtractorService:
             "xac nhan", "ok luon", "duoc roi", "dung roi",
             "dong y", "chinh xac", "di luon", "tao di",
         )
-        return any(phrase in ascii_text for phrase in confirm_phrases)
+        if any(phrase in ascii_text for phrase in confirm_phrases):
+            return True
+
+        # Robust prefix check for natural confirmations with trailing text (e.g. "ok em yêu", "đồng ý nhé")
+        words = ascii_text.split()
+        if words and words[0] in {"ok", "oke", "okie", "dong", "xac", "chot", "vang", "duoc", "co", "u", "uh", "yes", "dung", "chon"}:
+            if words[0] == "dong" and len(words) > 1 and words[1] == "y":
+                return True
+            if words[0] == "xac" and len(words) > 1 and words[1] == "nhan":
+                return True
+            if words[0] == "dung" and len(words) > 1 and words[1] == "roi":
+                return True
+            if words[0] in {"ok", "oke", "okie", "chot", "vang", "duoc", "co", "u", "uh", "yes"}:
+                return True
+
+        return False
 
     @staticmethod
     def _is_generate_request(text: str) -> bool:
@@ -1952,10 +1898,16 @@ class LLMExtractorService:
 
     @staticmethod
     def _deduplicate_locked_pois(contract: LLMDataContract) -> None:
+        city_blacklist = {
+            "hue", "da nang", "ha noi", "sai gon", "ho chi minh", "tp hcm", "tphcm"
+        }
         if contract.locked_pois:
             seen = set()
             unique = []
             for poi in contract.locked_pois:
+                norm_poi = LLMExtractorService._normalize(poi).strip()
+                if norm_poi in city_blacklist:
+                    continue
                 key = poi.lower().strip()
                 if key not in seen:
                     seen.add(key)

@@ -10,6 +10,11 @@ from fastapi import status
 pytestmark = pytest.mark.anyio
 
 
+@pytest.fixture(autouse=True)
+def mock_admin_token(monkeypatch):
+    monkeypatch.setattr("app.api.admin_pois.settings.ADMIN_TOKEN", "")
+
+
 async def test_admin_pois_disabled(client: AsyncClient):
     with patch("app.api.admin_pois.settings.ADMIN_ENABLED", False):
         response = await client.get("/admin/pois")

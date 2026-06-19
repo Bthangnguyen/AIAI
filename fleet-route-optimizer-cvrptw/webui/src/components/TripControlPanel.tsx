@@ -1,6 +1,6 @@
 "use client"
 
-import { Map, Plus, RefreshCw, RotateCcw, Save, Smartphone, Calendar } from "lucide-react"
+import { Map, Plus, RefreshCw, RotateCcw, Save, Calendar } from "lucide-react"
 import { draftTotals } from "@/lib/mockItineraryFallback"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import type { BuildStatus, ItineraryDraft } from "@/types/trip"
@@ -118,24 +118,7 @@ export function TripControlPanel({
         </div>
       </section>
 
-      {/* Mobile GPS Phase (Placeholder / Future work) */}
-      <section className="mt-4 rounded-2xl border border-travel/30 bg-travel/10 p-4 shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-black text-orange-950 uppercase tracking-wider">Hành trình GPS thời gian thực</p>
-          <span className="rounded-full bg-travel/20 px-2 py-0.5 text-[9px] font-black text-travel">Comming Soon</span>
-        </div>
-        <p className="mt-2 text-[11px] leading-5 text-orange-950/60">
-          Chức năng định vị GPS để tự động tính toán, giãn lộ trình thông minh khi anh skip điểm đến trên ứng dụng di động.
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-1.5 text-[10px] font-bold text-orange-950/60">
-          {['Tới điểm tiếp', 'Bỏ qua điểm', 'Reroute GPS', 'Tối ưu lại ngày'].map((item) => (
-            <button key={item} disabled className="rounded-xl border border-orange-200 bg-white/70 px-1 py-1.5 opacity-60 cursor-not-allowed">
-              <Smartphone className="mx-auto mb-1 h-3.5 w-3.5 text-orange-950/40" />
-              {item}
-            </button>
-          ))}
-        </div>
-      </section>
+
     </aside>
   )
 }

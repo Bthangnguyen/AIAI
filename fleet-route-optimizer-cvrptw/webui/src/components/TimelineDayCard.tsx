@@ -1,4 +1,4 @@
-import { Bike, Car, Footprints, Home, Plus, RefreshCw, Route } from "lucide-react"
+import { Bike, Car, Footprints, Home, Plus, Route } from "lucide-react"
 import { TimelinePlaceCard } from "@/components/TimelinePlaceCard"
 import { getPoi } from "@/lib/mockItineraryFallback"
 import { POI_CACHE } from "@/lib/api"
@@ -128,20 +128,8 @@ export function TimelineDayCard({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {isManualOrder && onApplyManualOrder ? (
-            <button
-              type="button"
-              onClick={() => onApplyManualOrder(day.dayNumber)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-800"
-            >
-              <Route className="h-3.5 w-3.5" /> Cập nhật lộ trình
-            </button>
-          ) : null}
-          <button type="button" onClick={() => onAddPlace(day.dayNumber)} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-orange-950">
+          <button type="button" onClick={() => onAddPlace(day.dayNumber)} className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-orange-200 px-3 py-2 text-xs font-bold text-orange-950 hover:bg-orange-50 transition">
             <Plus className="h-3.5 w-3.5" /> Thêm địa điểm
-          </button>
-          <button type="button" onClick={() => onOptimizeDay(day.dayNumber)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-100 px-3 py-2 text-xs font-bold text-orange-950">
-            <RefreshCw className="h-3.5 w-3.5" /> Tối ưu lại ngày này
           </button>
         </div>
       </div>

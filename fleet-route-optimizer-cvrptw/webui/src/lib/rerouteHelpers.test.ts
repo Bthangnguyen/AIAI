@@ -7,7 +7,7 @@ describe("reRouteStopsToItems", () => {
       day_index: 0,
       stops: [
         { poi_id: "hotel_day_0", arrival_time_min: 0 },
-        { poi_id: "poi-1", poi_name: "Lăng Khải Định", arrival_time_min: 570 },
+        { poi_id: "poi-1", poi_name: "Lăng Khải Định", arrival_time_min: 570, vibe_note: "Trải nghiệm lăng tẩm Huế" } as any,
       ],
     })
 
@@ -15,5 +15,6 @@ describe("reRouteStopsToItems", () => {
     expect(items[0].poiId).toBe("poi-1")
     expect(items[0].time).toBe("09:30")
     expect(items[0].note).toBe("Lăng Khải Định")
+    expect(items[0].vibe_note).toBe("Trải nghiệm lăng tẩm Huế")
   })
 })

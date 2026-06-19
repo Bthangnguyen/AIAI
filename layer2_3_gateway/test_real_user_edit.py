@@ -113,6 +113,7 @@ async def main():
         }
         resp = await client.post(f"{GW_URL}/plan_trip", json=plan_payload, headers=HEADERS)
         plan_res = resp.json()
+        print(f"DEBUG plan_res: {plan_res}")
         itinerary = plan_res.get("layer4_result")
         
         print_itinerary("LỊCH TRÌNH GỐC BAN ĐẦU", itinerary)

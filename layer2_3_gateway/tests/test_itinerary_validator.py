@@ -1,7 +1,7 @@
 """Unit tests for post-solver LLM itinerary validator."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from app.schemas.trip import LLMDataContract, POIResponse
 from app.services.itinerary_validator import ItineraryValidatorService, ItineraryValidationResponse, ItineraryAdjustment
@@ -107,11 +107,12 @@ async def test_itinerary_validation_and_adjustments():
     service._client = mock_client
 
     # 5. Run validation and adjustment
-    adjusted_result = await service.validate_and_adjust(
-        l4_result=l4_result,
-        contract=contract,
-        all_pois=all_pois
-    )
+    with patch("app.services.itinerary_validator.ItineraryValidatorService._travel_minutes", return_value=15):
+        adjusted_result = await service.validate_and_adjust(
+            l4_result=l4_result,
+            contract=contract,
+            all_pois=all_pois
+        )
 
     # 6. Verify result
     assert adjusted_result is not None

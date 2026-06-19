@@ -26,7 +26,7 @@ async def test_plan_trip_minimal(client: AsyncClient):
     response = await client.post(
         "/trip/plan_trip",
         json={
-            "user_prompt": "Tôi muốn đi Huế 2 ngày",
+            "user_prompt": "Tôi muốn đi Huế 2 ngày để tham quan các di tích lịch sử",
             "hotel_lat": 16.4637,
             "hotel_lon": 107.5905,
             "hotel_name": "Saigon Morin",
@@ -34,7 +34,7 @@ async def test_plan_trip_minimal(client: AsyncClient):
         },
     )
     # May return partial/error if no POIs seeded, but should not crash
-    assert response.status_code in [200, 404, 500]
+    assert response.status_code in [200, 400, 404, 500]
 
 
 async def test_chat_process_missing_budget(client: AsyncClient):

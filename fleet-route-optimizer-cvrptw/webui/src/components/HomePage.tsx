@@ -14,7 +14,7 @@ interface HomePageProps {
   onSubmit: () => void
   onAuthClick: () => void
   onSignOut: () => void
-  onNav: (target: "demo" | "saved" | "mobile") => void
+  onNav: (target: "home" | "builder" | "saved") => void
   userName?: string | null
   userEmail?: string | null
 }
@@ -78,16 +78,15 @@ export function HomePage({ prompt, isLoading, progressStep, onPromptChange, onSu
 
       <header className="relative z-10 border-b border-orange-200/70 bg-white/60 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <button type="button" onClick={() => onNav("demo")} className="flex items-center gap-2 text-2xl font-black tracking-tight text-orange-950">
+          <button type="button" onClick={() => onNav("home")} className="flex items-center gap-2 text-2xl font-black tracking-tight text-orange-950">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/25">
               <Circle className="h-3.5 w-3.5 fill-current" />
             </span>
             <span className="text-[34px] leading-none">TripFlow</span>
           </button>
           <nav className="hidden items-center gap-8 text-sm font-bold text-orange-950/65 md:flex">
-            <button type="button" onClick={() => onNav("demo")} className="transition hover:text-orange-600">Demo</button>
+            <button type="button" onClick={() => onNav("builder")} className="transition hover:text-orange-600">Tạo lịch trình</button>
             <button type="button" onClick={() => onNav("saved")} className="transition hover:text-orange-600">Saved Trips</button>
-            <button type="button" onClick={() => onNav("mobile")} className="transition hover:text-orange-600">Mobile Phase</button>
           </nav>
           <div className="flex items-center gap-2">
             {userEmail ? (
@@ -147,17 +146,17 @@ export function HomePage({ prompt, isLoading, progressStep, onPromptChange, onSu
 
         <section className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <article className="rounded-[32px] border border-orange-200 bg-white/82 p-6 shadow-2xl shadow-orange-950/10 backdrop-blur-xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Mô tả dự án</p>
-            <h3 className="mt-3 text-2xl font-black text-orange-950">TripFlow AI là MVP lập lịch trình du lịch có bản đồ trực quan.</h3>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Mô tả hệ thống</p>
+            <h3 className="mt-3 text-2xl font-black text-orange-950">TripFlow AI là nền tảng lập lịch trình du lịch thông minh và tối ưu hóa lộ trình.</h3>
             <p className="mt-3 text-sm leading-7 text-orange-950/70">
-              Dự án mô phỏng trải nghiệm “AI travel builder”: người dùng nhập nhu cầu, hệ thống hỏi bổ sung thông tin còn thiếu, tạo lịch trình nháp theo ngày, hiển thị POI trên OpenStreetMap, cho phép thêm/xóa địa điểm, undo và lưu bản nháp bằng localStorage.
+              Hệ thống kết hợp sức mạnh AI để phân tích ý định người dùng (Vietnamese Intent Extractor) cùng thuật toán tối ưu hóa OR-Tools Solver để tự động xây dựng lộ trình du lịch hoàn hảo. Hỗ trợ điều chỉnh lịch trình bằng ngôn ngữ tự nhiên, tính toán và phân bổ chi phí đa tầng, vẽ tuyến đường di chuyển thực tế tại Huế với cơ sở dữ liệu phong phú hơn 770 điểm đến thực tế.
             </p>
           </article>
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
             {[
-              { icon: Compass, title: "Intent", text: "Nhận diện điểm đến, số ngày, ngân sách và sở thích." },
-              { icon: Route, title: "Timeline", text: "Tạo lịch trình ngày-by-ngày với chi phí và thời lượng." },
-              { icon: MapPinned, title: "OSM Preview", text: "Đặt marker mock và nối route line theo thứ tự POI." },
+              { icon: Compass, title: "AI Chatbot & Intent", text: "Nhận diện ý định ngôn ngữ tự nhiên, hỏi đáp làm rõ nhu cầu và xử lý các lệnh chỉnh sửa lịch trình linh hoạt bằng tiếng Việt." },
+              { icon: Route, title: "Solver & Budget", text: "Tự động phân bổ POI và tối ưu hóa tuyến đường bằng OR-Tools Solver, cân đối ngân sách và ước tính chi phí chi tiết." },
+              { icon: MapPinned, title: "Map Routing", text: "Hiển thị bản đồ trực quan, định vị POI và vẽ lộ trình di chuyển thực tế theo hạ tầng đường bộ được snaps qua công cụ OSRM." },
             ].map((item) => {
               const Icon = item.icon
               return (

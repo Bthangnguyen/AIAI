@@ -157,6 +157,10 @@ class ItineraryEditorService:
             day["stops"] = next_stops
             self._retime_day(day)
 
+        if not replaced:
+            day_index = max(0, int(target_day or 1) - 1)
+            return self.add_stop(itinerary, day_index, new_poi)
+
         draft["status"] = "success" if replaced else "warning"
         draft["message"] = f"Đã thay bằng {new_poi.name}." if replaced else "Không tìm thấy điểm cần thay."
         return self._finalize(draft)

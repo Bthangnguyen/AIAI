@@ -12,6 +12,7 @@ export function reRouteStopsToItems(dayIndex: number, day: NonNullable<ReRouteRe
         poiId: stop.poi_id,
         time: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
         note: stop.poi_name ?? "",
+        vibe_note: (stop as any).vibe_note,
       }
     })
 }

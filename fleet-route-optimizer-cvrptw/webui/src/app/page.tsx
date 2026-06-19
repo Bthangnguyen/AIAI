@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { BuilderWorkspace } from "@/components/BuilderWorkspace"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { HomePage } from "@/components/HomePage"
-import { MobilePhasePage } from "@/components/MobilePhasePage"
+
 import { MockAuthModal } from "@/components/MockAuthModal"
 import { SavedTripsPage } from "@/components/SavedTripsPage"
 import { Toast, type ToastVariant } from "@/components/Toast"
@@ -23,7 +23,7 @@ import type { MoveDirection } from "@/lib/reorderDayItems"
 import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, LLMDataContract, POI, PreviewMode, TripIntent } from "@/types/trip"
 import type { PlanVariant } from "@/types/plan"
 
-type Screen = "home" | "builder" | "saved" | "mobile"
+type Screen = "home" | "builder" | "saved"
 
 interface UndoState {
   dayNumber: number
@@ -243,8 +243,13 @@ export default function Page() {
     }
   }
 
-  function applyDraftSuccess(nextDraft: ItineraryDraft, assistantLines: string[]) {
-    setDraft(nextDraft)
+  function applyDraftSuccess(nextDraft: ItineraryDraft, assistantLines: string[], customContract?: LLMDataContract) {
+    const activeContract = customContract ?? nextDraft.llmContract ?? (contract || undefined)
+    setDraft({
+      ...nextDraft,
+      llmContract: activeContract,
+    })
+    setContract(activeContract ?? null)
     setIntent(nextDraft.intent)
     setStatus("live")
     setBuildErrorMessage(null)
@@ -418,7 +423,7 @@ export default function Page() {
         setMessages((items) => [...items, { role: "assistant", content: "Mình đã ghi nhận bạn có chỗ ở sẵn. Bạn chọn vị trí chỗ ở trên bản đồ bên phải trước, rồi em sẽ dùng điểm đó làm base để tạo lịch nhé." }])
       } else if (res.status === "ready") {
         const nextDraft = await buildItineraryFromIntent(updatedIntent)
-        applyDraftSuccess(nextDraft, [res.reply, `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày.`])
+        applyDraftSuccess(nextDraft, [res.reply, `Đã tạo lịch trình thực tế cho ${nextDraft.destination} trong ${nextDraft.days.length} ngày.`], res.updated_contract)
       } else {
         handleClarifyingResponse(res, updatedIntent)
       }
@@ -432,7 +437,7 @@ export default function Page() {
     }
   }
 
-  async function handleChatSend(message: string) {
+  async function handleChatSend(message: string, overridePendingEditPlan?: any) {
     if (isRunning) return
 
     setMessages((items) => [...items, { role: "user", content: message }])
@@ -444,6 +449,7 @@ export default function Page() {
       const currentContractInput = contract || contractFromIntent(intent)
       const hasDraft = !!draft
       const currentItineraryBackend = draft ? buildOriginalItinerary(draft) : null
+      const activePendingEditPlan = overridePendingEditPlan !== undefined ? overridePendingEditPlan : pendingEditPlan
 
       const res = await chatProcess(
         message,
@@ -451,7 +457,7 @@ export default function Page() {
         currentContractInput,
         hasDraft,
         currentItineraryBackend,
-        pendingEditPlan
+        activePendingEditPlan
       )
 
       const mergedContract = preservePinnedLodging(currentContractInput, res.updated_contract)
@@ -479,7 +485,7 @@ export default function Page() {
           mergedContract.destination || "Huế",
           mergedContract
         )
-        applyDraftSuccess(nextDraft, [res.reply])
+        applyDraftSuccess(nextDraft, [res.reply], mergedContract)
       } else if (res.pending_edit_plan) {
         setPendingEditPlan(res.pending_edit_plan)
         setFollowUp(null)
@@ -500,6 +506,16 @@ export default function Page() {
     } finally {
       setIsRunning(false)
     }
+  }
+
+  const handleShareDraft = () => {
+    if (!draft) return
+    const shareUrl = window.location.href
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      showToast("Đã sao chép liên kết chia sẻ lịch trình!", "success")
+    }).catch(() => {
+      showToast("Không thể sao chép liên kết chia sẻ.", "error")
+    })
   }
 
   async function handleSaveDraft() {
@@ -618,9 +634,29 @@ export default function Page() {
   }
 
   async function handleChooseSuggestedPlace(dayNumber: number, poi: POI) {
-    setPendingEditPlan(null)
-    setMessages((items) => [...items, { role: "user", content: `Chọn ${poi.name}` }])
-    await handleAddPoiBackend(dayNumber, poi)
+    if (pendingEditPlan && Array.isArray(pendingEditPlan.operations)) {
+      const updatedOps = pendingEditPlan.operations.map((op: any) => {
+        const matches = op.suggestions && op.suggestions.some((s: any) => String(s.id || s.uuid) === String(poi.id) || String(s.name) === String(poi.name))
+        if (matches) {
+          return {
+            ...op,
+            query: poi.name,
+            target: poi.name,
+            target_day: dayNumber,
+          }
+        }
+        return op
+      })
+      const updatedPlan = {
+        ...pendingEditPlan,
+        operations: updatedOps,
+      }
+      await handleChatSend(`Chọn ${poi.name}`, updatedPlan)
+    } else {
+      setPendingEditPlan(null)
+      setMessages((items) => [...items, { role: "user", content: `Chọn ${poi.name}` }])
+      await handleAddPoiBackend(dayNumber, poi)
+    }
   }
 
   async function handleRemovePlaceBackend(dayNumber: number, itemId: string) {
@@ -732,7 +768,7 @@ export default function Page() {
     setBuildErrorMessage(null)
     try {
       const nextDraft = await buildItineraryFromIntent(intent)
-      applyDraftSuccess(nextDraft, ["Đã tạo lại lịch trình."])
+      applyDraftSuccess(nextDraft, ["Đã tạo lại lịch trình."], contract || undefined)
     } catch (e) {
       const errMessage = e instanceof Error ? e.message : String(e)
       setBuildErrorMessage(errMessage)
@@ -819,9 +855,7 @@ export default function Page() {
   if (screen === "saved") {
     return <SavedTripsPage drafts={savedDrafts} onOpenDraft={openSavedDraft} onCreateNew={() => setScreen("home")} onBack={backHome} userLabel={user?.displayName || user?.email || undefined} isCloudSynced={!!user} />
   }
-  if (screen === "mobile") {
-    return <MobilePhasePage onBack={backHome} />
-  }
+
   if (screen === "builder") {
     return (
       <>
@@ -855,7 +889,8 @@ export default function Page() {
             onSaveDraft={handleSaveDraft}
             onReset={resetDraft}
             onSavedTrips={() => setScreen("saved")}
-            onMobilePhase={() => setScreen("mobile")}
+            onShare={handleShareDraft}
+
             onSendMessage={handleChatSend}
             onChooseSuggestedPlace={handleChooseSuggestedPlace}
             onRebuild={handleRebuild}
@@ -891,7 +926,7 @@ export default function Page() {
         onSubmit={handleHomeSubmit}
         onAuthClick={() => setShowAuthModal(true)}
         onSignOut={() => void signOut()}
-        onNav={(target) => setScreen(target === "demo" ? "home" : target)}
+        onNav={(target) => setScreen(target)}
         userName={user?.displayName}
         userEmail={user?.email}
       />

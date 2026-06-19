@@ -22,7 +22,7 @@ interface ItineraryPreviewPanelProps {
   fitSignal: number
   requiresLodgingSelection?: boolean
   onViewModeChange: (mode: PreviewMode) => void
-  onRebuild: () => void
+
   onSelectPoi: (poiId: string) => void
   onHoverPoi: (poiId: string | null) => void
   onSaveDraft: () => void
@@ -41,7 +41,7 @@ interface ItineraryPreviewPanelProps {
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 
-export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, requiresLodgingSelection, onViewModeChange, onRebuild, onSelectPoi, onHoverPoi, onSaveDraft, onSetLodgingBase, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
+export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, hoveredPoiId, selectedDay, showRouteLines, fitSignal, requiresLodgingSelection, onViewModeChange, onSelectPoi, onHoverPoi, onSaveDraft, onSetLodgingBase, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay, buildErrorMessage, onRetryBuild, onSuggestFix, osrmDegraded, onOsrmDegradedChange }: ItineraryPreviewPanelProps) {
   return (
     <div className="flex h-full min-w-0 flex-col bg-orange-50">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-orange-200 px-4">
@@ -50,7 +50,7 @@ export function ItineraryPreviewPanel({ draft, status, viewMode, selectedPoiId, 
           {status === "building" ? "Đang tạo" : status === "resolving" ? "Đang tối ưu" : status === "error" ? "Lỗi tạo lịch" : status === "live" ? "Bản nháp" : "Chưa có lịch trình"}
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={onRebuild} className="rounded-lg p-2 text-orange-950/60 transition hover:bg-white-2 hover:text-orange-950" aria-label="Rebuild"><RefreshCw size={15} /></button>
+
           <div className="hidden rounded-lg border border-orange-200 bg-white p-1 sm:flex">
             {(["timeline", "map", "split"] as PreviewMode[]).map((mode) => (
               <button key={mode} type="button" onClick={() => onViewModeChange(mode)} className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${viewMode === mode ? "bg-white-2 text-orange-950" : "text-orange-950/60"}`}>
@@ -137,6 +137,7 @@ function LodgingPreBuildPicker({ onSetLodgingBase }: { onSetLodgingBase: (lat: n
         .setLngLat([lon, lat])
         .setPopup(new mapboxgl.Popup({ closeButton: false }).setHTML("<strong>Chỗ ở của bạn</strong>"))
         .addTo(map)
+      onSetLodgingBase(lat, lon, "Chỗ ở của bạn")
     })
     return () => {
       markerRef.current?.remove()

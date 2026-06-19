@@ -57,7 +57,7 @@ def test_matrix_explosion():
     constraints = TravelConstraints(num_days=1, transport_modes=[TransportMode.TAXI])
     pois = generate_random_pois(100)
     
-    request = TravelPlanRequest(pois=pois, hotels=[hotel], constraints=constraints)
+    request = TravelPlanRequest.model_construct(pois=pois, hotels=[hotel], constraints=constraints)
     
     start_time = time.time()
     day_plans = [DayPlan(day_index=0, date="Day 1", hotel_id="hotel_1", max_daily_minutes=1440, max_pois=100)]

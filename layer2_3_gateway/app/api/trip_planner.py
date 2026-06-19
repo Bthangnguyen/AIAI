@@ -379,7 +379,7 @@ async def _resolve_edit_add_poi(
     limit: int = 1,
 ) -> list[POIResponse]:
     """Resolve an add/replace edit with wide semantic recall and soft reranking."""
-    from sqlalchemy import select
+    from sqlalchemy import select, or_, func, cast, String
     from app.models.poi import PointOfInterest
     from geoalchemy2.functions import ST_AsGeoJSON
 
@@ -414,11 +414,24 @@ async def _resolve_edit_add_poi(
                 .limit(max(80, limit * 20))
             )
         else:
-            stmt = (
-                select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson"))
-                .order_by(POI.priority_score.desc())
-                .limit(max(80, limit * 20))
-            )
+            # SQL fallback with ILIKE searches
+            conditions = []
+            if text:
+                conditions.append(POI.name.ilike(f"%{text}%"))
+                conditions.append(POI.description.ilike(f"%{text}%"))
+                conditions.append(func.array_to_string(POI.tags, ' ').ilike(f"%{text}%"))
+                
+                words = [w for w in text.split() if len(w) > 2]
+                for w in words:
+                    conditions.append(POI.name.ilike(f"%{w}%"))
+                    conditions.append(POI.description.ilike(f"%{w}%"))
+                    conditions.append(func.array_to_string(POI.tags, ' ').ilike(f"%{w}%"))
+                    
+            stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson"))
+            if conditions:
+                stmt = stmt.where(or_(POI.priority_score >= 0.4, *conditions))
+            stmt = stmt.order_by(POI.priority_score.desc()).limit(400)
+            
         db_res = await db_session.execute(stmt)
         rows = db_res.all()
 
@@ -437,18 +450,33 @@ async def _resolve_edit_add_poi(
 
         distance = float(getattr(row, "semantic_distance", 0.45) or 0.45)
         score = max(0.0, 1.0 - min(distance, 2.0) / 2.0)
-        if text and any(token in haystack for token in _normalize_text(text).split() if len(token) > 2):
-            score += 0.12
+        
+        if text:
+            norm_name = _normalize_text(poi_resp.name)
+            norm_text = _normalize_text(text)
+            if norm_text == norm_name:
+                score += 2.0
+            elif norm_text in norm_name:
+                score += 1.0
+            else:
+                query_tokens = [t for t in norm_text.split() if len(t) >= 2]
+                if query_tokens:
+                    overlap_name = sum(1 for t in query_tokens if t in norm_name)
+                    overlap_haystack = sum(1 for t in query_tokens if t in haystack)
+                    score += 0.3 * overlap_name + 0.05 * overlap_haystack
+
         if category_norm and category_norm == poi_category:
             score += 0.25
         elif category_norm and category_norm in haystack:
             score += 0.12
+            
         if tags:
             overlap = len(set(tags).intersection(poi_tags))
             if overlap:
                 score += min(0.25, 0.12 * overlap)
             elif any(tag in haystack for tag in tags):
                 score += 0.08
+                
         if time_window and poi_resp.open_time <= end_min and poi_resp.close_time >= start_min:
             score += 0.08
         if poi_category in {"hotel", "accommodation", "lodging"}:
@@ -560,6 +588,8 @@ def _is_supported_destination(destination: str | None) -> bool:
 
 def _normalize_supported_destination(contract: LLMDataContract, request: TripPlanRequest) -> bool:
     """Accept Hue from either extracted fields or the original prompt."""
+    if contract.destination and not _is_supported_destination(contract.destination):
+        return False
     if _is_supported_destination(contract.destination):
         contract.destination = "Hue"
         return True
@@ -573,8 +603,9 @@ def _normalize_supported_destination(contract: LLMDataContract, request: TripPla
 def _apply_request_overrides(contract: LLMDataContract, request: TripPlanRequest) -> LLMDataContract:
     """Apply manual request overrides from forms directly on top of the contract."""
     if request.destination:
-        contract.destination = request.destination
-        _mark_confirmed(contract, "destination")
+        if not contract.destination or request.destination != "Huế":
+            contract.destination = request.destination
+            _mark_confirmed(contract, "destination")
 
     if request.num_days:
         contract.num_days = request.num_days
@@ -637,16 +668,19 @@ async def _run_pipeline(
             detail={"error_code": "LLM_PARSE_ERROR", "message": "Hiện tại hệ thống chỉ hỗ trợ lên lịch trình tại Huế. Vui lòng ghi rõ 'Huế' trong mô tả chuyến đi."}
         )
 
-    # Vague intent fallback heuristics
+    # Validate insufficient intent
     is_empty_tags = not contract.tags or contract.tags == ["general"]
     is_empty_locked = not contract.locked_pois
     is_empty_vibe_and_type = not contract.vibe and not contract.trip_type
     
     if is_empty_tags and is_empty_locked and is_empty_vibe_and_type:
-        contract.tags = ["culture", "street_food", "sightseeing"]
-        contract.vibe = "chill"
-        contract.trip_type = "mixed"
-        logger.info("Vague intent detected for Hue. Applying high-quality default preferences.")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "LLM_INSUFFICIENT_INTENT",
+                "message": "Không thể lập lịch trình do thiếu sở thích hoặc thông tin chi tiết về chuyến đi. Vui lòng bổ sung sở thích (ví dụ: văn hóa, ẩm thực, lăng tẩm...)."
+            }
+        )
 
     apply_distribution_policy(contract, request.user_prompt)
 
@@ -979,39 +1013,71 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         body.pending_edit_plan
         and llm_service._is_confirmation(body.message)
     )
+    is_edit_rejection = bool(
+        body.pending_edit_plan
+        and any(word in _normalize_text(body.message) for word in (
+            "huy", "khong dong y", "khong sua", "giu nguyen", "dont", "cancel", "no", 
+            "khong", "tu choi", "bo qua", "keep"
+        ))
+    )
 
-    deterministic_intent = None
-    if False and getattr(body, "has_draft", False) and not is_edit_confirmation:
-        planned = EditIntentPlanner().build(body.message or "")
-        if planned.operations:
-            deterministic_intent = planned
-
-    if deterministic_intent is not None:
-        pending = deterministic_intent.constraints
+    if is_edit_confirmation:
         result = {
-            "status": "clarifying",
-            "reply": pending.get("assistant_reply") or "Em sẽ chuẩn bị chỉnh lịch. Anh xác nhận em sửa nhé?",
+            "status": "ready",
+            "reply": "Dạ, em đã cập nhật lịch trình và chi phí theo các thay đổi anh xác nhận rồi ạ.",
             "updated_contract": body.current_contract,
-            "phase": "editing",
+            "phase": "ready",
             "missing_fields": [],
             "next_question": None,
-            "requires_confirmation": True,
-            "edit_intent": deterministic_intent,
-            "pending_edit_plan": pending,
+            "requires_confirmation": False,
+            "edit_intent": None,
+            "pending_edit_plan": None,
+        }
+    elif is_edit_rejection:
+        result = {
+            "status": "ready",
+            "reply": "Dạ, em đã hủy yêu cầu chỉnh sửa và giữ nguyên lịch trình cũ cho mình ạ.",
+            "updated_contract": body.current_contract,
+            "phase": "ready",
+            "missing_fields": [],
+            "next_question": None,
+            "requires_confirmation": False,
+            "edit_intent": None,
+            "pending_edit_plan": None,
         }
     else:
-        result = await llm_service.process_chat_turn(
-            message=body.message,
-            history=history_dict,
-            current_contract=body.current_contract,
-            has_draft=getattr(body, "has_draft", False),
-            current_itinerary=body.current_itinerary,
-        )
+        deterministic_intent = None
+        if False and getattr(body, "has_draft", False) and not is_edit_confirmation:
+            planned = EditIntentPlanner().build(body.message or "")
+            if planned.operations:
+                deterministic_intent = planned
+
+        if deterministic_intent is not None:
+            pending = deterministic_intent.constraints
+            result = {
+                "status": "clarifying",
+                "reply": pending.get("assistant_reply") or "Em sẽ chuẩn bị chỉnh lịch. Anh xác nhận em sửa nhé?",
+                "updated_contract": body.current_contract,
+                "phase": "editing",
+                "missing_fields": [],
+                "next_question": None,
+                "requires_confirmation": True,
+                "edit_intent": deterministic_intent,
+                "pending_edit_plan": pending,
+            }
+        else:
+            result = await llm_service.process_chat_turn(
+                message=body.message,
+                history=history_dict,
+                current_contract=body.current_contract,
+                has_draft=getattr(body, "has_draft", False),
+                current_itinerary=body.current_itinerary,
+            )
     
     updated_itinerary = None
     edit_intent = result.get("edit_intent")
     pending_edit_plan = result.get("pending_edit_plan")
-    if getattr(body, "has_draft", False):
+    if getattr(body, "has_draft", False) and not is_edit_rejection:
         deterministic_intent = EditIntentPlanner().build(body.message or "")
         if not is_edit_confirmation and not (edit_intent and getattr(edit_intent, "operations", None)) and deterministic_intent.operations:
             edit_intent = None
@@ -1022,11 +1088,11 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
             result["phase"] = "editing"
             result["requires_confirmation"] = True
             result["reply"] = deterministic_intent.constraints.get("assistant_reply") or result.get("reply")
-    if getattr(body, "has_draft", False) and pending_edit_plan and not is_edit_confirmation:
+    if getattr(body, "has_draft", False) and pending_edit_plan and not is_edit_confirmation and not is_edit_rejection:
         pending_edit_plan = await _attach_edit_suggestions(pending_edit_plan)
         result["pending_edit_plan"] = pending_edit_plan
 
-    if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation):
+    if getattr(body, "has_draft", False) and body.current_itinerary and (edit_intent or is_edit_confirmation or is_edit_rejection):
         from app.services.itinerary_editor import ItineraryEditorService
         from app.schemas.trip import POIResponse
         from sqlalchemy import select, or_
@@ -1038,8 +1104,8 @@ async def chat_process(request: Request, body: ChatProcessRequest, user: Optiona
         action = edit_intent.action if edit_intent else "modify_itinerary"
         target = edit_intent.target if edit_intent else None
         should_apply_edit = bool(
-            is_edit_confirmation
-            or (result.get("status") == "ready" and not result.get("requires_confirmation", False))
+            (is_edit_confirmation or (result.get("status") == "ready" and not result.get("requires_confirmation", False)))
+            and not is_edit_rejection
         )
         operation_dicts = []
         if is_edit_confirmation:

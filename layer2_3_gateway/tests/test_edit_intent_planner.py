@@ -80,3 +80,72 @@ def test_change_duration_breakdown_requires_rebuild_path():
     assert intent.operations[0].type == "change_duration"
     assert intent.constraints["status"] == "pending_confirmation"
     assert intent.constraints["requires_confirmation"] is True
+
+
+def test_new_edit_intents():
+    planner = EditIntentPlanner()
+    
+    # 1. Budget changes
+    i1 = planner.build("giảm ngân sách xuống 1.5 triệu")
+    assert i1.action == "change_budget"
+    assert len(i1.operations) == 1
+    assert i1.operations[0].type == "change_budget"
+    assert i1.operations[0].amount == 1500000.0
+    assert "ngân sách thành 1,5 triệu" in i1.constraints["assistant_reply"]
+
+    i2 = planner.build("tăng ngân sách lên 3tr")
+    assert i2.operations[0].amount == 3000000.0
+    
+    i3 = planner.build("đổi ngân sách thành 500k")
+    assert i3.operations[0].amount == 500000.0
+    assert "ngân sách thành 500k" in i3.constraints["assistant_reply"]
+
+    i4 = planner.build("đổi ngân sách")
+    assert i4.operations[0].amount is None
+
+    # 2. Pace changes
+    p1 = planner.build("đi thong thả hơn nhé")
+    assert p1.action == "change_pace"
+    assert p1.operations[0].type == "change_pace"
+    assert p1.operations[0].value == "chill"
+    assert "thong thả" in p1.constraints["assistant_reply"]
+
+    p2 = planner.build("lịch trình dày đặc hơn")
+    assert p2.operations[0].value == "intense"
+    assert "dày đặc" in p2.constraints["assistant_reply"]
+
+    p3 = planner.build("đi bình thường cân bằng thôi")
+    assert p3.operations[0].value == "balanced"
+    assert "vừa phải" in p3.constraints["assistant_reply"]
+
+    # 3. Time changes
+    t1 = planner.build("bắt đầu trễ hơn chút")
+    assert t1.action == "change_time"
+    assert t1.operations[0].type == "change_time"
+    assert t1.operations[0].value == "later"
+
+    t2 = planner.build("kết thúc sớm hơn")
+    assert t2.operations[0].value == "earlier"
+
+    t3 = planner.build("đổi giờ khởi hành thành 8h sáng")
+    assert t3.operations[0].target_time_min == 480
+
+    # 4. Add Preference
+    pref1 = planner.build("tôi thích ăn hải sản")
+    assert pref1.action == "add_preference"
+    assert pref1.operations[0].type == "add_preference"
+    assert pref1.operations[0].target == "ăn hải sản"
+
+    pref2 = planner.build("thêm sở thích ngắm cảnh thiên nhiên")
+    assert pref2.action == "add_preference"
+    assert pref2.operations[0].target == "ngắm cảnh thiên nhiên"
+
+    # 5. Avoid Preference
+    av1 = planner.build("không thích đi bộ nhiều")
+    assert av1.action == "avoid_preference"
+    assert av1.operations[0].type == "avoid_preference"
+    assert av1.operations[0].target == "đi bộ nhiều"
+
+    av2 = planner.build("tránh các điểm đông đúc")
+    assert av2.action == "avoid_preference"
+    assert av2.operations[0].target == "các điểm đông đúc"

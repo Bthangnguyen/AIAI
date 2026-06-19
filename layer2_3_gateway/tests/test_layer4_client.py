@@ -37,7 +37,10 @@ def test_build_payload_uses_walking_tolerance():
     )
     payload = client._build_payload([], contract)
     assert payload["constraints"]["transport_modes"] == ["taxi"]
-    assert payload["constraints"]["budget_total"] == 500_000
+    # The budget is optimized/reduced to account for daily transport & food overheads:
+    # (500,000 - 150,000 food - 200,000 taxi) / 1.10 = 136363.63...
+    import pytest
+    assert payload["constraints"]["budget_total"] == pytest.approx(136363.64, abs=0.01)
 
 
 def test_re_route_constraints_from_original_itinerary():

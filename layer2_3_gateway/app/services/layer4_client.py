@@ -167,9 +167,89 @@ class Layer4Client:
         contract_modes = transport_modes_from_contract(contract)
         normalized_modes = self._normalize_transport_modes(contract_modes)
 
+        # Estimate lodging, food, and transport overheads to avoid budget overrun
+        budget_total = None
+        if not getattr(contract, "budget_is_unlimited", False) and contract.budget_max is not None:
+            import math
+            days = max(1, contract.num_days or 1)
+            nights = max(0, days - 1)
+            
+            # 1. Lodging overhead
+            has_lodging = getattr(contract, "has_lodging", None)
+            budget_scope = getattr(contract, "budget_scope", "unknown") or "unknown"
+            include_lodging = nights > 0 and not (has_lodging is True and budget_scope != "includes_hotel")
+            
+            lodging_overhead = 0.0
+            if include_lodging:
+                party = getattr(contract, "party", None)
+                raw_size = getattr(party, "size", None) if party else None
+                if raw_size is None:
+                    raw_size = getattr(contract, "group_size", None)
+                try:
+                    party_size = max(1, int(raw_size or 1))
+                except (TypeError, ValueError):
+                    party_size = 1
+                
+                explicit_rate = getattr(contract, "lodging_budget_per_night", None)
+                if explicit_rate:
+                    nightly_rate = float(explicit_rate)
+                else:
+                    selection = getattr(contract, "lodging_selection", None)
+                    if selection and getattr(selection, "status", None) == "needs_lodging":
+                        hotel_price = getattr(selection, "nightly_rate", None)
+                        if hotel_price:
+                            nightly_rate = float(hotel_price)
+                        else:
+                            nightly_rate = 250000.0 if contract.budget_max / max(1, nights) < 500000.0 else 450000.0
+                    else:
+                        nightly_rate = 250000.0 if contract.budget_max / max(1, nights) < 500000.0 else 450000.0
+                
+                haystack = " ".join(str(v).lower() for v in [getattr(contract, "hotel_name", ""), " ".join(getattr(contract, "lodging_preference", []) or [])])
+                room_capacity = 2
+                if any(key in haystack for key in ("villa", "nguyen can", "nguyên căn", "whole", "homestay")):
+                    room_capacity = 4
+                elif any(key in haystack for key in ("hostel", "dorm", "capsule")):
+                    room_capacity = 1
+                    
+                rooms_needed = math.ceil(party_size / room_capacity)
+                lodging_overhead = nightly_rate * nights * rooms_needed
+
+            # 2. Food & Drink overhead: 150k VND per day per person
+            party = getattr(contract, "party", None)
+            raw_size = getattr(party, "size", None) if party else None
+            if raw_size is None:
+                raw_size = getattr(contract, "group_size", None)
+            try:
+                party_size = max(1, int(raw_size or 1))
+            except (TypeError, ValueError):
+                party_size = 1
+            food_overhead = 150000.0 * party_size * days
+
+            # 3. Transport overhead: 200k/day for group if taxi is allowed, else 80k/day per person for motor
+            modes = [str(m).lower() for m in (contract.transport_modes or [])]
+            if "taxi" in modes or "car" in modes or not modes:
+                transport_overhead = 200000.0 * days
+            else:
+                transport_overhead = 80000.0 * party_size * days
+
+            total_overhead = lodging_overhead + food_overhead + transport_overhead
+            remaining = float(contract.budget_max) - total_overhead
+            estimated_ticket_budget = remaining / 1.10 if remaining > 0 else 0.0
+            
+            min_ticket_budget = max(50000.0 * days, float(contract.budget_max) * 0.1)
+            budget_total = max(min_ticket_budget, estimated_ticket_budget)
+            
+            logger.info(
+                f"💰 Budget Optimization: Max={contract.budget_max} | Lodging Overhead={lodging_overhead} | "
+                f"Food Overhead={food_overhead} | Transport Overhead={transport_overhead} | "
+                f"Remaining={remaining} | Solver Ticket Budget={budget_total}"
+            )
+        else:
+            budget_total = contract.budget_max
+
         constraints = {
             "num_days": contract.num_days,
-            "budget_total": None if getattr(contract, "budget_is_unlimited", False) else contract.budget_max,
+            "budget_total": None if getattr(contract, "budget_is_unlimited", False) else budget_total,
             "transport_modes": normalized_modes,
             "target_category_distribution": contract.target_category_distribution,
         }

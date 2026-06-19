@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_MAX_TOKENS: int = 1024
 
+    # Firebase configuration
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_SERVICE_ACCOUNT_PATH: str = ""
+
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sql_url(self) -> PostgresDsn:

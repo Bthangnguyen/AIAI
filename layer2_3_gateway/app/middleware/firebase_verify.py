@@ -163,7 +163,11 @@ async def get_current_user(
             _init_firebase()
 
         # Verify the ID token (checks signature, expiry, issuer)
-        decoded_token = firebase_auth.verify_id_token(token, check_revoked=True)
+        # Only check revocation if we have a certificate-based service account
+        sa_path = getattr(settings, "FIREBASE_SERVICE_ACCOUNT_PATH", None)
+        check_revoked = bool(sa_path and os.path.exists(sa_path))
+        decoded_token = firebase_auth.verify_id_token(token, check_revoked=check_revoked)
+
 
         return FirebaseUser(
             uid=decoded_token["uid"],

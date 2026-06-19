@@ -553,8 +553,8 @@ class Layer4Client:
         except httpx.TimeoutException as e:
             solver_breaker.record_failure()
             logger.error(f"Layer 4 re-route timed out: {e}")
-            return {"status": "error", "error_code": "TIMEOUT", "message": "QuÃ¡ thá»i gian Ä‘á»‹nh tuyáº¿n láº¡i."}
+            return {"status": "error", "error_code": "TIMEOUT", "message": "QuÃ¡ thá» i gian Ä‘á»‹nh tuyáº¿n láº¡i."}
         except httpx.HTTPError as e:
             solver_breaker.record_failure()
             logger.error(f"Layer 4 re-route failed: {e}")
-            return {"status": "error", "error_code": "REROUTE_FAILED", "message": "KhÃ´ng thá»ƒ tá»‘i Æ°u láº¡i ngÃ y hiá»‡n táº¡i."}
+            return {"status": "error", "error_code": "REROUTE_FAILED", "message": f"Không thể tối ưu lại ngày hiện tại: {str(e)}"}

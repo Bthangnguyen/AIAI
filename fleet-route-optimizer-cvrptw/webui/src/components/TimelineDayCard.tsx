@@ -16,6 +16,7 @@ interface TimelineDayCardProps {
   onHoverPoi: (poiId: string | null) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
   onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onReorderPlace?: (dayNumber: number, draggedItemId: string, targetItemId: string) => void
   onApplyManualOrder?: (dayNumber: number) => void
   onAddPlace: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
@@ -60,21 +61,31 @@ function TransportIcon({ leg }: { leg?: TransportLeg }) {
 
 function TransportLegRow({ leg }: { leg?: TransportLeg }) {
   if (!leg) return null
-  const label = leg.is_return_to_lodging ? "Quay ve cho o" : leg.mode_label || leg.mode || "Di chuyen"
+  const label = leg.is_return_to_lodging ? "Quay về chỗ ở" : leg.mode_label || leg.mode || "Di chuyển"
   return (
-    <div className="mb-3 ml-1 rounded-xl border border-orange-200 bg-orange-50/80 px-3 py-2 text-xs text-orange-950/70">
-      <div className="flex flex-wrap items-center gap-2 font-bold">
-        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-orange-700">
-          <TransportIcon leg={leg} />
-          {label}
-        </span>
+    <div className="relative my-2 py-1 pl-2">
+      {/* Small circle centered on the left vertical line */}
+      <div className="absolute -left-[26px] top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-orange-600 ring-4 ring-white border border-orange-200">
+        <TransportIcon leg={leg} />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-orange-950/60 font-bold">
+        <span className="text-orange-700">{label}</span>
+        <span>·</span>
         <span>{leg.travel_time_min ?? 0} phút</span>
         <span>·</span>
         <span>{formatDistance(leg.distance_km)}</span>
-        <span>·</span>
-        <span>{formatTransportCost(leg)}</span>
+        {leg.transport_cost && leg.transport_cost > 0 ? (
+          <>
+            <span>·</span>
+            <span>{formatTransportCost(leg)}</span>
+          </>
+        ) : null}
+        {leg.warning ? (
+          <span className="ml-2 rounded bg-amber-50 border border-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+            {leg.warning}
+          </span>
+        ) : null}
       </div>
-      {leg.warning ? <p className="mt-1 font-semibold text-amber-700">{leg.warning}</p> : null}
     </div>
   )
 }
@@ -92,6 +103,7 @@ export function TimelineDayCard({
   onHoverPoi,
   onRemovePlace,
   onMovePlace,
+  onReorderPlace,
   onApplyManualOrder,
   onAddPlace,
   onOptimizeDay,
@@ -145,18 +157,45 @@ export function TimelineDayCard({
           return (
             <div key={item.id} className="relative">
               <TransportLegRow leg={leg} />
-              <span className="absolute -left-[4.35rem] top-14 rounded-full bg-white px-2 py-1 text-[10px] font-black text-orange-950">{item.time}</span>
-              <span className="absolute -left-[1.35rem] top-[3.75rem] h-2.5 w-2.5 rounded-full bg-travel ring-4 ring-card" />
-              <TimelinePlaceCard
-                item={item}
-                selected={selectedPoiId === item.poiId}
-                canMoveUp={canMoveDayItem(day, item.id, "up")}
-                canMoveDown={canMoveDayItem(day, item.id, "down")}
-                onSelect={() => onSelectPoi(item.poiId)}
-                onHover={(hovered) => onHoverPoi(hovered ? item.poiId : null)}
-                onRemove={() => onRemovePlace(day.dayNumber, item.id)}
-                onMove={(direction) => onMovePlace(day.dayNumber, item.id, direction)}
-              />
+              <div 
+                className="relative group cursor-grab active:cursor-grabbing transition"
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", `${day.dayNumber}:${item.id}`)
+                  e.currentTarget.classList.add("opacity-40")
+                }}
+                onDragEnd={(e) => {
+                  e.currentTarget.classList.remove("opacity-40")
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const data = e.dataTransfer.getData("text/plain")
+                  if (!data) return
+                  const [draggedDayNumStr, draggedItemId] = data.split(":")
+                  const draggedDayNum = parseInt(draggedDayNumStr)
+                  if (draggedDayNum !== day.dayNumber) return
+                  if (draggedItemId === item.id) return
+                  onReorderPlace?.(day.dayNumber, draggedItemId, item.id)
+                }}
+              >
+                <span className="absolute -left-[4.35rem] top-1/2 -translate-y-1/2 rounded-full bg-white px-2 py-1 text-[10px] font-black text-orange-950 border border-orange-100 shadow-sm z-10">
+                  {item.time}
+                </span>
+                <span className="absolute -left-[21px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-travel ring-4 ring-card z-10" />
+                <TimelinePlaceCard
+                  item={item}
+                  selected={selectedPoiId === item.poiId}
+                  canMoveUp={canMoveDayItem(day, item.id, "up")}
+                  canMoveDown={canMoveDayItem(day, item.id, "down")}
+                  onSelect={() => onSelectPoi(item.poiId)}
+                  onHover={(hovered) => onHoverPoi(hovered ? item.poiId : null)}
+                  onRemove={() => onRemovePlace(day.dayNumber, item.id)}
+                  onMove={(direction) => onMovePlace(day.dayNumber, item.id, direction)}
+                />
+              </div>
             </div>
           )
         })}

@@ -16,11 +16,12 @@ interface ItineraryArtifactProps {
   onAddPlace: (dayNumber: number) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
   onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onReorderPlace?: (dayNumber: number, draggedItemId: string, targetItemId: string) => void
   onApplyManualOrder?: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
 }
 
-export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onApplyManualOrder, onOptimizeDay }: ItineraryArtifactProps) {
+export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPoi, onSaveDraft, onAddPlace, onRemovePlace, onMovePlace, onReorderPlace, onApplyManualOrder, onOptimizeDay }: ItineraryArtifactProps) {
   const totals = draftTotals(draft)
   const enoughInfo = Boolean(draft.intent.destination && draft.intent.days && draft.intent.budget)
 
@@ -68,6 +69,7 @@ export function ItineraryArtifact({ draft, selectedPoiId, onSelectPoi, onHoverPo
             onHoverPoi={onHoverPoi}
             onRemovePlace={onRemovePlace}
             onMovePlace={onMovePlace}
+            onReorderPlace={onReorderPlace}
             onApplyManualOrder={onApplyManualOrder}
             onAddPlace={onAddPlace}
             onOptimizeDay={onOptimizeDay}

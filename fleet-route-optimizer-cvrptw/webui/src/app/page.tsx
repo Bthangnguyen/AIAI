@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth"
 import type { AIMessage } from "@/components/AITripChatPanel"
 import { fetchPlanAlternatives } from "@/lib/planAlternatives"
 import { applyPlanVariant, planStyleLabel } from "@/lib/applyPlanVariant"
-import { applyManualReorderToDraft, clearDayManual, poiIdsInDayOrder, recalculateDayTimes } from "@/lib/reorderDayItems"
+import { applyManualReorderToDraft, clearDayManual, markDayManual, poiIdsInDayOrder, recalculateDayTimes } from "@/lib/reorderDayItems"
 import type { MoveDirection } from "@/lib/reorderDayItems"
 import type { BuildStatus, BuilderMode, FollowUpQuestion, ItineraryDraft, ItineraryItem, LLMDataContract, POI, PreviewMode, TripIntent } from "@/types/trip"
 import type { PlanVariant } from "@/types/plan"
@@ -720,6 +720,34 @@ export default function Page() {
     setFitSignal((value) => value + 1)
   }
 
+  function handleReorderPlace(dayNumber: number, draggedId: string, targetId: string) {
+    if (!draft) return
+    const dayIndex = draft.days.findIndex((day) => day.dayNumber === dayNumber)
+    if (dayIndex < 0) return
+    const day = draft.days[dayIndex]
+    const items = [...day.items]
+    const draggedIndex = items.findIndex((i) => i.id === draggedId)
+    const targetIndex = items.findIndex((i) => i.id === targetId)
+    if (draggedIndex < 0 || targetIndex < 0) return
+
+    const [moved] = items.splice(draggedIndex, 1)
+    items.splice(targetIndex, 0, moved)
+
+    const timedDay = recalculateDayTimes({ ...day, items })
+    const newDays = [...draft.days]
+    newDays[dayIndex] = timedDay
+
+    const nextDraft = markDayManual({
+      ...draft,
+      days: newDays,
+      updatedAt: new Date().toISOString(),
+    }, dayNumber)
+
+    setDraft(nextDraft)
+    setFitSignal((value) => value + 1)
+    showToast("Đã thay đổi thứ tự địa điểm.", "success")
+  }
+
   async function handleApplyManualOrder(dayNumber: number) {
     if (!draft) return
     const dayIndex = dayNumber - 1
@@ -890,6 +918,7 @@ export default function Page() {
             onReset={resetDraft}
             onSavedTrips={() => setScreen("saved")}
             onShare={handleShareDraft}
+            onReorderPlace={handleReorderPlace}
 
             onSendMessage={handleChatSend}
             onChooseSuggestedPlace={handleChooseSuggestedPlace}

@@ -50,6 +50,7 @@ interface BuilderWorkspaceProps {
   onAddPoi: (dayNumber: number, poi: POI) => void
   onRemovePlace: (dayNumber: number, itemId: string) => void
   onMovePlace: (dayNumber: number, itemId: string, direction: MoveDirection) => void
+  onReorderPlace?: (dayNumber: number, draggedItemId: string, targetItemId: string) => void
   onApplyManualOrder?: (dayNumber: number) => void
   onOptimizeDay: (dayNumber: number) => void
   buildErrorMessage?: string | null
@@ -89,7 +90,7 @@ export function BuilderWorkspace(props: BuilderWorkspaceProps) {
         </div>
 
         <div className={`${mobileTab === "preview" ? "block" : "hidden"} h-full min-h-0 min-w-0 md:block`}>
-          <ItineraryPreviewPanel draft={props.draft} status={props.status} viewMode={props.viewMode} selectedPoiId={props.selectedPoiId} hoveredPoiId={props.hoveredPoiId} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} fitSignal={props.fitSignal} requiresLodgingSelection={props.requiresLodgingSelection} onViewModeChange={props.onViewModeChange} onSelectPoi={props.onSelectPoi} onHoverPoi={props.onHoverPoi} onSaveDraft={props.onSaveDraft} onAddPlace={(dayNumber) => openAddPlace(dayNumber)} onRemovePlace={props.onRemovePlace} onMovePlace={props.onMovePlace} onApplyManualOrder={props.onApplyManualOrder} onOptimizeDay={props.onOptimizeDay} buildErrorMessage={props.buildErrorMessage} onRetryBuild={props.onRetryBuild} onSuggestFix={props.onSuggestFix} osrmDegraded={props.osrmDegraded} onOsrmDegradedChange={props.onOsrmDegradedChange} onSetLodgingBase={props.onSetLodgingBase} />
+          <ItineraryPreviewPanel draft={props.draft} status={props.status} viewMode={props.viewMode} selectedPoiId={props.selectedPoiId} hoveredPoiId={props.hoveredPoiId} selectedDay={props.selectedDay} showRouteLines={props.showRouteLines} fitSignal={props.fitSignal} requiresLodgingSelection={props.requiresLodgingSelection} onViewModeChange={props.onViewModeChange} onSelectPoi={props.onSelectPoi} onHoverPoi={props.onHoverPoi} onSaveDraft={props.onSaveDraft} onAddPlace={(dayNumber) => openAddPlace(dayNumber)} onRemovePlace={props.onRemovePlace} onMovePlace={props.onMovePlace} onReorderPlace={props.onReorderPlace} onApplyManualOrder={props.onApplyManualOrder} onOptimizeDay={props.onOptimizeDay} buildErrorMessage={props.buildErrorMessage} onRetryBuild={props.onRetryBuild} onSuggestFix={props.onSuggestFix} osrmDegraded={props.osrmDegraded} onOsrmDegradedChange={props.onOsrmDegradedChange} onSetLodgingBase={props.onSetLodgingBase} />
         </div>
 
         <div className={`${mobileTab === "control" ? "block" : "hidden"} h-full min-h-0 md:block`}>

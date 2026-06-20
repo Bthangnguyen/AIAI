@@ -389,7 +389,7 @@ class POIResponse(BaseModel):
     tags: Optional[List[str]] = None
     is_locked: bool = False
     score_breakdown: Optional[POIScoreBreakdown] = None
-    utility_score: float = Field(0.5, description="Weighted sum of breakdown scores")
+    utility_score: float = 0.5
 
 
 # === Orchestrator Output: Assembled for Layer 4 ===

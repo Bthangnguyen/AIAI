@@ -415,6 +415,50 @@ def _merge_required_micro_pois(
     return merged_required + existing_non_required[:room]
 
 
+VIETNAMESE_SYNONYMS = {
+    "lon": ["heo"],
+    "heo": ["lon"],
+    "cha gio": ["nem ran"],
+    "nem ran": ["cha gio"],
+}
+
+
+def _normalize_and_tokenize(text: str) -> list[str]:
+    if not text:
+        return []
+    import re
+    norm = _normalize_text(text)
+    norm = re.sub(r'[^\w\s]', ' ', norm)
+    return [w for w in norm.split() if len(w) >= 2]
+
+
+def _clean_and_norm_tags(tags: list | None) -> list[str]:
+    if not tags:
+        return []
+    cleaned = []
+    for t in tags:
+        if isinstance(t, str):
+            cleaned.append(_normalize_text(t.strip('[]"\'')))
+    return cleaned
+
+
+def _token_match_score(query_tokens: list[str], field_tokens: list[str]) -> float:
+    if not query_tokens or not field_tokens:
+        return 0.0
+    score = 0.0
+    field_set = set(field_tokens)
+    for q_t in query_tokens:
+        if q_t in field_set:
+            score += 1.0
+            continue
+        syns = VIETNAMESE_SYNONYMS.get(q_t, [])
+        for syn in syns:
+            if syn in field_set:
+                score += 0.8
+                break
+    return score
+
+
 async def _resolve_edit_add_poi(
     query: str,
     category: str | None = None,
@@ -458,19 +502,27 @@ async def _resolve_edit_add_poi(
                 .limit(max(80, limit * 20))
             )
         else:
-            # SQL fallback with ILIKE searches
+            # SQL fallback with smart token-based matching and synonyms
             conditions = []
             if text:
-                conditions.append(POI.name.ilike(f"%{text}%"))
-                conditions.append(POI.description.ilike(f"%{text}%"))
-                conditions.append(func.array_to_string(POI.tags, ' ').ilike(f"%{text}%"))
+                query_tokens = _normalize_and_tokenize(text)
+                search_words = set(query_tokens)
+                for w in query_tokens:
+                    raw_words = [w]
+                    for raw_w in text.lower().split():
+                        if _normalize_text(raw_w) == w:
+                            raw_words.append(raw_w)
+                    for rw in raw_words:
+                        search_words.add(rw)
+                        for syn in VIETNAMESE_SYNONYMS.get(w, []):
+                            search_words.add(syn)
+                            search_words.add(_normalize_text(syn))
+                            
+                for sw in search_words:
+                    conditions.append(POI.name.ilike(f"%{sw}%"))
+                    conditions.append(POI.description.ilike(f"%{sw}%"))
+                    conditions.append(func.coalesce(func.array_to_string(POI.tags, ','), '').ilike(f"%{sw}%"))
                 
-                words = [w for w in text.split() if len(w) > 2]
-                for w in words:
-                    conditions.append(POI.name.ilike(f"%{w}%"))
-                    conditions.append(POI.description.ilike(f"%{w}%"))
-                    conditions.append(func.array_to_string(POI.tags, ' ').ilike(f"%{w}%"))
-                    
             stmt = select(POI, ST_AsGeoJSON(POI.coordinates).label("geojson"))
             if conditions:
                 stmt = stmt.where(or_(POI.priority_score >= 0.4, *conditions))
@@ -489,7 +541,7 @@ async def _resolve_edit_add_poi(
             " ".join(poi_resp.tags or []),
         ])
         haystack = _normalize_text(fields)
-        poi_tags = {_normalize_text(t) for t in (poi_resp.tags or [])}
+        poi_tags = set(_clean_and_norm_tags(poi_resp.tags))
         poi_category = _normalize_text(poi_resp.category_group or poi_resp.category)
 
         distance = float(getattr(row, "semantic_distance", 0.45) or 0.45)
@@ -503,11 +555,13 @@ async def _resolve_edit_add_poi(
             elif norm_text in norm_name:
                 score += 1.0
             else:
-                query_tokens = [t for t in norm_text.split() if len(t) >= 2]
-                if query_tokens:
-                    overlap_name = sum(1 for t in query_tokens if t in norm_name)
-                    overlap_haystack = sum(1 for t in query_tokens if t in haystack)
-                    score += 0.3 * overlap_name + 0.05 * overlap_haystack
+                query_tokens = _normalize_and_tokenize(text)
+                name_tokens = _normalize_and_tokenize(poi_resp.name)
+                haystack_tokens = _normalize_and_tokenize(fields)
+                
+                overlap_name = _token_match_score(query_tokens, name_tokens)
+                overlap_haystack = _token_match_score(query_tokens, haystack_tokens)
+                score += 0.3 * overlap_name + 0.05 * overlap_haystack
 
         if category_norm and category_norm == poi_category:
             score += 0.25
@@ -1533,31 +1587,34 @@ async def search_pois_endpoint(request: Request, query: str, limit: int = 5, use
             POI.priority_score.desc()
         ).limit(limit)
     else:
-        # Hướng xử lý dự phòng: Làm sạch câu tiếng Việt và tìm kiếm SQL substring
-        clean_query = query.strip()
-        prefixes = [
-            r"^(quán|tiệm|cửa hàng|nhà hàng|địa điểm|điểm|món|quán ăn|ăn|uống)\s+",
-            r"^(quán|tiệm|cửa hàng|nhà hàng|địa điểm|điểm|món|quán ăn|ăn|uống)\s+bán\s+"
-        ]
-        for prefix in prefixes:
-            clean_query = re.sub(prefix, "", clean_query, flags=re.IGNORECASE)
-        clean_query = clean_query.strip()
+        # Hướng xử lý dự phòng: SQL fallback kết hợp xếp hạng mềm bằng Python
+        query_norm = query.strip()
+        words = _normalize_and_tokenize(query_norm)
         
+        search_words = set()
+        for w in words:
+            search_words.add(w)
+            search_words.add(_normalize_text(w))
+            for raw_w in query_norm.lower().split():
+                if _normalize_text(raw_w) == w:
+                    search_words.add(raw_w)
+            for syn in VIETNAMESE_SYNONYMS.get(w, []):
+                search_words.add(syn)
+                search_words.add(_normalize_text(syn))
+                
         conditions = []
-        if query.strip():
-            conditions.append(POI.name.ilike(f"%{query.strip()}%"))
-        if clean_query and clean_query != query.strip():
-            conditions.append(POI.name.ilike(f"%{clean_query}%"))
-        if clean_query:
-            conditions.append(POI.category.ilike(f"%{clean_query}%"))
-            conditions.append(func.coalesce(func.array_to_string(POI.tags, ','), '').ilike(f"%{clean_query}%"))
+        for sw in search_words:
+            conditions.append(POI.name.ilike(f"%{sw}%"))
+            conditions.append(POI.category.ilike(f"%{sw}%"))
+            conditions.append(func.coalesce(func.array_to_string(POI.tags, ','), '').ilike(f"%{sw}%"))
+            conditions.append(POI.description.ilike(f"%{sw}%"))
             
         if not conditions:
             return []
             
         stmt = select(
             POI, ST_AsGeoJSON(POI.coordinates).label("geojson")
-        ).where(or_(*conditions)).order_by(POI.priority_score.desc()).limit(limit)
+        ).where(or_(*conditions)).order_by(POI.priority_score.desc()).limit(200)
         
     async with AsyncSessionFactory() as db_session:
         result = await db_session.execute(stmt)
@@ -1569,24 +1626,66 @@ async def search_pois_endpoint(request: Request, query: str, limit: int = 5, use
             geojson = json_lib.loads(row.geojson) if row.geojson else None
             lat = geojson["coordinates"][1] if geojson else 0.0
             lon = geojson["coordinates"][0] if geojson else 0.0
+            pois.append((poi, lat, lon))
             
-            pois.append(POIResponse(
-                uuid=poi.uuid,
-                name=poi.name,
-                category=poi.category,
-                description=poi.description,
-                latitude=lat,
-                longitude=lon,
-                visit_duration_min=poi.visit_duration_min,
-                price=poi.price,
-                entrance_fee=poi.entrance_fee,
-                open_time=poi.open_time,
-                close_time=poi.close_time,
-                priority_score=poi.priority_score,
-                tags=poi.tags,
-                is_locked=False,
-            ))
-        return pois
+    # Áp dụng bộ lọc xếp hạng mềm bằng Python cho cơ chế SQL fallback
+    if query_vector is None and query.strip():
+        ranked = []
+        query_norm_clean = query.strip().lower()
+        query_tokens = _normalize_and_tokenize(query_norm_clean)
+        
+        for poi, lat, lon in pois:
+            poi_name = (poi.name or "").lower()
+            poi_desc = (poi.description or "").lower()
+            poi_cat = (poi.category or "").lower()
+            poi_tags = _clean_and_norm_tags(poi.tags)
+            
+            score = 0.0
+            
+            norm_name = _normalize_text(poi.name)
+            norm_query = _normalize_text(query_norm_clean)
+            if norm_query == norm_name:
+                score += 15.0
+            elif norm_query in norm_name:
+                score += 8.0
+                
+            name_tokens = _normalize_and_tokenize(poi.name)
+            desc_tokens = _normalize_and_tokenize(poi.description)
+            cat_tokens = _normalize_and_tokenize(poi.category)
+            
+            score += _token_match_score(query_tokens, name_tokens) * 3.0
+            score += _token_match_score(query_tokens, poi_tags) * 2.0
+            score += _token_match_score(query_tokens, cat_tokens) * 1.5
+            score += _token_match_score(query_tokens, desc_tokens) * 0.5
+            score += float(poi.priority_score or 0.0) * 0.1
+            
+            if score > 0.1:
+                ranked.append((score, poi, lat, lon))
+                
+        ranked.sort(key=lambda x: x[0], reverse=True)
+        pois_to_return = ranked[:limit]
+    else:
+        pois_to_return = [(poi.priority_score, poi, lat, lon) for poi, lat, lon in pois]
+        
+    return [
+        POIResponse(
+            uuid=poi.uuid,
+            name=poi.name,
+            category=poi.category,
+            description=poi.description,
+            latitude=lat,
+            longitude=lon,
+            visit_duration_min=poi.visit_duration_min,
+            price=poi.price,
+            entrance_fee=poi.entrance_fee,
+            open_time=poi.open_time,
+            close_time=poi.close_time,
+            priority_score=poi.priority_score,
+            tags=poi.tags,
+            is_locked=False,
+        )
+        for _, poi, lat, lon in pois_to_return
+    ]
 
 
 @router.post("/re_route")

@@ -98,6 +98,14 @@ export function ItineraryMap({
       setMapLoaded(true)
     })
 
+    // ResizeObserver to handle split-pane / container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize()
+    })
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current)
+    }
+
     return () => {
       // Cleanup all popup roots on unmount
       activeRootsRef.current.forEach(root => root.unmount())
@@ -108,6 +116,7 @@ export function ItineraryMap({
       activeLodgingMarkerRef.current = null
       mapRef.current = null
       setMapLoaded(false)
+      resizeObserver.disconnect()
       map.remove()
     }
   }, [])
@@ -152,7 +161,8 @@ export function ItineraryMap({
         offset: [0, -38 * scale],
         closeButton: true,
         closeOnClick: false,
-        className: "custom-mapbox-popup"
+        className: "custom-mapbox-popup",
+        focusAfterOpen: false
       }).setDOMContent(popupDOM)
 
       // Bind Mapbox Marker
@@ -387,6 +397,7 @@ export function ItineraryMap({
       map.flyTo({
         center: [active.poi.lng, active.poi.lat],
         zoom: Math.max(map.getZoom(), 14.5),
+        offset: [0, -80], // Shift target down by 80px to center both marker & popup vertically
         speed: 1.2,
         duration: 800,
         essential: true

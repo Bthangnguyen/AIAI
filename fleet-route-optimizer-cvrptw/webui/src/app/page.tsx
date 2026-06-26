@@ -164,17 +164,64 @@ export default function Page() {
   useEffect(() => {
     if (!draft) return
     const totals = draftTotals(draft)
-    const enrichedCost = Number(draft.costSummary?.group_total_cost ?? draft.costSummary?.estimated_total_cost ?? draft.budgetUsed ?? totals.estimatedCost)
+    
+    // Calculate total transport cost, lodging cost, and POI ticket costs from active days
+    let totalTransportCost = 0
+    let totalLodgingCost = 0
+    let totalTicketCost = 0
+    
+    draft.days.forEach((day) => {
+      // Sum transport costs
+      if (day.transportLegs) {
+        day.transportLegs.forEach((leg: any) => {
+          totalTransportCost += Number(leg.transport_cost || 0)
+        })
+      } else {
+        day.items.forEach((item) => {
+          if (item.transport_from_prev) {
+            totalTransportCost += Number(item.transport_from_prev.transport_cost || 0)
+          }
+        })
+      }
+      
+      // Sum lodging costs
+      if (day.overnightStay && Number(day.overnightStay.nightly_rate || 0) > 0) {
+        totalLodgingCost += Number(day.overnightStay.nightly_rate)
+      } else if (day.endLodging && Number(day.endLodging.nightly_rate || 0) > 0) {
+        totalLodgingCost += Number(day.endLodging.nightly_rate)
+      }
+      
+      // Sum POI ticket costs
+      day.items.forEach((item) => {
+        const poi = getPoi(item.poiId) || POI_CACHE.get(item.poiId)
+        if (poi && !item.poiId.startsWith("__")) {
+          totalTicketCost += poi.estimatedCost || 0
+        }
+      })
+    })
+
+    const enrichedCost = totals.estimatedCost
     
     // Check if stats are already synchronized to prevent infinite rendering loops
     const currentBudgetUsed = draft.budgetUsed
     const currentCustomersServed = draft.optimizationStats?.customersServed
     const currentStatsBudgetUsed = draft.optimizationStats?.budgetUsed
     
+    const currentPoiTicketCost = draft.costSummary?.poi_ticket_cost
+    const currentTransportCost = draft.costSummary?.transport_cost
+    const currentLodgingCost = draft.costSummary?.lodging_cost
+    const currentGroupTotalCost = draft.costSummary?.group_total_cost
+
     if (
       currentBudgetUsed === enrichedCost &&
       currentCustomersServed === totals.poiCount &&
-      currentStatsBudgetUsed === enrichedCost
+      currentStatsBudgetUsed === enrichedCost &&
+      (!draft.costSummary || (
+        currentPoiTicketCost === totalTicketCost &&
+        currentTransportCost === totalTransportCost &&
+        currentLodgingCost === totalLodgingCost &&
+        currentGroupTotalCost === enrichedCost
+      ))
     ) {
       return
     }
@@ -208,10 +255,23 @@ export default function Page() {
       solverTimeSeconds,
     }
 
+    const updatedCostSummary = draft.costSummary ? {
+      ...draft.costSummary,
+      poi_ticket_cost: totalTicketCost,
+      transport_cost: totalTransportCost,
+      lodging_cost: totalLodgingCost,
+      group_total_cost: enrichedCost,
+      estimated_total_cost: enrichedCost,
+      per_person_cost: draft.costSummary.party_size && Number(draft.costSummary.party_size) > 0
+        ? enrichedCost / Number(draft.costSummary.party_size)
+        : enrichedCost
+    } : undefined
+
     setDraft({
       ...draft,
       budgetUsed: enrichedCost,
       optimizationStats: stats,
+      costSummary: updatedCostSummary,
     })
   }, [draft])
 
@@ -530,7 +590,7 @@ export default function Page() {
     }
   }
 
-  function buildOriginalItinerary(currentDraft: ItineraryDraft) {
+  function buildOriginalItinerary(currentDraft: ItineraryDraft, extraPois: POI[] = [], targetDayIndex?: number) {
     return {
       num_days: currentDraft.days.length,
       manualDayNumbers: currentDraft.manualDayNumbers || [],
@@ -541,6 +601,59 @@ export default function Page() {
           return isNaN(h) || isNaN(m) ? 480 : h * 60 + m;
         })() : 480;
         const startTimeMin = Math.max(0, firstStopArrival - (d.items[0]?.travel_time_from_prev_min ?? 15));
+
+        const stops = d.items.map((item) => {
+          const cachedPoi = POI_CACHE.get(item.poiId) || getPoi(item.poiId);
+          return {
+            poi_id: item.poiId,
+            poi_name: item.note || cachedPoi?.name || "Unknown",
+            category: cachedPoi?.category || "general",
+            description: cachedPoi?.description || item.vibe_note || "",
+            vibe_note: item.vibe_note || "",
+            location: item.location || {
+              latitude: cachedPoi?.lat || 0,
+              longitude: cachedPoi?.lng || 0,
+            },
+            arrival_time_min: (() => {
+              const timeStr = item.time || "";
+              const [h, m] = timeStr.split(":").map(Number);
+              return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
+            })(),
+            visit_duration_min: cachedPoi?.estimatedDurationMinutes || 60,
+            entrance_fee: cachedPoi?.estimatedCost || 0,
+            price: cachedPoi?.estimatedCost || 0,
+            travel_time_from_prev_min: item.travel_time_from_prev_min,
+            travel_time_to_next_min: item.travel_time_to_next_min,
+            transport_from_prev: item.transport_from_prev,
+            ticket_cost: item.ticket_cost,
+            expected_spend: item.expected_spend,
+          };
+        });
+
+        if (index === targetDayIndex && extraPois.length > 0) {
+          extraPois.forEach((poi) => {
+            stops.push({
+              poi_id: poi.id,
+              poi_name: poi.name,
+              category: poi.category || "general",
+              description: poi.description || "",
+              vibe_note: "",
+              location: {
+                latitude: poi.lat,
+                longitude: poi.lng,
+              },
+              arrival_time_min: 0,
+              visit_duration_min: poi.estimatedDurationMinutes || 60,
+              entrance_fee: poi.estimatedCost || 0,
+              price: poi.estimatedCost || 0,
+              travel_time_from_prev_min: 0,
+              travel_time_to_next_min: 0,
+              transport_from_prev: undefined,
+              ticket_cost: 0,
+              expected_spend: 0,
+            });
+          });
+        }
 
         return {
           day_index: index,
@@ -555,45 +668,27 @@ export default function Page() {
           overnight_stay: d.overnightStay,
           start_lodging: d.startLodging,
           end_lodging: d.endLodging,
-          stops: d.items.map((item) => {
-            const cachedPoi = POI_CACHE.get(item.poiId) || getPoi(item.poiId);
-            return {
-              poi_id: item.poiId,
-              poi_name: item.note || cachedPoi?.name || "Unknown",
-              category: cachedPoi?.category || "general",
-              description: cachedPoi?.description || item.vibe_note || "",
-              vibe_note: item.vibe_note || "",
-              location: item.location || {
-                latitude: cachedPoi?.lat || 0,
-                longitude: cachedPoi?.lng || 0,
-              },
-              arrival_time_min: (() => {
-                const timeStr = item.time || "";
-                const [h, m] = timeStr.split(":").map(Number);
-                return isNaN(h) || isNaN(m) ? 0 : h * 60 + m;
-              })(),
-              visit_duration_min: cachedPoi?.estimatedDurationMinutes || 60,
-              entrance_fee: cachedPoi?.estimatedCost || 0,
-              price: cachedPoi?.estimatedCost || 0,
-              travel_time_from_prev_min: item.travel_time_from_prev_min,
-              travel_time_to_next_min: item.travel_time_to_next_min,
-              transport_from_prev: item.transport_from_prev,
-              ticket_cost: item.ticket_cost,
-              expected_spend: item.expected_spend,
-            };
-          }),
+          stops,
         };
       }),
     };
   }
 
-  async function runReRouteForDay(dayIndex: number, remainingPoiIds: string[], excludedPoiIds: string[] = [], isManual = false) {
+  async function runReRouteForDay(
+    dayIndex: number,
+    remainingPoiIds: string[],
+    excludedPoiIds: string[] = [],
+    isManual = false,
+    newPoi?: POI
+  ) {
     if (!draft) return null
+    const hotelLat = Number(draft.llmContract?.hotel_lat) || 16.4637
+    const hotelLon = Number(draft.llmContract?.hotel_lon) || 107.5905
     const result = await reRouteDay(
-      16.4637,
-      107.5905,
+      hotelLat,
+      hotelLon,
       remainingPoiIds,
-      buildOriginalItinerary(draft),
+      buildOriginalItinerary(draft, newPoi ? [newPoi] : [], dayIndex),
       dayIndex,
       excludedPoiIds,
       480,
@@ -625,7 +720,7 @@ export default function Page() {
       const dayIndex = dayNumber - 1
       const day = draft.days[dayIndex]
       const remainingPoiIds = day.items.map((i) => i.poiId).concat(poi.id)
-      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [], true)
+      const reroute = await runReRouteForDay(dayIndex, remainingPoiIds, [], true, poi)
       if (!reroute) return
 
       const newDays = [...draft.days]

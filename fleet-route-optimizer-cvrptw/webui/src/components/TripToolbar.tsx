@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ChevronDown, ChevronLeft, Download, FolderOpen, Lock, MoreHorizontal, RefreshCw, RotateCcw, Save, Share2, Calendar as CalendarIcon, MapPin } from "lucide-react"
 import { getPoi } from "@/lib/mockItineraryFallback"
+import { POI_CACHE } from "@/lib/api"
 import type { ItineraryDraft, PreviewMode, POI } from "@/types/trip"
 
 interface TripToolbarProps {
@@ -37,12 +38,21 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
     const today = new Date()
     const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
     
+    const escapeIcsText = (str: string) => {
+      return str
+        .replace(/\\/g, "\\\\")
+        .replace(/,/g, "\\,")
+        .replace(/;/g, "\\;")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "")
+    }
+
     draft.days.forEach((day, dayIndex) => {
       const currentDayDate = new Date(startDate.getTime())
       currentDayDate.setDate(startDate.getDate() + dayIndex)
       
       day.items.forEach((item, stopIndex) => {
-        const poi = getPoi(item.poiId)
+        const poi = POI_CACHE.get(item.poiId) || getPoi(item.poiId)
         if (!poi) return
         
         const timeStr = item.time || "08:00"
@@ -66,7 +76,7 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
         
         const formatICSDate = (date: Date) => {
           const pad = (n: number) => n.toString().padStart(2, '0')
-          return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`
+          return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}00Z`
         }
         
         const uid = `stop_${dayIndex}_${stopIndex}_${Date.now()}@tripflow`
@@ -75,9 +85,9 @@ export function TripToolbar({ draft, viewMode, onViewModeChange, onBack, onSave,
         icsContent += `UID:${uid}\r\n`
         icsContent += `DTSTART:${formatICSDate(start)}\r\n`
         icsContent += `DTEND:${formatICSDate(end)}\r\n`
-        icsContent += `SUMMARY:${poi.name || "Địa điểm"}\r\n`
-        icsContent += `DESCRIPTION:${(item.note || poi.description || "").replace(/\r?\n/g, "\\n")}\r\n`
-        icsContent += `LOCATION:${draft.destination || "Hue, Vietnam"}\r\n`
+        icsContent += `SUMMARY:${escapeIcsText(poi.name || "Địa điểm")}\r\n`
+        icsContent += `DESCRIPTION:${escapeIcsText(item.note || poi.description || "")}\r\n`
+        icsContent += `LOCATION:${escapeIcsText(draft.destination || "Hue, Vietnam")}\r\n`
         icsContent += "END:VEVENT\r\n"
       })
     })

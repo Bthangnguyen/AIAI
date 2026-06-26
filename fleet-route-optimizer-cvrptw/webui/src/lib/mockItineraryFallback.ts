@@ -19,13 +19,11 @@ export function draftTotals(draft: ItineraryDraft | null): { poiCount: number; e
   if (!draft) return { poiCount: 0, estimatedCost: 0 }
   const poiCount = draft.days.reduce((sum, day) => sum + day.items.filter(item => !item.poiId.startsWith("__")).length, 0)
   const estimatedCost = draft.days.reduce((sum, day) => {
-    return (
-      sum +
-      day.items.reduce((daySum, item) => {
-        const poi = getPoi(item.poiId)
-        return daySum + (poi?.estimatedCost ?? 0)
-      }, 0)
-    )
+    const dayPoiCost = day.items.reduce((daySum, item) => {
+      const poi = getPoi(item.poiId)
+      return daySum + (poi?.estimatedCost ?? 0)
+    }, 0)
+    return sum + Number(day.dayTotalCost ?? dayPoiCost)
   }, 0)
   return { poiCount, estimatedCost }
 }
